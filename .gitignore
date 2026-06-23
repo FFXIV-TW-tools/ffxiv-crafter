@@ -1,0 +1,10 @@
+# Rust build（pkg/ 是 wasm-pack 輸出 → 要 commit，CF Pages 不編 Rust）
+wasm/target/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+Thumbs.db
+.DS_Store

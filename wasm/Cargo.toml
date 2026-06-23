@@ -1,0 +1,22 @@
+# crafter-wasm — 自寫薄 WASM 綁定，直接用 raphael-rs（Apache-2.0）求解/模擬引擎。
+# zero Tnze code。配方+數值→Settings 公式在 JS 端算（見 web/app.js），本 crate 只跑引擎。
+[package]
+name = "crafter-wasm"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+raphael-solvers = { git = "https://github.com/KonaeAkira/raphael-rs.git", package = "raphael-solver", tag = "v0.26.2" }
+raphael-simulator = { git = "https://github.com/KonaeAkira/raphael-rs.git", package = "raphael-sim", tag = "v0.26.2" }
+wasm-bindgen = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

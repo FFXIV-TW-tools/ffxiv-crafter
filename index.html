@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="tool-name" content="配方製作求解器">
+  <title>FFXIV 配方製作求解器</title>
+  <link rel="icon" href="data:,">
+
+  <link rel="preconnect" href="https://ffxiv-tw-tools-portal.pages.dev" crossorigin>
+  <script>(function () {
+    var dev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    var base = dev ? 'http://localhost:8774/ffxiv-tw-tools-portal/' : 'https://ffxiv-tw-tools-portal.pages.dev/';
+    document.write(
+      '<link rel="stylesheet" href="' + base + 'tokens.css">' +
+      '<link rel="stylesheet" href="' + base + 'header.css">' +
+      '<script defer src="' + base + 'header.js"><\/script>' +
+      '<script defer src="' + base + 'settings-client.js"><\/script>' +
+      '<script defer src="' + base + 'version-check.js"><\/script>'
+    );
+  })();</script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <header class="page-header">
+    <h1 class="codex-h1">⚒ 配方製作求解器 <span class="sub codex-label codex-label--muted">FFXIV 繁中服</span></h1>
+  </header>
+
+  <main class="codex-container">
+    <nav class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="solve" role="tab">🔨 配方求解</button>
+      <button class="tab" data-tab="stats" role="tab">🧑‍🔧 角色數值</button>
+    </nav>
+
+    <!-- ===== 配方求解 ===== -->
+    <div id="tab-solve" class="tabpanel">
+      <div id="first-run-hint" class="run-hint" hidden>
+        👉 首次使用：先到「<b>角色數值</b>」分頁填各職裝備數值，再回來選配方求解。
+      </div>
+
+      <!-- 選配方（可收合） -->
+      <section class="codex-tablet codex-tablet--cyan panel" id="pick-panel">
+        <span class="codex-hud"></span>
+        <div class="pick-head">
+          <h2 class="codex-h2">選配方</h2>
+          <button id="change-recipe" class="codex-btn codex-btn--ghost" hidden>＋ 更換配方</button>
+        </div>
+        <div id="picker">
+          <div class="job-chips" id="job-chips"></div>
+          <div class="filter-row">
+            <input id="recipe-search" class="codex-input grow" type="text" placeholder="搜尋配方名稱…" aria-label="搜尋配方名稱" autocomplete="off">
+            <select id="level-filter" class="codex-select" aria-label="等級">
+              <option value="">全部等級</option>
+              <option value="1-10">Lv 1–10</option><option value="11-20">Lv 11–20</option>
+              <option value="21-30">Lv 21–30</option><option value="31-40">Lv 31–40</option>
+              <option value="41-50">Lv 41–50</option><option value="51-60">Lv 51–60</option>
+              <option value="61-70">Lv 61–70</option><option value="71-80">Lv 71–80</option>
+              <option value="81-90">Lv 81–90</option><option value="91-100">Lv 91–100</option>
+            </select>
+            <input id="rlv-filter" class="codex-input rlv-in" type="number" min="0" inputmode="numeric" placeholder="配方等級" aria-label="配方等級">
+          </div>
+          <div id="recipe-count" class="recipe-count codex-small"></div>
+          <div id="recipe-table" class="recipe-table"></div>
+        </div>
+        <div id="selected-bar" class="selected-bar" hidden></div>
+      </section>
+
+      <!-- 設定（左）＋ 結果（右） -->
+      <div id="work" class="work" hidden>
+        <section class="codex-tablet codex-tablet--cyan panel" id="config-panel">
+          <span class="codex-hud"></span>
+          <div id="recipe-info" class="recipe-info"></div>
+
+          <div class="cfg-card">
+          <h3 class="codex-h3 cfg-card__title">素材與加成</h3>
+          <details class="consumable-block">
+            <summary><span class="codex-small">🍖 消耗品與專家（食物 / 藥水 / 專家之證）</span></summary>
+            <div class="consumables">
+              <div class="cfg-line">食物
+                <select id="food" class="codex-select"><option value="">無</option></select>
+                <label class="opt"><input type="checkbox" id="food-hq" checked> HQ</label></div>
+              <div class="cfg-line">藥水
+                <select id="potion" class="codex-select"><option value="">無</option></select>
+                <label class="opt"><input type="checkbox" id="potion-hq" checked> HQ</label></div>
+              <label class="opt"><input type="checkbox" id="specialist"> 專家之證（作業 +20・加工 +20）</label>
+              <div id="eff-stats" class="eff-stats codex-small"></div>
+            </div>
+          </details>
+          <div id="ingredients" class="ingredients"></div>
+          </div>
+
+          <div class="cfg-card">
+          <h3 class="codex-h3 cfg-card__title">求解設定</h3>
+          <label class="opt opt-num target-line">目標品質 <input id="opt-target" class="codex-input" type="number" min="0" placeholder="滿品質"></label>
+
+          <div class="mode-toggle">
+            <button class="mode-btn is-active" data-mode="auto" type="button">🤖 自動求解</button>
+            <button class="mode-btn" data-mode="manual" type="button">✏️ 手動排手法</button>
+          </div>
+
+          <div id="auto-controls">
+            <div class="solve-config">
+              <label class="cfg-line">求解模式
+                <select id="solve-mode" class="codex-select">
+                  <option value="quality">品質最大化</option>
+                  <option value="nq">只求完成（NQ・最快）</option>
+                </select>
+              </label>
+              <div class="solve-opts">
+                <label class="opt"><input type="checkbox" id="opt-manip" checked> 掌握</label>
+                <label class="opt"><input type="checkbox" id="opt-heart"> 專心致志</label>
+                <label class="opt"><input type="checkbox" id="opt-qi"> 快速改革</label>
+                <label class="opt"><input type="checkbox" id="opt-backload"> 後置進展</label>
+                <label class="opt" title="無論製作狀態（球色）隨機到多差都保證達標；求解明顯較慢、品質可能略低，高難度配方不支援"><input type="checkbox" id="opt-adversarial"> 確保品質可靠</label>
+              </div>
+            </div>
+            <div class="solve-row">
+              <button id="solve-btn" class="codex-btn codex-btn--primary">求解最佳手法</button>
+              <button id="cancel-btn" class="codex-btn codex-btn--ghost" hidden>取消</button>
+            </div>
+          </div>
+
+          <div id="manual-controls" hidden>
+            <div class="codex-small manual-hint">點下方技能加入序列，右側即時顯示模擬結果與巨集。灰色＝未達等級。</div>
+            <div id="manual-seq" class="manual-seq"></div>
+            <div class="manual-bar">
+              <button id="manual-undo" class="codex-btn codex-btn--ghost" type="button">← 退一步</button>
+              <button id="manual-clear" class="codex-btn codex-btn--ghost" type="button">清除</button>
+            </div>
+            <div id="skills-pick" class="skills skills--pick"></div>
+          </div>
+
+          <div id="solve-status" class="solve-status" role="status" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section class="codex-tablet panel" id="results-col">
+          <span class="codex-hud"></span>
+          <div id="results-placeholder" class="results-ph codex-small">設定好左側後按「求解最佳手法」，<br>巨集與手法序列會顯示在這裡 →</div>
+          <div id="results" hidden>
+            <div id="result-summary" class="result-summary"></div>
+            <details class="res-block" id="macro-block" open>
+              <summary><span class="codex-h3">🎮 遊戲巨集</span><span class="codex-small">複製貼進遊戲巨集欄</span></summary>
+              <div id="macro" class="macro"></div>
+            </details>
+            <details class="res-block" id="rot-block" open>
+              <summary><span class="codex-h3">手法序列</span></summary>
+              <div id="rotation" class="rotation"></div>
+            </details>
+            <details class="res-block" id="wt-block">
+              <summary><span class="codex-h3">逐步走查</span><span class="codex-small">點開看每步狀態</span></summary>
+              <div id="walkthrough" class="walkthrough"></div>
+            </details>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ===== 角色數值 ===== -->
+    <div id="tab-stats" class="tabpanel" hidden>
+      <section class="codex-tablet codex-tablet--cyan panel">
+        <span class="codex-hud"></span>
+        <h2 class="codex-h2">角色數值 — 各製作職業裝備</h2>
+        <p class="codex-body hint">填每個職業的 <b>作業精度 / 加工精度 / CP / 等級</b>。求解時依配方職業<b>自動套用</b>；某職留空用「<b>預設</b>」。資料只存本機。</p>
+        <div class="gearsets" id="gearsets"></div>
+      </section>
+    </div>
+
+    <p class="attribution codex-small">
+      求解引擎 <a href="https://github.com/KonaeAkira/raphael-rs" target="_blank" rel="noopener">raphael-rs</a>（Apache-2.0）。繁中技能名／圖示來自 FFXIV 繁中服遊戲資料。本工具自製。
+    </p>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

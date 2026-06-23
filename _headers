@@ -1,0 +1,19 @@
+# Cloudflare Pages headers — 安全 + cache
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://ffxiv-tw-tools-portal.pages.dev https://static.cloudflareinsights.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://ffxiv-tw-tools-portal.pages.dev; img-src 'self' data: https://ffxiv-tw-tools-portal.pages.dev https://xivapi.com; connect-src 'self' https://ffxiv-tw-tools-settings-api.ffxiv-tw-tools.workers.dev https://cloudflareinsights.com; media-src 'self' https://ffxiv-tw-tools-portal.pages.dev; font-src 'self' https://ffxiv-tw-tools-portal.pages.dev data:; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
+
+# script-src 'wasm-unsafe-eval'＝WebAssembly 求解器編譯；worker-src 'self'＝module worker；img-src xivapi.com＝技能圖示
+
+/*.js
+  Cache-Control: public, max-age=0, must-revalidate
+/*.css
+  Cache-Control: public, max-age=0, must-revalidate
+/pkg/*
+  Cache-Control: public, max-age=0, must-revalidate
+/data/*
+  Cache-Control: public, max-age=600, must-revalidate
