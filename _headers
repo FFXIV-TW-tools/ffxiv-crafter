@@ -5,9 +5,10 @@
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://ffxiv-tw-tools-portal.pages.dev https://static.cloudflareinsights.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://ffxiv-tw-tools-portal.pages.dev; img-src 'self' data: https://ffxiv-tw-tools-portal.pages.dev https://xivapi.com; connect-src 'self' https://ffxiv-tw-tools-settings-api.ffxiv-tw-tools.workers.dev https://cloudflareinsights.com; media-src 'self' https://ffxiv-tw-tools-portal.pages.dev; font-src 'self' https://ffxiv-tw-tools-portal.pages.dev data:; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://ffxiv-tw-tools-portal.pages.dev https://static.cloudflareinsights.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://ffxiv-tw-tools-portal.pages.dev; img-src 'self' data: https://ffxiv-tw-tools-portal.pages.dev https://xivapi.com; connect-src 'self' https://ffxiv-tw-tools-settings-api.ffxiv-tw-tools.workers.dev https://cloudflareinsights.com; media-src 'self' https://ffxiv-tw-tools-portal.pages.dev; font-src 'self' https://ffxiv-tw-tools-portal.pages.dev data:; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
 
-# script-src 'wasm-unsafe-eval'＝WebAssembly 求解器編譯；worker-src 'self'＝module worker；img-src xivapi.com＝技能圖示
+# script-src 'unsafe-inline'＝head 用 document.write 注入 portal CDN bootstrap（同 marketboard/mit-planner 等所有子工具，缺它正式站 CSP 會擋掉行內 script → 樣式全沒載＝白頁）
+# 'wasm-unsafe-eval'＝WebAssembly 求解器編譯；worker-src 'self'＝module worker；img-src xivapi.com＝技能圖示
 
 /*.js
   Cache-Control: public, max-age=0, must-revalidate
