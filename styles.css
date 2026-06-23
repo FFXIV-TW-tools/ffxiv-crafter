@@ -200,12 +200,15 @@ body {
 
 /* ---- 角色數值表 ---- */
 .hint { margin-bottom: var(--space-4, 16px); }
-.gear-table { width: 100%; border-collapse: collapse; }
-.gear-table th, .gear-table td { padding: var(--space-2, 8px); border-bottom: 1px solid var(--color-border); }
-.gear-table thead th { color: var(--accent); text-align: left; font-weight: var(--fw-semibold, 600); }
+.gearsets { overflow-x: auto; }  /* 窄螢幕表格內部橫捲，不撐破頁面 */
+.gear-table { width: auto; border-collapse: collapse; }  /* 內容寬度，不再撐滿整個面板 */
+.gear-table th, .gear-table td { padding: var(--space-2, 8px) var(--space-3, 12px); border-bottom: 1px solid var(--color-border); }
+.gear-table thead th { color: var(--accent); text-align: right; font-weight: var(--fw-semibold, 600); }
+.gear-table thead th:first-child { text-align: left; }
+.gear-table tbody tr:hover { background: var(--color-surface-hover); }
 .gear-table .gj { text-align: left; font-weight: var(--fw-semibold, 600); white-space: nowrap; }
 .gear-table .gj-default { color: var(--accent); }
-.gear-in { width: 100%; min-width: 64px; }
+.gear-in { width: 96px; text-align: right; }  /* 數字欄固定窄寬 + 右對齊 */
 
 .attribution { margin-top: var(--space-5, 24px); opacity: .85; }
 .attribution a { color: var(--accent); }
