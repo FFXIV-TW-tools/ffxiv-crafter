@@ -23,8 +23,6 @@ let jobFilter = '';     // '' = 全部
 let selected = null;    // { recipe, rlv }
 let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
 let worker = null;
-let mode = 'auto';       // 'auto' | 'manual'
-let manualSeq = [];      // 手動排手法的 variant 序列
 
 // ---------- 資料 ----------
 async function loadData() {
@@ -160,13 +158,10 @@ function refreshSelectedGear() {
   const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats'); };
   $('opt-target').value = ''; $('opt-target').max = maxQ; $('opt-target').placeholder = '滿(' + maxQ + ')';
   renderIngredients(recipe, maxQ);
-  renderSkillsPick(g ? (g.level || 100) : 100);
-  manualSeq = []; renderManualSeq();
   updateEff();
   $('solve-btn').disabled = !g;
   $('opt-adversarial').disabled = recipe.is_expert; // 高難度配方引擎不支援防球
   if (recipe.is_expert) $('opt-adversarial').checked = false;
-  if (mode === 'manual') runManualSim();
 }
 
 // ---------- 配方原料 + HQ → 自動初始品質 ----------
@@ -195,48 +190,6 @@ function renderIngredients(recipe, maxQ) {
   const all = $('ingredients').querySelector('.ing-allhq');
   if (all) all.onclick = () => { $('ingredients').querySelectorAll('.ing-hq-in').forEach(i => i.value = i.dataset.amt); updateInitial(recipe, maxQ); };
   updateInitial(recipe, maxQ);
-}
-function renderSkillsPick(level) {
-  const entries = Object.entries(ACTIONS).filter(([, a]) => a.icon).sort((a, b) => (a[1].level || 1) - (b[1].level || 1));
-  $('skills-pick').innerHTML = entries.map(([variant, a]) => {
-    const locked = (a.level || 1) > level;
-    return `<div class="skill${locked ? ' skill--locked' : ''}" data-variant="${variant}" title="${esc(a.nameTc)}（Lv ${a.level || 1}）"><img src="${ICON_BASE}${a.icon}" alt="" loading="lazy" draggable="false"></div>`;
-  }).join('');
-  $('skills-pick').querySelectorAll('.skill:not(.skill--locked)').forEach(el => el.onclick = () => addManual(el.dataset.variant));
-}
-
-// ---------- 手動排手法 ----------
-function switchMode(m) {
-  mode = m;
-  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('is-active', b.dataset.mode === m));
-  $('auto-controls').hidden = m !== 'auto';
-  $('manual-controls').hidden = m !== 'manual';
-  if (m === 'manual') { renderManualSeq(); runManualSim(); }
-}
-function addManual(v) { manualSeq.push(v); renderManualSeq(); runManualSim(); }
-function undoManual() { manualSeq.pop(); renderManualSeq(); runManualSim(); }
-function clearManual() { manualSeq = []; renderManualSeq(); runManualSim(); }
-function removeManualAt(i) { manualSeq.splice(i, 1); renderManualSeq(); runManualSim(); }
-function renderManualSeq() {
-  $('manual-seq').innerHTML = manualSeq.length
-    ? manualSeq.map((v, i) => { const a = ACTIONS[v] || {}; return `<div class="mseq-item" data-i="${i}" title="${esc(a.nameTc || v)}（點移除）">${a.icon ? `<img src="${ICON_BASE}${a.icon}" alt="" draggable="false">` : esc(a.nameTc || v)}</div>`; }).join('')
-    : '<span class="codex-small">（序列空 — 點下方技能加入）</span>';
-  $('manual-seq').querySelectorAll('.mseq-item').forEach(el => el.onclick = () => removeManualAt(+el.dataset.i));
-}
-function runManualSim() {
-  if (!selected) return;
-  const g = gearFor(selected.recipe.job);
-  if (!g) return;
-  if (!manualSeq.length) {
-    $('results').hidden = true; $('results-placeholder').hidden = false;
-    $('results-placeholder').innerHTML = '點技能排手法，這裡即時顯示模擬與巨集';
-    return;
-  }
-  const input = computeSettings(selected.recipe, selected.rlv, g);
-  input.target_quality = input.max_quality; // 手動：品質上限＝配方滿
-  input.actions = manualSeq.slice();
-  if (!worker) newWorker();
-  worker.postMessage({ cmd: 'simulate', input });
 }
 
 // ---------- 食物 / 藥水 ----------
@@ -346,13 +299,9 @@ function doSolve() {
   worker.postMessage({ cmd: 'solve', input: settings });
 }
 function onWorkerMsg(e) {
-  if (!e.data.ok) {
-    if (e.data.cmd !== 'simulate') setSolving(false);
-    toast('無法' + (e.data.cmd === 'simulate' ? '模擬' : '求解') + '：' + (e.data.error || ''), 'error');
-    return;
-  }
-  if (e.data.cmd === 'simulate') { render(e.data.result, false); }
-  else { setSolving(false); render(e.data.result, true); }
+  setSolving(false);
+  if (!e.data.ok) { toast('無法求解：' + (e.data.error || ''), 'error'); return; }
+  render(e.data.result, true);
 }
 function cancelSolve() { newWorker(); setSolving(false); toast('已取消求解', 'warn'); }
 function setSolving(on) {
@@ -483,9 +432,6 @@ function toast(msg, v) { (window.FFXIVToast && window.FFXIVToast.show ? window.F
   $('solve-btn').addEventListener('click', doSolve);
   $('cancel-btn').addEventListener('click', cancelSolve);
   $('change-recipe').addEventListener('click', showPicker);
-  document.querySelectorAll('.mode-btn').forEach(b => b.onclick = () => switchMode(b.dataset.mode));
-  $('manual-undo').addEventListener('click', undoManual);
-  $('manual-clear').addEventListener('click', clearManual);
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
   newWorker(); // 預熱
   } catch (e) {

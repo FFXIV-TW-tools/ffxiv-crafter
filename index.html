@@ -94,11 +94,6 @@
           <h3 class="codex-h3 cfg-card__title">求解設定</h3>
           <label class="opt opt-num target-line">目標品質 <input id="opt-target" class="codex-input" type="number" min="0" placeholder="滿品質"></label>
 
-          <div class="mode-toggle">
-            <button class="mode-btn is-active" data-mode="auto" type="button">🤖 自動求解</button>
-            <button class="mode-btn" data-mode="manual" type="button">✏️ 手動排手法</button>
-          </div>
-
           <div id="auto-controls">
             <div class="solve-config">
               <label class="cfg-line">求解模式
@@ -119,16 +114,6 @@
               <button id="solve-btn" class="codex-btn codex-btn--primary">求解最佳手法</button>
               <button id="cancel-btn" class="codex-btn codex-btn--ghost" hidden>取消</button>
             </div>
-          </div>
-
-          <div id="manual-controls" hidden>
-            <div class="codex-small manual-hint">點下方技能加入序列，右側即時顯示模擬結果與巨集。灰色＝未達等級。</div>
-            <div id="manual-seq" class="manual-seq"></div>
-            <div class="manual-bar">
-              <button id="manual-undo" class="codex-btn codex-btn--ghost" type="button">← 退一步</button>
-              <button id="manual-clear" class="codex-btn codex-btn--ghost" type="button">清除</button>
-            </div>
-            <div id="skills-pick" class="skills skills--pick"></div>
           </div>
 
           <div id="solve-status" class="solve-status" role="status" aria-live="polite"></div>
