@@ -45,18 +45,25 @@ body {
 .filter-row .codex-select { flex: 0 0 auto; min-width: 130px; }
 .filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
 .recipe-count { margin: var(--space-2, 8px) 0; }
-.recipe-table { max-height: 320px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
-.rt { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+/* 邊框盒貼齊表格內容、靠左對齊上方搜尋列/計數（窄螢幕 max-width:100% + 橫捲不撐破）*/
+.recipe-table { width: fit-content; max-width: 100%;
+  max-height: 320px; overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+/* 內容寬度：名稱欄不再被 width:100% 撐到 ~950px、職業/Lv/配方等級不再被甩到最右（修「左空右擠」）*/
+.rt { width: auto; border-collapse: collapse; font-size: var(--fs-small); }
 .rt thead th { position: sticky; top: 0; background: var(--color-surface); color: var(--accent); text-align: left;
   padding: var(--space-2, 8px); border-bottom: 1px solid var(--color-border); font-weight: var(--fw-semibold, 600); }
 .rt td { padding: var(--space-1, 4px) var(--space-2, 8px); border-bottom: 1px solid var(--color-border); }
-/* 職業/Lv/配方等級 縮到內容寬，名稱吸收剩餘 → 不被拉很長 */
-.rt th:not(:first-child), .rt td:not(.rt-name) { white-space: nowrap; width: 1%; }
-.rt td:nth-child(3), .rt td:nth-child(4), .rt th:nth-child(3), .rt th:nth-child(4) { text-align: right; }
+/* 名稱欄吸收剩餘寬；職業/Lv/配方等級給舒適固定寬 + 置中 → 不再擠右、版面均衡 */
+.rt th:not(:first-child), .rt td:not(.rt-name) { white-space: nowrap; text-align: center; }
+.rt th:nth-child(2), .rt td:nth-child(2) { width: 116px; }   /* 職業（含 icon）*/
+.rt th:nth-child(3), .rt td:nth-child(3) { width: 72px; }    /* Lv */
+.rt th:nth-child(4), .rt td:nth-child(4) { width: 96px; }    /* 配方等級 */
 .rt-row { cursor: pointer; }
 .rt-row:hover { background: var(--color-surface-hover); }
 .rt-row.is-sel { background: var(--color-surface-hover); outline: 1px solid var(--accent); }
 .rt-name { font-weight: var(--fw-semibold, 600); display: flex; align-items: center; gap: var(--space-1, 4px); }
+/* 名稱上限 380px、超長截斷 → 名稱欄寬度有界、不獨吞整列 */
+.rt-nm { display: block; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rt-ico { width: 24px; height: 24px; flex: none; }
 .rt-job { white-space: nowrap; }
 .rt-jico { width: 18px; height: 18px; vertical-align: middle; margin-right: 2px; }
@@ -135,6 +142,12 @@ body {
 .sum-err { color: var(--color-warn); margin-bottom: var(--space-2, 8px); }
 
 /* ---- 求解選項 ---- */
+/* 兩組區隔：可用技能（會動用的製作技能）vs 求解風格（求解器行為旗標）*/
+.opt-group { margin-bottom: var(--space-2, 8px); }
+.opt-group + .opt-group { margin-top: var(--space-1, 4px); padding-top: var(--space-3, 12px); border-top: 1px solid var(--color-border); }
+.opt-group__label { font-weight: var(--fw-semibold, 600); margin-bottom: var(--space-2, 8px); }
+.opt-group__hint { margin-left: var(--space-1, 4px); }
+.opt-group .solve-opts { margin-bottom: 0; }
 .solve-opts { display: flex; flex-wrap: wrap; gap: var(--space-3, 12px); margin-bottom: var(--space-2, 8px); }
 .opt { display: inline-flex; align-items: center; gap: var(--space-1, 4px); cursor: pointer; }
 .opt input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
@@ -179,16 +192,20 @@ body {
 .macro-text { width: 100%; resize: vertical; font-family: var(--font-mono); }
 
 /* ---- 角色數值表 ---- */
+/* 整頁不偏一邊：面板收窄並置中，表格再於面板內水平置中 → 左右留白對稱 */
+#tab-stats .panel { max-width: 720px; margin-left: auto; margin-right: auto; }
 .hint { margin-bottom: var(--space-4, 16px); }
 .gearsets { overflow-x: auto; }  /* 窄螢幕表格內部橫捲，不撐破頁面 */
-.gear-table { width: auto; border-collapse: collapse; }  /* 內容寬度，不再撐滿整個面板 */
+.gear-table { width: auto; border-collapse: collapse; margin-inline: auto; }  /* 內容寬度 + 面板內置中 */
 .gear-table th, .gear-table td { padding: var(--space-2, 8px) var(--space-3, 12px); border-bottom: 1px solid var(--color-border); }
-.gear-table thead th { color: var(--accent); text-align: right; font-weight: var(--fw-semibold, 600); }
-.gear-table thead th:first-child { text-align: left; }
+.gear-table thead th { color: var(--accent); text-align: center; font-weight: var(--fw-semibold, 600); }  /* 數值欄表頭置中 */
+.gear-table thead th:first-child { text-align: left; }  /* 職業欄表頭靠左（對齊職名）*/
 .gear-table tbody tr:hover { background: var(--color-surface-hover); }
 .gear-table .gj { text-align: left; font-weight: var(--fw-semibold, 600); white-space: nowrap; }
 .gear-table .gj-default { color: var(--accent); }
-.gear-in { width: 96px; text-align: right; }  /* 數字欄固定窄寬 + 右對齊 */
+.gj-ico { display: inline-block; width: 22px; height: 22px; vertical-align: middle; margin-right: var(--space-2, 8px); }
+.gj-ico--empty { visibility: hidden; }  /* 預設列佔位、不顯圖但保留寬度 */
+.gear-in { width: 96px; text-align: center; }  /* 數字欄固定窄寬 + 置中（對齊置中表頭）*/
 
 .attribution { margin-top: var(--space-5, 24px); opacity: .85; }
 .attribution a { color: var(--accent); }

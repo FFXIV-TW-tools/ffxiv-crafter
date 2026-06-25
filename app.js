@@ -61,11 +61,14 @@ function renderGearsets() {
     const v = (gearsets[job] && gearsets[job][f] != null) ? gearsets[job][f] : '';
     return `<td><input class="codex-input gear-in" data-job="${esc(job)}" data-f="${f}" type="number" min="0" inputmode="numeric" value="${v}" placeholder="${ph || ''}"></td>`;
   };
+  const jico = (job) => JOB_ICON[job]
+    ? `<img class="gj-ico" src="${ICON_BASE}${JOB_ICON[job]}" alt="" loading="lazy">`
+    : '<span class="gj-ico gj-ico--empty" aria-hidden="true"></span>'; // 預設列無職業 icon → 等寬佔位讓職名對齊
   $('gearsets').innerHTML = `
     <table class="gear-table">
       <thead><tr><th>職業</th><th>等級</th><th>作業精度</th><th>加工精度</th><th>CP</th></tr></thead>
       <tbody>${rows.map(job =>
-        `<tr><th class="gj${job === '預設' ? ' gj-default' : ''}">${esc(job)}</th>${cell(job, 'level', '100')}${cell(job, 'cms', '工藝')}${cell(job, 'ctrl', '加工')}${cell(job, 'cp', 'CP')}</tr>`).join('')}</tbody>
+        `<tr><th class="gj${job === '預設' ? ' gj-default' : ''}">${jico(job)}${esc(job)}</th>${cell(job, 'level', '100')}${cell(job, 'cms', '工藝')}${cell(job, 'ctrl', '加工')}${cell(job, 'cp', 'CP')}</tr>`).join('')}</tbody>
     </table>`;
   $('gearsets').querySelectorAll('.gear-in').forEach(inp => inp.addEventListener('input', onGearInput));
 }
@@ -105,7 +108,7 @@ function renderTable() {
     <table class="rt">
       <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th></tr></thead>
       <tbody>${shown.map(r =>
-        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}"><td class="rt-name">${r.icon ? `<img class="rt-ico" src="${ICON_BASE}${r.icon}" alt="" loading="lazy">` : ''}${esc(r.name)}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${ICON_BASE}${JOB_ICON[r.job]}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td></tr>`).join('')}</tbody>
+        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}"><td class="rt-name">${r.icon ? `<img class="rt-ico" src="${ICON_BASE}${r.icon}" alt="" loading="lazy">` : ''}<span class="rt-nm">${esc(r.name)}</span></td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${ICON_BASE}${JOB_ICON[r.job]}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td></tr>`).join('')}</tbody>
     </table>` : '';
   $('recipe-table').querySelectorAll('.rt-row').forEach(tr => tr.onclick = () => selectRecipe(+tr.dataset.id));
 }

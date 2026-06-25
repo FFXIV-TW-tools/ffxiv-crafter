@@ -24,7 +24,7 @@
 
 <body>
   <header class="page-header">
-    <h1 class="codex-h1">⚒ 配方製作求解器 <span class="sub codex-label codex-label--muted">FFXIV 繁中服</span></h1>
+    <h1 class="codex-h1"><span class="ph-icon" aria-hidden="true">⚒</span>配方製作求解器 <span class="sub codex-label codex-label--muted">FFXIV 繁中服</span></h1>
   </header>
 
   <main class="codex-container">
@@ -102,12 +102,20 @@
                   <option value="nq">只求完成（NQ・最快）</option>
                 </select>
               </label>
-              <div class="solve-opts">
-                <label class="opt"><input type="checkbox" id="opt-manip" checked> 掌握</label>
-                <label class="opt"><input type="checkbox" id="opt-heart"> 專心致志</label>
-                <label class="opt"><input type="checkbox" id="opt-qi"> 快速改革</label>
-                <label class="opt"><input type="checkbox" id="opt-backload"> 後置進展</label>
-                <label class="opt" title="無論製作狀態（球色）隨機到多差都保證達標；求解明顯較慢、品質可能略低，高難度配方不支援"><input type="checkbox" id="opt-adversarial"> 確保品質可靠</label>
+              <div class="opt-group">
+                <div class="opt-group__label">可用技能 <span class="codex-small opt-group__hint">勾選＝允許求解動用，滑鼠移上看說明</span></div>
+                <div class="solve-opts">
+                  <label class="opt" title="掌握：施放後 8 步內每步回復 5 點耐久（Lv 65 習得）。耗 CP，CP 吃緊時可關掉。"><input type="checkbox" id="opt-manip" checked> 掌握</label>
+                  <label class="opt" title="專心致志：整場一次，無視製作狀態（球色）強制讓下一個技能生效（需專家之證）。"><input type="checkbox" id="opt-heart"> 專心致志</label>
+                  <label class="opt" title="快速改革：整場一次，免 CP 直接獲得一層「改革」效果（需專家之證）。"><input type="checkbox" id="opt-qi"> 快速改革</label>
+                </div>
+              </div>
+              <div class="opt-group">
+                <div class="opt-group__label">求解風格</div>
+                <div class="solve-opts">
+                  <label class="opt" title="後置進展：先全力衝品質、最後一刻才補完進展，通常能擠出更高品質。"><input type="checkbox" id="opt-backload"> 後置進展</label>
+                  <label class="opt" title="確保品質可靠：無論製作狀態（球色）隨機到多差都保證達標；求解明顯較慢、品質可能略低，高難度配方不支援。"><input type="checkbox" id="opt-adversarial"> 確保品質可靠</label>
+                </div>
               </div>
             </div>
             <div class="solve-row">
