@@ -45,25 +45,21 @@ body {
 .filter-row .codex-select { flex: 0 0 auto; min-width: 130px; }
 .filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
 .recipe-count { margin: var(--space-2, 8px) 0; }
-/* 邊框盒貼齊表格內容、靠左對齊上方搜尋列/計數（窄螢幕 max-width:100% + 橫捲不撐破）*/
-.recipe-table { width: fit-content; max-width: 100%;
-  max-height: 320px; overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
-/* 內容寬度：名稱欄不再被 width:100% 撐到 ~950px、職業/Lv/配方等級不再被甩到最右（修「左空右擠」）*/
-.rt { width: auto; border-collapse: collapse; font-size: var(--fs-small); }
+.recipe-table { max-height: 320px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+/* 名稱欄吸收剩餘寬撐滿面板（不留空塊）；職業/Lv/配方等級給舒適固定寬 + 置中 → 不再擠在最右 */
+.rt { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
 .rt thead th { position: sticky; top: 0; background: var(--color-surface); color: var(--accent); text-align: left;
   padding: var(--space-2, 8px); border-bottom: 1px solid var(--color-border); font-weight: var(--fw-semibold, 600); }
 .rt td { padding: var(--space-1, 4px) var(--space-2, 8px); border-bottom: 1px solid var(--color-border); }
 /* 名稱欄吸收剩餘寬；職業/Lv/配方等級給舒適固定寬 + 置中 → 不再擠右、版面均衡 */
 .rt th:not(:first-child), .rt td:not(.rt-name) { white-space: nowrap; text-align: center; }
-.rt th:nth-child(2), .rt td:nth-child(2) { width: 116px; }   /* 職業（含 icon）*/
-.rt th:nth-child(3), .rt td:nth-child(3) { width: 72px; }    /* Lv */
-.rt th:nth-child(4), .rt td:nth-child(4) { width: 96px; }    /* 配方等級 */
+.rt th:nth-child(2), .rt td:nth-child(2) { width: 150px; }   /* 職業（含 icon）*/
+.rt th:nth-child(3), .rt td:nth-child(3) { width: 110px; }   /* Lv */
+.rt th:nth-child(4), .rt td:nth-child(4) { width: 130px; }   /* 配方等級 */
 .rt-row { cursor: pointer; }
 .rt-row:hover { background: var(--color-surface-hover); }
 .rt-row.is-sel { background: var(--color-surface-hover); outline: 1px solid var(--accent); }
 .rt-name { font-weight: var(--fw-semibold, 600); display: flex; align-items: center; gap: var(--space-1, 4px); }
-/* 名稱上限 380px、超長截斷 → 名稱欄寬度有界、不獨吞整列 */
-.rt-nm { display: block; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rt-ico { width: 24px; height: 24px; flex: none; }
 .rt-job { white-space: nowrap; }
 .rt-jico { width: 18px; height: 18px; vertical-align: middle; margin-right: 2px; }

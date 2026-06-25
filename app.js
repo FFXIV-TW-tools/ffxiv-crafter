@@ -108,7 +108,7 @@ function renderTable() {
     <table class="rt">
       <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th></tr></thead>
       <tbody>${shown.map(r =>
-        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}"><td class="rt-name">${r.icon ? `<img class="rt-ico" src="${ICON_BASE}${r.icon}" alt="" loading="lazy">` : ''}<span class="rt-nm">${esc(r.name)}</span></td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${ICON_BASE}${JOB_ICON[r.job]}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td></tr>`).join('')}</tbody>
+        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}"><td class="rt-name">${r.icon ? `<img class="rt-ico" src="${ICON_BASE}${r.icon}" alt="" loading="lazy">` : ''}${esc(r.name)}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${ICON_BASE}${JOB_ICON[r.job]}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td></tr>`).join('')}</tbody>
     </table>` : '';
   $('recipe-table').querySelectorAll('.rt-row').forEach(tr => tr.onclick = () => selectRecipe(+tr.dataset.id));
 }
