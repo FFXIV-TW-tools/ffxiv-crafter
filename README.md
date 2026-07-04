@@ -2,7 +2,7 @@
 
 FFXIV 繁中服製作（DoH）求解器 + 模擬器。輸入配方 + 角色數值 → 算最佳製作手法 → 顯示手法序列 + 逐步走查 + 一鍵複製遊戲巨集。
 
-**Pages URL**：（部署後填）`https://ffxiv-crafter.pages.dev/`
+**Pages URL**：<https://ffxiv-crafter.pages.dev/>（已上線）
 
 ## 架構
 
@@ -39,4 +39,4 @@ python -m http.server 8809        # 於 repo 根目錄
 
 ## 授權
 
-本工具自製碼採 MIT（待補 LICENSE）。求解引擎 raphael-rs 為 Apache-2.0，已於頁尾署名 KonaeAkira。FFXIV 遊戲資料／圖示版權屬 SQUARE ENIX。
+本工具自製碼採 MIT（見 LICENSE）。求解引擎 raphael-rs 為 Apache-2.0，已於頁尾署名 KonaeAkira。FFXIV 遊戲資料／圖示版權屬 SQUARE ENIX。
