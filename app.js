@@ -77,6 +77,7 @@ function onGearInput(e) {
   (gearsets[job] = gearsets[job] || {})[f] = +e.target.value || 0;
   saveGear(); updateHint();
   if (selected) refreshSelectedGear();
+  invalidateResults(); // 改角色數值 → 舊巨集過期
 }
 
 // ---------- 職業 chips + 配方表 ----------
@@ -160,6 +161,7 @@ function refreshSelectedGear() {
     <div class="ri-gear">${note}</div>`;
   const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats'); };
   $('opt-target').value = ''; $('opt-target').max = maxQ; $('opt-target').placeholder = '滿(' + maxQ + ')';
+  $('opt-target').disabled = $('solve-mode').value === 'nq'; // NQ 模式目標品質欄停用（與 solve-mode 監聽一致）
   renderIngredients(recipe, maxQ);
   updateEff();
   $('solve-btn').disabled = !g;
@@ -189,9 +191,9 @@ function renderIngredients(recipe, maxQ) {
     <div class="ing-head"><span class="ing-group-title">配方原料</span>${anyHq ? '<button class="codex-btn codex-btn--ghost ing-allhq">全部 HQ</button>' : ''}</div>
     <div class="ing-list">${rows || '<span class="codex-small">（無原料資料）</span>'}</div>
     <div class="ing-initial" id="ing-initial"></div>`;
-  $('ingredients').querySelectorAll('.ing-hq-in').forEach(inp => inp.addEventListener('input', () => updateInitial(recipe, maxQ)));
+  $('ingredients').querySelectorAll('.ing-hq-in').forEach(inp => inp.addEventListener('input', () => { updateInitial(recipe, maxQ); invalidateResults(); }));
   const all = $('ingredients').querySelector('.ing-allhq');
-  if (all) all.onclick = () => { $('ingredients').querySelectorAll('.ing-hq-in').forEach(i => i.value = i.dataset.amt); updateInitial(recipe, maxQ); };
+  if (all) all.onclick = () => { $('ingredients').querySelectorAll('.ing-hq-in').forEach(i => i.value = i.dataset.amt); updateInitial(recipe, maxQ); invalidateResults(); };
   updateInitial(recipe, maxQ);
 }
 
@@ -319,6 +321,14 @@ function setSolving(on) {
   }
   $('solve-status').innerHTML = on ? '<span class="codex-spinner"></span> 求解中…（高難度配方可能數秒）' : '';
 }
+// 已顯示的求解結果在任一求解輸入變更後即過期 → 隱藏舊結果避免複製到與當前設定不符的巨集（白做一爐）
+function invalidateResults() {
+  if (!$('results') || $('results').hidden) return; // 尚無結果就不動
+  $('results').hidden = true;
+  $('results-placeholder').hidden = false;
+  $('results-placeholder').innerHTML = '⚠ 設定已變更，請重新求解';
+  $('solve-status').innerHTML = '';
+}
 
 // ---------- 呈現 ----------
 // HQ 高品質率：品質% → HQ%。表逐格移植自 ffxiv-crafting 7.4.5 data::high_quality_table（Tnze，權威遊戲表）— 勿自改。
@@ -345,18 +355,27 @@ function hqPercent(quality, maxQuality) {
 function render(r, scroll = true) {
   $('results-placeholder').hidden = true;
   $('results').hidden = false;
-  const pct = (v, m) => m > 0 ? Math.min(100, Math.round(v / m * 100)) : 0;
+  const pct = (v, m) => m > 0 ? Math.min(100, Math.floor(v / m * 100)) : 0; // floor 與 hqPercent 內部一致，避免未滿卻顯示 100%
   const hq = r.final_quality >= r.max_quality && r.max_quality > 0;
   const itemHqable = !!(ITEMS[String(selected && selected.recipe.item_id)] || {}).can_be_hq;
   const hqp = itemHqable ? hqPercent(r.final_quality, r.max_quality) : null;
+  // 高難度(expert)配方遊戲內為隨機製作狀態，引擎只算 Normal 靜態巨集 → 不顯示無條件「✓ 可完成」，改中性試算標記 + 警語
+  const isExpert = !!(selected && selected.recipe.is_expert);
+  const completeBadge = r.complete
+    ? (isExpert
+        ? '<span class="codex-badge" title="高難度配方為隨機製作狀態，靜態試算不代表遊戲內必成">試算完成 ⚠</span>'
+        : '<span class="codex-badge codex-badge--success">✓ 可完成</span>')
+    : '<span class="codex-badge codex-badge--danger">✗ 未完成</span>';
+  const expertWarn = isExpert ? '<div class="sum-err codex-small">⚠ 高難度配方在遊戲內為隨機製作狀態，此靜態巨集僅供參考、無法保證能在遊戲內完成</div>' : '';
   const errLine = r.error ? `<div class="sum-err codex-small">⚠ 第 ${r.error_step + 1} 步無法執行（${r.error}）— 之後略過</div>` : '';
   $('result-summary').innerHTML = `
     <div class="sum-row">
-      <span class="codex-badge ${r.complete ? 'codex-badge--success' : 'codex-badge--danger'}">${r.complete ? '✓ 可完成' : '✗ 未完成'}</span>
+      ${completeBadge}
       <span class="codex-badge ${hq ? 'codex-badge--gold' : ''}">品質 ${pct(r.final_quality, r.max_quality)}%${hq ? ' · 滿' : ''}</span>
       ${hqp != null ? `<span class="codex-badge codex-badge--gold" title="成品高品質(HQ)機率">HQ ${hqp}%</span>` : ''}
       <span class="sum-meta">${r.step_count} 步 · ${r.total_time} 秒</span>
     </div>
+    ${expertWarn}
     ${errLine}
     ${bar('進展', r.final_progress, r.max_progress, pct)}
     ${bar('品質', r.final_quality, r.max_quality, pct)}`;
@@ -428,7 +447,11 @@ function toast(msg, v) { (window.FFXIVToast && window.FFXIVToast.show ? window.F
   else if (dlItem) { const r = RECIPES.find(r => r.item_id === dlItem); if (r) selectRecipe(r.id); }
   fillConsumableSelect('food', FOOD);
   fillConsumableSelect('potion', POTION);
-  ['food', 'potion', 'food-hq', 'potion-hq', 'specialist'].forEach(id => $(id).addEventListener('change', updateEff));
+  ['food', 'potion', 'food-hq', 'potion-hq', 'specialist'].forEach(id => $(id).addEventListener('change', () => { updateEff(); invalidateResults(); }));
+  // 任一求解輸入變更 → 舊結果過期（gate：集中失效，涵蓋程式化改值與 gear 傳播）
+  ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-adversarial'].forEach(id => $(id).addEventListener('change', invalidateResults));
+  $('opt-target').addEventListener('input', invalidateResults);
+  $('solve-mode').addEventListener('change', (e) => { $('opt-target').disabled = e.target.value === 'nq'; invalidateResults(); }); // NQ 模式不吃目標品質 → 停用該欄
   $('recipe-search').addEventListener('input', renderTable);
   $('level-filter').addEventListener('change', renderTable);
   $('rlv-filter').addEventListener('input', renderTable);
