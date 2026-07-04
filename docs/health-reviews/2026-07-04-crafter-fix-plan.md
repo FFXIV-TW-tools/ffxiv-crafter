@@ -8,8 +8,10 @@
 - ✅ **批次 0 完成**（commit `6b501c2`）：0-1 action-set 護欄（tools/check-actions.py，現值 35=35 綠）、0-3 README drift 修正、0-4 精簡 CLAUDE.md + VERIFY 段。
   - ⏳ **0-2 延後**：parse_action round-trip `#[test]` 需 rust toolchain 跑 `cargo test` 驗證，未在本次 session 盲加未驗證 Rust 碼。下次有 toolchain 時補。
 - ✅ **批次 1 完成**（commit `d3a9348`）：1-1 expert 警語、1-2 invalidateResults（含 gate 補的 .gear-in/全部 HQ/consumables 全覆蓋）、1-3 Math.floor、順帶 ux-6。**已 live smoke**（普通/expert 求解、改設定失效、ux-6）全過、零 console error。
-- ⬜ **批次 2、3 + 建議清單**：未做，待後續交辦。
-- 🚀 批次 0+1 已 push 上線（`c06689a`，CF Pages 自動部署）。
+- ✅ **批次 2 完成**（commit `ffab02d`）：2-1 求解失敗繁中化（solveErrorMessage 映射 SolverException 3 變體 + serde 溢位）、RES-01 worker 復原 + 60s 逾時軟提示、RES-06 render try/catch。
+- ✅ **批次 3 完成**（commit `ffab02d`，與批次 2 同 commit — 皆改 app.js 無法非互動分檔）：3-1 首載 loading 佔位、3-2 配方列鍵盤可達（tabindex+keydown、不用 role=button）、perf-ux-02 debounce、perf-ux-03 預建 Collator、perf-ux-04 WASM 並行預熱、a11y-02 tabs aria、a11y-03 aria-live 完成播報。**已 live smoke** 全過、零 console error。
+- ⬜ **建議清單**（SEC-01/02/03、RES-02/03/04/05、a11y-04/05、ux-3/5、CQ-01/02/05、DATA-2、CQ-06）+ **0-2 Rust round-trip test**（需 toolchain）：未做，待後續交辦。
+- 🚀 批次 0+1 已 push 上線（`c06689a`）。批次 2+3（`ffab02d`）待 push。
 
 ---
 
