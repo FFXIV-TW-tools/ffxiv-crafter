@@ -15,6 +15,7 @@ const JOB_ICON = {
 };
 const GEAR_KEY = 'ffxiv-crafter-gearsets-v1';
 const PH_HTML = '設定好左側後按「求解最佳手法」，<br>巨集與手法序列會顯示在這裡 →';
+const NAME_COLLATOR = new Intl.Collator('zh-Hant'); // 預建 collator，避免每次比較重建（快於逐次 localeCompare(...,'zh-Hant')）
 
 let RECIPES = [], RLV = {}, ACTIONS = {}, RINDEX = [], ITEMS = {}, INGREDIENTS = {};
 let FOOD = {}, POTION = {};  // name → { nq, hq }
@@ -23,6 +24,7 @@ let jobFilter = '';     // '' = 全部
 let selected = null;    // { recipe, rlv }
 let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
 let worker = null;
+let solveTimer = null;  // 求解逾時軟提示計時器（不殺 worker，只提醒可取消）
 
 // ---------- 資料 ----------
 async function loadData() {
@@ -99,7 +101,7 @@ function renderTable() {
     (!rlvVal || r.rlv === rlvVal) &&
     (!q || r.name.toLowerCase().includes(q)));
   const total = list.length;
-  list.sort((a, b) => b.level - a.level || a.name.localeCompare(b.name, 'zh-Hant'));
+  list.sort((a, b) => b.level - a.level || NAME_COLLATOR.compare(a.name, b.name));
   const CAP = 120;
   const shown = list.slice(0, CAP);
   $('recipe-count').textContent = total
@@ -109,9 +111,13 @@ function renderTable() {
     <table class="rt">
       <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th></tr></thead>
       <tbody>${shown.map(r =>
-        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}"><td class="rt-name">${r.icon ? `<img class="rt-ico" src="${ICON_BASE}${r.icon}" alt="" loading="lazy">` : ''}${esc(r.name)}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${ICON_BASE}${JOB_ICON[r.job]}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td></tr>`).join('')}</tbody>
+        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name">${r.icon ? `<img class="rt-ico" src="${ICON_BASE}${r.icon}" alt="" loading="lazy">` : ''}${esc(r.name)}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${ICON_BASE}${JOB_ICON[r.job]}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td></tr>`).join('')}</tbody>
     </table>` : '';
-  $('recipe-table').querySelectorAll('.rt-row').forEach(tr => tr.onclick = () => selectRecipe(+tr.dataset.id));
+  $('recipe-table').querySelectorAll('.rt-row').forEach(tr => {
+    const pick = () => selectRecipe(+tr.dataset.id);
+    tr.onclick = pick;
+    tr.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } }; // 鍵盤可選（Space 防捲動）
+  });
 }
 
 function selectRecipe(id) {
@@ -291,7 +297,12 @@ function newWorker() {
   if (worker) worker.terminate();
   worker = new Worker('worker.js', { type: 'module' });
   worker.onmessage = onWorkerMsg;
-  worker.onerror = (e) => { setSolving(false); toast('求解器載入失敗：' + (e.message || ''), 'error'); };
+  worker.onerror = () => {                    // module/worker 載入失敗
+    worker = null;                            // 設 null → 下次 doSolve 的 if(!worker) 重建，不卡在壞掉的 worker
+    clearTimeout(solveTimer);
+    setSolving(false);
+    toast('求解器載入失敗，請重新整理頁面後再試', 'error');
+  };
 }
 function doSolve() {
   if (!selected) return;
@@ -302,13 +313,39 @@ function doSolve() {
   setSolving(true);
   if (!worker) newWorker();
   worker.postMessage({ cmd: 'solve', input: settings });
+  clearTimeout(solveTimer);
+  solveTimer = setTimeout(() => {             // 軟提示：不殺 worker（正常長求解仍在跑），只提醒可取消
+    if (!$('cancel-btn').hidden) $('solve-status').innerHTML = '⚠ 求解時間較長，仍在計算中… 可繼續等待或按「取消」。';
+  }, 60000);
+}
+// SolverException（raphael）3 變體 + serde 反序列化錯誤 → 繁中人話 + 下一步
+function solveErrorMessage(raw) {
+  const s = String(raw || '');
+  if (s === 'NoSolution') return '以目前數值無法完成此配方 — 試著提升作業精度／加工精度／等級、開啟食物藥水或專家之證，或降低目標品質後再求解。';
+  if (s === 'Interrupted') return '求解被中斷，請再試一次。';
+  if (/internal error|bug report/i.test(s)) return '求解器內部錯誤，請稍後再試（技術細節已記錄於主控台）。';
+  if (/invalid value|expected u\d|integer/i.test(s)) return '角色數值超出合理範圍 — 請確認作業精度／加工精度／CP／等級的數字是否正確。';
+  return '求解失敗，請調整設定後再試一次。';
 }
 function onWorkerMsg(e) {
+  clearTimeout(solveTimer);
   setSolving(false);
-  if (!e.data.ok) { toast('無法求解：' + (e.data.error || ''), 'error'); return; }
-  render(e.data.result, true);
+  if (!e.data.ok) {
+    console.warn('[crafter] 求解失敗:', e.data.error);   // 技術原文進主控台，不丟給玩家
+    toast(solveErrorMessage(e.data.error), 'error');
+    return;
+  }
+  try {
+    render(e.data.result, true);
+  } catch (err) {                             // WASM Output 契約漂移等 → 有可見降級而非空白
+    console.error('[crafter] 結果渲染失敗:', err);
+    toast('結果解析失敗，請重新求解', 'error');
+    $('results').hidden = true;
+    $('results-placeholder').hidden = false;
+    $('results-placeholder').innerHTML = PH_HTML;
+  }
 }
-function cancelSolve() { newWorker(); setSolving(false); toast('已取消求解', 'warn'); }
+function cancelSolve() { clearTimeout(solveTimer); newWorker(); setSolving(false); toast('已取消求解', 'warn'); }
 function setSolving(on) {
   $('solve-btn').hidden = on;
   $('cancel-btn').hidden = !on;
@@ -387,6 +424,7 @@ function render(r, scroll = true) {
         `<tr><td>${i + 1}</td><td class="wt-act">${actImg(s.action)}${esc(actionName(s.action))}</td><td>${s.progress}</td><td>${s.quality}</td><td>${s.durability}</td><td>${s.cp}</td></tr>`).join('')}</tbody>
     </table>`;
   renderMacro(r.steps);
+  $('solve-status').innerHTML = `<span class="codex-small">✓ 求解完成：品質 ${pct(r.final_quality, r.max_quality)}%、共 ${r.step_count} 步，巨集已產生</span>`; // aria-live 向螢幕閱讀器播報完成
   if (scroll) $('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 function bar(label, v, m, pct) {
@@ -421,7 +459,11 @@ function renderMacro(steps) {
 
 // ---------- 分頁 ----------
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === name));
+  document.querySelectorAll('.tab').forEach(t => {
+    const on = t.dataset.tab === name;
+    t.classList.toggle('is-active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false'); // 同步分頁選中狀態給螢幕閱讀器
+  });
   $('tab-solve').hidden = name !== 'solve';
   $('tab-stats').hidden = name !== 'stats';
 }
@@ -430,10 +472,12 @@ function updateHint() { $('first-run-hint').hidden = anyGear(); }
 // ---------- utils ----------
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function toast(msg, v) { (window.FFXIVToast && window.FFXIVToast.show ? window.FFXIVToast.show : (m) => console.log(m))(msg, v); }
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
 // ---------- init ----------
 (async function () {
   try {
+  newWorker(); // 預熱 WASM — 提前於 loadData，讓 WASM download 與資料 fetch 並行（縮短最壞情況首解等待）
   await loadData();
   loadGear();
   renderChips();
@@ -452,16 +496,17 @@ function toast(msg, v) { (window.FFXIVToast && window.FFXIVToast.show ? window.F
   ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-adversarial'].forEach(id => $(id).addEventListener('change', invalidateResults));
   $('opt-target').addEventListener('input', invalidateResults);
   $('solve-mode').addEventListener('change', (e) => { $('opt-target').disabled = e.target.value === 'nq'; invalidateResults(); }); // NQ 模式不吃目標品質 → 停用該欄
-  $('recipe-search').addEventListener('input', renderTable);
+  const debouncedRender = debounce(renderTable, 180); // 搜尋/rlv 逐字輸入不必每鍵重繪 11803 筆
+  $('recipe-search').addEventListener('input', debouncedRender);
   $('level-filter').addEventListener('change', renderTable);
-  $('rlv-filter').addEventListener('input', renderTable);
+  $('rlv-filter').addEventListener('input', debouncedRender);
   $('solve-btn').addEventListener('click', doSolve);
   $('cancel-btn').addEventListener('click', cancelSolve);
   $('change-recipe').addEventListener('click', showPicker);
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
-  newWorker(); // 預熱
   } catch (e) {
     console.error('[crafter] 初始化失敗:', e);
+    $('recipe-table').innerHTML = ''; // 清掉首載「載入中…」佔位，避免與失敗橫幅並存殘留轉圈
     const main = document.querySelector('main');
     if (main) main.insertAdjacentHTML('afterbegin',
       '<div class="codex-tablet panel" style="margin:16px 0;color:var(--color-warn)">⚠ 資料載入失敗，請重新整理頁面或稍後再試。</div>');

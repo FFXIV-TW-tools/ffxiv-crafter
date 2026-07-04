@@ -46,6 +46,7 @@ body {
 .filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
 .recipe-count { margin: var(--space-2, 8px) 0; }
 .recipe-table { max-height: 320px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+.recipe-loading { padding: var(--space-6, 32px); text-align: center; color: var(--color-text-muted); }  /* 首載配方資料佔位 */
 /* 名稱欄吸收剩餘寬撐滿面板（不留空塊）；職業/Lv/配方等級給舒適固定寬 + 置中 → 不再擠在最右 */
 .rt { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
 .rt thead th { position: sticky; top: 0; background: var(--color-surface); color: var(--accent); text-align: left;
@@ -59,6 +60,7 @@ body {
 .rt-row { cursor: pointer; }
 .rt-row:hover { background: var(--color-surface-hover); }
 .rt-row.is-sel { background: var(--color-surface-hover); outline: 1px solid var(--accent); }
+.rt-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }  /* 鍵盤 focus 可見（配方列可鍵盤選取） */
 .rt-name { font-weight: var(--fw-semibold, 600); display: flex; align-items: center; gap: var(--space-1, 4px); }
 .rt-ico { width: 24px; height: 24px; flex: none; }
 .rt-job { white-space: nowrap; }

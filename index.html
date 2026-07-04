@@ -57,12 +57,12 @@
 
   <main class="codex-container">
     <nav class="tabs" role="tablist">
-      <button class="tab is-active" data-tab="solve" role="tab">🔨 配方求解</button>
-      <button class="tab" data-tab="stats" role="tab">🧑‍🔧 角色數值</button>
+      <button class="tab is-active" data-tab="solve" role="tab" aria-selected="true" aria-controls="tab-solve">🔨 配方求解</button>
+      <button class="tab" data-tab="stats" role="tab" aria-selected="false" aria-controls="tab-stats">🧑‍🔧 角色數值</button>
     </nav>
 
     <!-- ===== 配方求解 ===== -->
-    <div id="tab-solve" class="tabpanel">
+    <div id="tab-solve" class="tabpanel" role="tabpanel">
       <div id="first-run-hint" class="run-hint" hidden>
         👉 首次使用：先到「<b>角色數值</b>」分頁填各職裝備數值，再回來選配方求解。
       </div>
@@ -89,7 +89,7 @@
             <input id="rlv-filter" class="codex-input rlv-in" type="number" min="0" inputmode="numeric" placeholder="配方等級" aria-label="配方等級">
           </div>
           <div id="recipe-count" class="recipe-count codex-small"></div>
-          <div id="recipe-table" class="recipe-table"></div>
+          <div id="recipe-table" class="recipe-table"><div class="recipe-loading codex-small"><span class="codex-spinner"></span> 載入配方資料中…</div></div>
         </div>
         <div id="selected-bar" class="selected-bar" hidden></div>
       </section>
@@ -179,7 +179,7 @@
     </div>
 
     <!-- ===== 角色數值 ===== -->
-    <div id="tab-stats" class="tabpanel" hidden>
+    <div id="tab-stats" class="tabpanel" role="tabpanel" hidden>
       <section class="codex-tablet codex-tablet--cyan panel">
         <span class="codex-hud"></span>
         <h2 class="codex-h2">角色數值 — 各製作職業裝備</h2>
