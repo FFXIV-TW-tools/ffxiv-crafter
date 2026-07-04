@@ -3,6 +3,13 @@
 > 依據：同目錄 `2026-07-04-crafter-health-review.md`。所有改動皆為小範圍可逆單檔（app.js / index.html / styles.css / wasm/src/lib.rs / tools/）。
 > **STOP gate**：commit 可做（先知會），**push 走 CF Pages 自動部署對外可見 → 由 shawn 自己跑 `!git -C external/ffxiv-crafter push`**。
 
+## 執行狀態（2026-07-04）
+
+- ✅ **批次 0 完成**（commit `6b501c2`）：0-1 action-set 護欄（tools/check-actions.py，現值 35=35 綠）、0-3 README drift 修正、0-4 精簡 CLAUDE.md + VERIFY 段。
+  - ⏳ **0-2 延後**：parse_action round-trip `#[test]` 需 rust toolchain 跑 `cargo test` 驗證，未在本次 session 盲加未驗證 Rust 碼。下次有 toolchain 時補。
+- ✅ **批次 1 完成**（commit `d3a9348`）：1-1 expert 警語、1-2 invalidateResults（含 gate 補的 .gear-in/全部 HQ/consumables 全覆蓋）、1-3 Math.floor、順帶 ux-6。**已 live smoke**（普通/expert 求解、改設定失效、ux-6）全過、零 console error。
+- ⬜ **批次 2、3 + 建議清單**：未做，待後續交辦。**尚未 push**（等 shawn 執行）。
+
 ---
 
 ## 須修改（必做）— 批次化
