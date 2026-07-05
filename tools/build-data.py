@@ -6,7 +6,7 @@
    DRY 鐵則：禁自建技能對照表。craft_actions 表由 XIVDiscordBot/scripts/build_game_ref.py 建）。
 2. recipes/recipe_levels/items.json：從 best-craft 凍結的 static-data 複製（同 monorepo 遊戲資料）。
 
-跨機：monorepo 根 env FFXIV_PROJECT_ROOT（預設 D:/FFXIVProject）。用 py -3.11 跑。
+跨機：monorepo 根 env FFXIV_PROJECT_ROOT（預設 C:/FFXIVProject）。用 py -3.11 跑。
 """
 import json, os, shutil, sqlite3, sys
 
@@ -14,7 +14,7 @@ for _s in (sys.stdout, sys.stderr):
     try: _s.reconfigure(encoding="utf-8", errors="replace")
     except (AttributeError, ValueError): pass  # best-effort 編碼設定：stream 無 reconfigure / 不支援編碼（窄 except，符合 except:pass 鐵則豁免 a）
 
-ROOT = os.environ.get("FFXIV_PROJECT_ROOT", "D:/FFXIVProject")
+ROOT = os.environ.get("FFXIV_PROJECT_ROOT", "C:/FFXIVProject")
 GAME_REF = os.path.join(ROOT, "data", "item_dict", "game_ref.sqlite")
 ITEM_LOOKUP = os.path.join(ROOT, "data", "item_dict", "item_lookup.sqlite")
 STATIC_SRC = os.path.join(ROOT, "ffxiv-best-craft-main", "public", "static-data")
