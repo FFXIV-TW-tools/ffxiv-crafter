@@ -1,22 +1,9 @@
-# CLAUDE.md — ffxiv-crafter（配方製作求解器）
+@AGENTS.md
 
-FFXIV 繁中服 DoH 製作求解器（純靜態站 + Rust/WASM raphael 引擎 web worker，無後端）。
-架構 / 重建 / 部署見 `README.md`；設計決策見外部 spec `external/ffxiv-tw-tools-portal/docs/specs/2026-06-22-craft-solver-spec.md` + ADR-013。
+# Claude 專屬
 
-## 🔒 工具鐵則
-
-- **`hqPercent()` 品質%→HQ% 對照表勿改**（app.js）：逐格移植自 ffxiv-crafting 7.4.5 權威遊戲表（Tnze），表的斷點/缺口是遊戲真實值、不是 bug。
-- **製作公式已對抗驗證**（`computeSettings`，spec §4）：改動前先舉具體「錯誤輸入→輸出」反例，勿憑印象報「公式可能錯」。
-- **DRY — craft-actions 繁中名/icon 權威 = `game_ref.sqlite`**（`tools/build-data.py` 產），禁自建技能對照表。
-- **繁中服至上**：所有顯示一律繁體中文正名。
-- **codex 設計系統**：button/form/token 用 portal CDN 的 `.codex-*`，勿 local 重寫；`.panel`/`.codex-tablet` 容器 padding ≥16px。
-
-## ✅ VERIFY（改動後跑）
-
-- `node --check app.js worker.js` — JS 語法
-- `py -3.11 tools/check-actions.py` — craft-actions.json 鍵集合 == lib.rs Action 變體（防巨集失效 drift）
-- 手動 smoke：`python -m http.server 8809` 於 repo 根（需 portal svc :8774 提供 codex CDN）→ 選配方 → 填角色數值 → 求解 → 複製巨集
-
-## 📋 健檢
-
-健檢報告與修復計畫在 `docs/health-reviews/`（`project-health-review` skill 產出、永久檔案庫，豁免一般 docs 暫存→歸檔規則）。最新：2026-07-04（體質 7.8 / 使用者 7.1）。
+- 全域行為原則（Plan／強制驗證＋證據回報／context 管理歸 shawn・不因用量縮水執行／不用提問收尾／Karpathy 4 大）與模型分工（tier→型號、複審層級判定）：見 global `~/.claude/CLAUDE.md`，此處不重複。
+- Phase→skill 對照：Brainstorm→superpowers:brainstorming／Plan→superpowers:writing-plans／Build→superpowers:test-driven-development＋executing-plans／Verify→superpowers:verification-before-completion／Review→superpowers:requesting-code-review（或 /code-review）。**本 repo 的 spec 落外部 portal repo**（見 AGENTS.md「開發循環」），不在此 repo 建 `docs/specs/`。
+- 改 UI/CSS 前必先 Read `C:\FFXIVProject\external\ffxiv-tw-tools-portal\_DESIGN-SYSTEM.md`（external/CLAUDE.md 已載但 portal CLAUDE.md 不自動載）。
+- Git 邊界：commit 先知會、逐主題切；**push 是 STOP**（CF Pages 自動部署對外可見，由 shawn 自跑 cmd.exe push）；外部 skill 流程一律止於 commit。
+- 定期審計：check-md／monthly-audit 輕量掃描可掛排程；深度 `project-health-review` 僅 Owner 手動 opt-in（重、多 agent），產出歸 `docs/health-reviews/`。
