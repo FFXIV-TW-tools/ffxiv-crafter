@@ -60,7 +60,7 @@ function anyGear() { return DOH.concat('預設').some(j => gearValid(gearsets[j]
 function renderGearsets() {
   const rows = ['預設', ...DOH];
   const cell = (job, f, ph) => {
-    const v = (gearsets[job] && gearsets[job][f] != null) ? gearsets[job][f] : '';
+    const v = (gearsets[job] && gearsets[job][f] != null) ? (Number(gearsets[job][f]) || '') : ''; // 強制數字 → 堵 localStorage 竄改的 self-XSS sink（非數字/0 → 空，顯示 placeholder）
     return `<td><input class="codex-input gear-in" data-job="${esc(job)}" data-f="${f}" type="number" min="0" inputmode="numeric" value="${v}" placeholder="${ph || ''}"></td>`;
   };
   const jico = (job) => JOB_ICON[job]
@@ -404,7 +404,7 @@ function render(r, scroll = true) {
         : '<span class="codex-badge codex-badge--success">✓ 可完成</span>')
     : '<span class="codex-badge codex-badge--danger">✗ 未完成</span>';
   const expertWarn = isExpert ? '<div class="sum-err codex-small">⚠ 高難度配方在遊戲內為隨機製作狀態，此靜態巨集僅供參考、無法保證能在遊戲內完成</div>' : '';
-  const errLine = r.error ? `<div class="sum-err codex-small">⚠ 第 ${r.error_step + 1} 步無法執行（${r.error}）— 之後略過</div>` : '';
+  const errLine = r.error ? `<div class="sum-err codex-small">⚠ 第 ${r.error_step + 1} 步無法執行（${esc(r.error)}）— 之後略過</div>` : ''; // engine 錯誤字串轉義（轉義紀律一致；icon 皆來自 build-data 常數、無注入面故不包）
   $('result-summary').innerHTML = `
     <div class="sum-row">
       ${completeBadge}
@@ -470,7 +470,7 @@ function switchTab(name) {
 function updateHint() { $('first-run-hint').hidden = anyGear(); }
 
 // ---------- utils ----------
-function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); } // 含單引號 → 無例外通用轉義（防 attribute 用單引號時破格）
 function toast(msg, v) { (window.FFXIVToast && window.FFXIVToast.show ? window.FFXIVToast.show : (m) => console.log(m))(msg, v); }
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
