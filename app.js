@@ -347,7 +347,7 @@ function onWorkerMsg(e) {
     $('results-placeholder').innerHTML = PH_HTML;
   }
 }
-function cancelSolve() { clearTimeout(solveTimer); newWorker(); setSolving(false); toast('已取消求解', 'warn'); }
+function cancelSolve() { clearTimeout(solveTimer); newWorker(); setSolving(false); toast('已取消求解', 'warn'); $('solve-btn').focus(); } // 取消後移焦回求解鈕（鍵盤流暢）
 function setSolving(on) {
   $('solve-btn').hidden = on;
   $('cancel-btn').hidden = !on;
@@ -427,6 +427,7 @@ function render(r, scroll = true) {
     </table>`;
   renderMacro(r.steps);
   $('solve-status').innerHTML = `<span class="codex-small">✓ 求解完成：品質 ${pct(r.final_quality, r.max_quality)}%、共 ${r.step_count} 步，巨集已產生</span>`; // aria-live 向螢幕閱讀器播報完成
+  $('results').focus({ preventScroll: true }); // 顯式移焦到結果區（tabindex=-1）→ 鍵盤下一 Tab 直達複製鈕
   if (scroll) $('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 function bar(label, v, m, pct) {
@@ -505,14 +506,20 @@ function fallbackCopy(text) {
   // 深連結：?recipe=<id> 或 ?item=<id> → 自動選配方（marketboard「求解手法」鈕用）
   const dlp = new URLSearchParams(location.search);
   const dlRecipe = +dlp.get('recipe') || 0, dlItem = +dlp.get('item') || 0;
+  const dlByItem = dlItem ? RECIPES.find(r => r.item_id === dlItem) : null;
   if (dlRecipe && RECIPES.some(r => r.id === dlRecipe)) selectRecipe(dlRecipe);
-  else if (dlItem) { const r = RECIPES.find(r => r.item_id === dlItem); if (r) selectRecipe(r.id); }
+  else if (dlByItem) selectRecipe(dlByItem.id);
+  else if (dlRecipe || dlItem) toast('找不到深連結指定的配方，請用搜尋手動選擇', 'warn'); // 從 marketboard 點過來但該物品無配方 → 給提示不迷路（ux-3）
   fillConsumableSelect('food', FOOD);
   fillConsumableSelect('potion', POTION);
   ['food', 'potion', 'food-hq', 'potion-hq', 'specialist'].forEach(id => $(id).addEventListener('change', () => { updateEff(); invalidateResults(); }));
   // 任一求解輸入變更 → 舊結果過期（gate：集中失效，涵蓋程式化改值與 gear 傳播）
   ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-adversarial'].forEach(id => $(id).addEventListener('change', invalidateResults));
-  $('opt-target').addEventListener('input', invalidateResults);
+  $('opt-target').addEventListener('input', () => {
+    const el = $('opt-target'), max = +el.max || 0;
+    if (max && +el.value > max) el.value = max; // 超配方品質上限即時回填 maxQ（求解本就 clamp，先讓 UI 誠實一致，ux-5）
+    invalidateResults();
+  });
   $('solve-mode').addEventListener('change', (e) => { $('opt-target').disabled = e.target.value === 'nq'; invalidateResults(); }); // NQ 模式不吃目標品質 → 停用該欄
   const debouncedRender = debounce(renderTable, 180); // 搜尋/rlv 逐字輸入不必每鍵重繪 11803 筆
   $('recipe-search').addEventListener('input', debouncedRender);

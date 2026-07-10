@@ -109,6 +109,7 @@ body {
 .ing-amt { color: var(--color-text); flex: 0 0 auto; }
 .ing-hqctl { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-1, 4px); white-space: nowrap; }
 .ing-hq-in { width: 42px; height: 26px; padding: 2px 4px; text-align: center; }
+@media (pointer: coarse) { .ing-hq-in { min-height: 40px; width: 48px; } }  /* a11y：行動觸控目標放大至 ≥40px（桌機維持精簡）*/
 .ing-na { margin-left: auto; color: var(--color-text-muted); }
 .ing-initial { padding: var(--space-2, 8px); background: var(--color-surface); border: 1px solid var(--accent); border-radius: var(--radius-sm, 6px); }
 .ing-initial b { color: var(--accent); }
