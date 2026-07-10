@@ -148,11 +148,17 @@ function showPicker() {
   renderTable();
   $('pick-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+// 配方三上限（進展/品質/耐久）：顯示（refreshSelectedGear）與求解（computeSettings）共用同一算式，防兩處漂移（CQ-01）
+function recipeMaxes(recipe, rlv) {
+  return {
+    max_progress: Math.floor(rlv.difficulty * recipe.difficulty_factor / 100),
+    max_quality: Math.floor(rlv.quality * recipe.quality_factor / 100),
+    max_durability: Math.floor(rlv.durability * recipe.durability_factor / 100),
+  };
+}
 function refreshSelectedGear() {
   const { recipe, rlv } = selected;
-  const maxP = Math.floor(rlv.difficulty * recipe.difficulty_factor / 100);
-  const maxQ = Math.floor(rlv.quality * recipe.quality_factor / 100);
-  const maxD = Math.floor(rlv.durability * recipe.durability_factor / 100);
+  const { max_progress: maxP, max_quality: maxQ, max_durability: maxD } = recipeMaxes(recipe, rlv);
   const g = gearFor(recipe.job);
   const note = g
     ? `<span class="gear-ok">套用「${esc(g._src)}」：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${g.level || 100}${g.level ? '' : '（假設，未填等級）'}</span>`
@@ -274,9 +280,7 @@ function computeSettings(recipe, rlv, gear) {
     bq = bq * rlv.quality_modifier / 100;
   }
   bp = Math.trunc(bp); bq = Math.trunc(bq);    // as u16 截斷
-  const max_progress = Math.floor(rlv.difficulty * recipe.difficulty_factor / 100);
-  const max_quality = Math.floor(rlv.quality * recipe.quality_factor / 100);
-  const max_durability = Math.floor(rlv.durability * recipe.durability_factor / 100);
+  const { max_progress, max_quality, max_durability } = recipeMaxes(recipe, rlv);
   return {
     max_cp: eff.cp, max_durability, max_progress, max_quality,
     base_progress: bp, base_quality: bq, job_level: level,
@@ -314,7 +318,7 @@ function doSolve() {
   if (settings.base_progress <= 0 || settings.base_quality <= 0) { toast('作業/加工數值過低', 'error'); return; }
   setSolving(true);
   if (!worker) newWorker();
-  worker.postMessage({ cmd: 'solve', input: settings });
+  worker.postMessage({ input: settings }); // worker 只跑 solve（simulate 尚未接 UI），無需 cmd dispatch 欄
   clearTimeout(solveTimer);
   solveTimer = setTimeout(() => {             // 軟提示：不殺 worker（正常長求解仍在跑），只提醒可取消
     if (!$('cancel-btn').hidden) $('solve-status').innerHTML = '⚠ 求解時間較長，仍在計算中… 可繼續等待或按「取消」。';

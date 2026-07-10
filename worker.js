@@ -4,7 +4,8 @@ import init, { solve } from './pkg/crafter_wasm.js';
 const ready = init(); // 抓 pkg/crafter_wasm_bg.wasm（同源）
 
 self.onmessage = async (e) => {
-  const { input } = e.data || {};
+  const { input } = e.data || {}; // 只跑 solve；simulate（WASM 有導出）尚未接 UI，故無 cmd dispatch
+
   try {
     await ready;
     self.postMessage({ ok: true, result: solve(input) });
