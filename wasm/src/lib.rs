@@ -31,9 +31,9 @@ struct Input {
 
 #[derive(Serialize)]
 struct Step {
-    i: usize,
+    i: usize,       // 步索引：simulate 沙盒逐步定位用（app.js render 目前用自身 map index，未消費此欄）
     action: String, // raphael variant 名（JS 對 craft-actions.json 拿繁中名+icon）
-    action_id: u32,
+    action_id: u32, // 遊戲 action id：simulate／未來 tooltip 用（app.js 目前以 action 名查對照表，未消費此欄）
     time: u8,
     progress: u32,
     quality: u32, // 已含 initial_quality（顯示用累計）
@@ -48,8 +48,8 @@ struct Output {
     total_time: u32,
     final_progress: u32,
     final_quality: u32,
-    final_durability: u16,
-    final_cp: u16,
+    final_durability: u16, // 完成時耐久：simulate 檢視用（app.js render 目前不顯示，未消費此欄）
+    final_cp: u16,         // 完成時 CP：同上，保留給 simulate
     max_progress: u32,
     max_quality: u32,
     complete: bool,
@@ -229,4 +229,43 @@ fn parse_action(s: &str) -> Option<Action> {
         "DaringTouch" => Action::DaringTouch,
         _ => return None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // 全 35 個 Action 變體（對齊 action_name / parse_action 兩份 match）。
+    // 新增 raphael Action 變體時，action_name 的 exhaustive match 會先編譯報錯 → 提醒同步此陣列。
+    const ALL: [Action; 35] = [
+        Action::BasicSynthesis, Action::BasicTouch, Action::MasterMend, Action::Observe,
+        Action::TricksOfTheTrade, Action::WasteNot, Action::Veneration, Action::StandardTouch,
+        Action::GreatStrides, Action::Innovation, Action::WasteNot2, Action::ByregotsBlessing,
+        Action::PreciseTouch, Action::MuscleMemory, Action::CarefulSynthesis, Action::Manipulation,
+        Action::PrudentTouch, Action::AdvancedTouch, Action::Reflect, Action::PreparatoryTouch,
+        Action::Groundwork, Action::DelicateSynthesis, Action::IntensiveSynthesis, Action::TrainedEye,
+        Action::HeartAndSoul, Action::PrudentSynthesis, Action::TrainedFinesse, Action::RefinedTouch,
+        Action::QuickInnovation, Action::ImmaculateMend, Action::TrainedPerfection, Action::StellarSteadyHand,
+        Action::RapidSynthesis, Action::HastyTouch, Action::DaringTouch,
+    ];
+
+    // parse_action ∘ action_name == identity：防兩份平行 35 列舉拼寫分歧（不會編譯報錯）。
+    #[test]
+    fn action_name_parse_round_trip() {
+        for a in ALL {
+            let name = action_name(a);
+            let parsed = parse_action(name)
+                .unwrap_or_else(|| panic!("parse_action 不認得 action_name 產出的「{name}」"));
+            assert_eq!(action_name(parsed), name, "「{name}」round-trip 對應到不同變體");
+        }
+    }
+
+    // action_name 產出的名稱須唯一：否則 round-trip 假性通過、JS 端會拿錯 icon／繁中名。
+    #[test]
+    fn action_names_unique() {
+        let names: Vec<&str> = ALL.iter().map(|&a| action_name(a)).collect();
+        for (i, n) in names.iter().enumerate() {
+            assert!(!names[..i].contains(n), "action_name 重複產出「{n}」");
+        }
+    }
 }
