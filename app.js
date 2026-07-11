@@ -14,7 +14,7 @@ const JOB_ICON = {
   '鍊金': '/i/062000/062114.png', '烹調': '/i/062000/062115.png',
 };
 const GEAR_KEY = 'ffxiv-crafter-gearsets-v1';
-const PH_HTML = '設定好左側後按「求解最佳手法」，<br>巨集與手法序列會顯示在這裡 →';
+const PH_HTML = '設定完成後按「求解最佳手法」，<br>巨集與手法序列即會顯示在結果區。';
 const NAME_COLLATOR = new Intl.Collator('zh-Hant'); // 預建 collator，避免每次比較重建（快於逐次 localeCompare(...,'zh-Hant')）
 
 let RECIPES = [], RLV = {}, ACTIONS = {}, RINDEX = [], ITEMS = {}, INGREDIENTS = {};
@@ -24,7 +24,7 @@ let jobFilter = '';     // '' = 全部
 let selected = null;    // { recipe, rlv }
 let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
 let worker = null;
-let solveTimer = null;  // 求解逾時軟提示計時器（不殺 worker，只提醒可取消）
+let solveClock = null;  // 求解計時器（interval）：每秒更新已耗時；≥60s 升級可取消軟提示（不殺 worker，正常長求解仍在跑）
 
 // ---------- 資料 ----------
 async function loadData() {
@@ -50,7 +50,14 @@ async function loadData() {
 
 // ---------- 角色數值（localStorage）----------
 function loadGear() { try { gearsets = JSON.parse(localStorage.getItem(GEAR_KEY)) || {}; } catch { gearsets = {}; } }
-function saveGear() { try { localStorage.setItem(GEAR_KEY, JSON.stringify(gearsets)); } catch { /* private mode */ } }
+let gearSaveWarned = false;
+function saveGear() {
+  try { localStorage.setItem(GEAR_KEY, JSON.stringify(gearsets)); }
+  catch (e) {                                   // 無痕/私密模式或配額滿：至少 warn（禁靜默吞），並一次性提醒玩家設定不會保存
+    console.warn('[crafter] 角色數值儲存失敗（可能是無痕模式）:', e);
+    if (!gearSaveWarned) { gearSaveWarned = true; toast('無法保存角色數值（可能是無痕/私密模式），本次設定重整後會遺失', 'warn'); }
+  }
+}
 function gearValid(g) { return !!(g && g.cms > 0 && g.ctrl > 0 && g.cp > 0); }
 function gearFor(job) {                       // 該職有效 → 用；否則用「預設」；都無 → null
   if (gearValid(gearsets[job])) return { ...gearsets[job], _src: job };
@@ -161,7 +168,7 @@ function refreshSelectedGear() {
   const { max_progress: maxP, max_quality: maxQ, max_durability: maxD } = recipeMaxes(recipe, rlv);
   const g = gearFor(recipe.job);
   const note = g
-    ? `<span class="gear-ok">套用「${esc(g._src)}」：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${g.level || 100}${g.level ? '' : '（假設，未填等級）'}</span>`
+    ? `<span class="gear-ok">套用「${esc(g._src)}」：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${Number(g.level) || 100}${g.level ? '' : '（假設，未填等級）'}</span>`
     : `<span class="gear-warn">⚠ 尚未設定「${esc(recipe.job)}」數值 — <a href="#" id="goto-stats">去填角色數值 →</a></span>`;
   const icon = (ITEMS[String(recipe.item_id)] || {}).icon;
   const jico = JOB_ICON[recipe.job] ? `<img class="ri-jico" src="${ICON_BASE}${JOB_ICON[recipe.job]}" alt="">` : '';
@@ -241,8 +248,9 @@ function applyConsumables(baseCms, baseCtrl, baseCp) {
   return { cms, ctrl, cp };
 }
 function effectiveStats(gear) {
-  const sp = $('specialist').checked ? 20 : 0;
-  return applyConsumables(gear.cms + sp, gear.ctrl + sp, gear.cp);
+  const spec = $('specialist').checked;
+  const sp = spec ? 20 : 0;                    // 專家之證：作業 +20・加工 +20
+  return applyConsumables(gear.cms + sp, gear.ctrl + sp, gear.cp + (spec ? 15 : 0)); // 專家之證：CP +15（Soul of the Crafter 專家狀態加成）
 }
 function updateEff() {
   if (!selected) return;
@@ -305,7 +313,7 @@ function newWorker() {
   worker.onmessage = onWorkerMsg;
   worker.onerror = () => {                    // module/worker 載入失敗
     worker = null;                            // 設 null → 下次 doSolve 的 if(!worker) 重建，不卡在壞掉的 worker
-    clearTimeout(solveTimer);
+    stopSolveClock();
     setSolving(false);
     toast('求解器載入失敗，請重新整理頁面後再試', 'error');
   };
@@ -319,11 +327,23 @@ function doSolve() {
   setSolving(true);
   if (!worker) newWorker();
   worker.postMessage({ input: settings }); // worker 只跑 solve（simulate 尚未接 UI），無需 cmd dispatch 欄
-  clearTimeout(solveTimer);
-  solveTimer = setTimeout(() => {             // 軟提示：不殺 worker（正常長求解仍在跑），只提醒可取消
-    if (!$('cancel-btn').hidden) $('solve-status').innerHTML = '⚠ 求解時間較長，仍在計算中… 可繼續等待或按「取消」。';
-  }, 60000);
+  startSolveClock();
 }
+// 求解計時：每秒更新已耗時（求解跑在 worker，主執行緒空閒故計數不凍結）；≥60s 升級為可取消軟提示。
+// 軟提示不殺 worker（正常長求解仍在跑）；成功/取消/載入失敗三路徑均 stopSolveClock（別讓計數殘留）。
+function startSolveClock() {
+  stopSolveClock();
+  const t0 = Date.now();
+  const paint = () => {
+    if ($('cancel-btn').hidden) { stopSolveClock(); return; }  // 已結束的保險
+    const secs = Math.floor((Date.now() - t0) / 1000);
+    const overtime = secs >= 60 ? ' — 仍在計算中，可繼續等待或按「取消」' : '';
+    $('solve-status').innerHTML = `<span class="codex-spinner"></span> 求解中… 已耗時 ${secs} 秒（高難度配方可能數十秒）${overtime}`;
+  };
+  paint();
+  solveClock = setInterval(paint, 1000);
+}
+function stopSolveClock() { if (solveClock) { clearInterval(solveClock); solveClock = null; } }
 // SolverException（raphael）3 變體 + serde 反序列化錯誤 → 繁中人話 + 下一步
 function solveErrorMessage(raw) {
   const s = String(raw || '');
@@ -334,7 +354,7 @@ function solveErrorMessage(raw) {
   return '求解失敗，請調整設定後再試一次。';
 }
 function onWorkerMsg(e) {
-  clearTimeout(solveTimer);
+  stopSolveClock();
   setSolving(false);
   if (!e.data.ok) {
     console.warn('[crafter] 求解失敗:', e.data.error);   // 技術原文進主控台，不丟給玩家
@@ -351,7 +371,7 @@ function onWorkerMsg(e) {
     $('results-placeholder').innerHTML = PH_HTML;
   }
 }
-function cancelSolve() { clearTimeout(solveTimer); newWorker(); setSolving(false); toast('已取消求解', 'warn'); $('solve-btn').focus(); } // 取消後移焦回求解鈕（鍵盤流暢）
+function cancelSolve() { stopSolveClock(); newWorker(); setSolving(false); toast('已取消求解', 'warn'); $('solve-btn').focus(); } // 取消後移焦回求解鈕（鍵盤流暢）
 function setSolving(on) {
   $('solve-btn').hidden = on;
   $('cancel-btn').hidden = !on;
@@ -362,7 +382,7 @@ function setSolving(on) {
   } else if (!$('results') || $('results').hidden) {
     $('results-placeholder').innerHTML = PH_HTML; // 取消/錯誤結束 → 還原提示（成功時 render 會隱藏）
   }
-  $('solve-status').innerHTML = on ? '<span class="codex-spinner"></span> 求解中…（高難度配方可能數秒）' : '';
+  $('solve-status').innerHTML = on ? '<span class="codex-spinner"></span> 求解中…（高難度配方可能數十秒）' : '';
 }
 // 已顯示的求解結果在任一求解輸入變更後即過期 → 隱藏舊結果避免複製到與當前設定不符的巨集（白做一爐）
 function invalidateResults() {

@@ -89,7 +89,7 @@
             <input id="rlv-filter" class="codex-input rlv-in" type="number" min="0" inputmode="numeric" placeholder="配方等級" aria-label="配方等級">
           </div>
           <div id="recipe-count" class="recipe-count codex-small"></div>
-          <div id="recipe-table" class="recipe-table"><div class="recipe-loading codex-small"><span class="codex-spinner"></span> 載入配方資料中…</div></div>
+          <div id="recipe-table" class="recipe-table"><div class="recipe-loading codex-small">📦 載入配方資料中…（首次載入資料量較大，請稍候）</div></div>
         </div>
         <div id="selected-bar" class="selected-bar" hidden></div>
       </section>
@@ -111,7 +111,7 @@
               <div class="cfg-line">藥水
                 <select id="potion" class="codex-select"><option value="">無</option></select>
                 <label class="opt"><input type="checkbox" id="potion-hq" checked> HQ</label></div>
-              <label class="opt"><input type="checkbox" id="specialist"> 專家之證（作業 +20・加工 +20）</label>
+              <label class="opt"><input type="checkbox" id="specialist"> 專家之證（作業 +20・加工 +20・CP +15）</label>
               <div id="eff-stats" class="eff-stats codex-small"></div>
             </div>
           </details>
@@ -158,7 +158,7 @@
 
         <section class="codex-tablet panel" id="results-col">
           <span class="codex-hud"></span>
-          <div id="results-placeholder" class="results-ph codex-small">設定好左側後按「求解最佳手法」，<br>巨集與手法序列會顯示在這裡 →</div>
+          <div id="results-placeholder" class="results-ph codex-small">設定完成後按「求解最佳手法」，<br>巨集與手法序列即會顯示在結果區。</div>
           <div id="results" tabindex="-1" hidden>
             <div id="result-summary" class="result-summary"></div>
             <details class="res-block" id="macro-block" open>
