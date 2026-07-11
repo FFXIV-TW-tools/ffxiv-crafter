@@ -12,7 +12,7 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 
 - **`hqPercent()` 品質%→HQ% 對照表勿改**（`app.js`）：逐格移植自 ffxiv-crafting 7.4.5 權威遊戲表（Tnze），表的斷點/缺口是遊戲真實值、**不是 bug**。改前先舉具體「品質→HQ%」反例。
 - **製作公式已對抗驗證**（`computeSettings`，spec §4）：改動前先舉具體「錯誤輸入→輸出」反例，勿憑印象報「公式可能錯」。u16 無溢位、serde 對超界值**報錯而非靜默截斷**（不會產錯巨集）——勿改成 clamp 吞錯。
-- **DRY — craft-actions 繁中名/icon 權威＝`game_ref.sqlite`**（`tools/build-data.py` 產）：禁自建技能對照表。`data/craft-actions.json` 鍵集合必 == `wasm/src/lib.rs` 的 Action 變體（現值 35=35，`tools/check-actions.py` 機械守）。
+- **DRY — craft-actions 繁中名/icon 權威＝`game_ref.sqlite`**（monorepo `build_game_ref.py` 產）：禁自建技能對照表。`data/craft-actions.json`（`tools/build-data.py` 從 game_ref 萃取）鍵集合必 == `wasm/src/lib.rs` 的 Action 變體（現值 35=35，`tools/check-actions.py` 機械守）。
 - **繁中服至上**：所有顯示一律繁體中文正名（職業名 木工/鍛造/…、技能名走 game_ref、高難度=expert）。疑慮查 Lumina `ChineseSimplified.ScName` 或灰機 wiki，不自創。
 - **codex 設計系統**：button/form/token 用 portal CDN 的 `.codex-*`，勿 local 重寫；`.panel`/`.codex-tablet` 容器 padding ≥16px。改 UI/CSS 前**先 Read** `C:\FFXIVProject\external\ffxiv-tw-tools-portal\_DESIGN-SYSTEM.md`。
 - **共用鐵則（monorepo 全域）**：`except: pass` 禁止（失敗至少 `console.warn`）；dict 快取一律 bounded（本工具目前無無界快取，新增時遵守）；新建原始碼檔 >500 行禁止（既有檔 >500 被實質修改時觸發拆分 review 閘門）。
@@ -42,17 +42,18 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 
 ## ✅ VERIFY（改動後跑，未過不算完成）
 
-> 機械閘基線 **3 項全綠**（只准升不准降；2026-07-11 實測）。
+> 機械閘基線 **4 項全綠**（只准升不准降；2026-07-11 R2 加 test-formulas.mjs → 29 passed）。
 
 ```bash
 node --check app.js worker.js          # JS 語法
+node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵（29 passed）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一（2 passed）
 ```
 
 - **改 `wasm/src/lib.rs`** → 跑 `cargo test`（host target 可跑，見上）；**重建 WASM 產物**才需 nightly + wasm-pack + wasm32 target（`cd wasm && wasm-pack build --release --target web --out-dir ../pkg`），`pkg/` 要一起 commit。
 - **改 `.js` / `.css`** → **無 cachebust 步驟**（不像 ranking；index.html 靜態引用無 `?v=`，`_headers` 的 `must-revalidate` 負責重驗）。
-- **手動 smoke**（改 UI / render / 求解路徑後）：`python -m http.server 8809` 於 repo 根 → 需 **portal svc :8774** 提供 codex CDN（`svc start portal`）→ 開 `http://localhost:8809/` → 選配方 → 填角色數值 → 求解 → 複製巨集。零 console error。
+- **手動 smoke**（改 UI / render / 求解路徑後）：`py -3.11 tools/serve.py`（no-cache dev server，預設 :8809；勿用裸 `python -m http.server`——缺 no-cache 會拿到瀏覽器快取舊版）於 repo 根 → 需 **portal svc :8774** 提供 codex CDN（`svc start portal`）→ 開 `http://localhost:8809/` → 選配方 → 填角色數值 → 求解 → 複製巨集。零 console error。
 - **純文件 / 規則檔改動**：pre-commit gate 過 + 目視 diff 即足。
 
 ---
@@ -60,7 +61,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 ## 🛠 開發注意（踩坑 / 教訓）
 
 - **expert（高難度）配方靜態巨集僅供參考**：104 個 expert 配方在遊戲內為隨機製作狀態，靜態 Normal 巨集無法保證完成 → render 已加中性「試算完成 ⚠」+ 警語（**勿移除、勿改回無條件「✓ 可完成」金徽**）。
-- **求解逾時＝軟提示不殺 worker**（`solveTimer` 60s）：正常長求解仍在跑（UI 自寫「高難度可能數秒」），逾時只提醒「可取消」；`clearTimeout` 掛在 onWorkerMsg / cancelSolve / onerror（別讓成功後才彈逾時）。
+- **求解計時＝軟提示不殺 worker**（`solveClock` interval，每秒更新已耗時）：求解跑在 worker、主執行緒空閒故計數不凍結；≥60s 升級「可取消」提示但**不殺** worker（正常長求解仍在跑，UI 文案「可能數十秒」）；`stopSolveClock()` 掛在 onWorkerMsg / cancelSolve / onerror（別讓成功後計數殘留）。
 - **改任一求解輸入 → 舊巨集失效**：`invalidateResults()` 集中失效，涵蓋 opt-* / 目標品質 / solve-mode / HQ 素材 / 全部 HQ 鈕 / 食藥 / 角色數值（程式設值不觸發 input 者須手動呼叫）。新增求解輸入時記得掛。
 - **轉義紀律**：動態字串（配方名 / 技能名 / 引擎 error）進 innerHTML 一律 `esc()`；**icon 路徑來自 build-data 常數 / game_ref、無注入面故不 esc**（勿當 drift 誤補）。
 - **求解上限單一算式**：顯示（refreshSelectedGear）與求解（computeSettings）共用 `recipeMaxes(recipe, rlv)`，勿再內聯重算（防漂移）。

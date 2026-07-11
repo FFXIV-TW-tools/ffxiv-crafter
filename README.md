@@ -33,7 +33,7 @@ wasm-pack build --release --target web --out-dir ../pkg
 ## 本地預覽
 
 ```bash
-python -m http.server 8809        # 於 repo 根目錄
+py -3.11 tools/serve.py            # no-cache dev server（預設 :8809，正確 .wasm/.js MIME）
 # 開 http://localhost:8809/ （需 portal svc :8774 提供 codex CDN）
 ```
 
