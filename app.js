@@ -492,10 +492,12 @@ function renderMacro(steps) {
   }
   // 存進巨集庫深連結（named target 共用分頁、不加 noopener——生態內互跳鐵則；收端經確認 modal 絕不自動寫入）
   const itemName = (selected && selected.recipe && selected.recipe.item_name) || '製作巨集';
-  const payload = b64urlEncode(JSON.stringify(macros.map((m, i) => ({
-    title: Array.from(macros.length > 1 ? `${itemName} ${i + 1}/${macros.length}` : itemName).slice(0, 20).join(''),
-    lines: m,
-  }))));
+  const payload = b64urlEncode(JSON.stringify(macros.map((m, i) => {
+    // title「物品名 段X/Y」：段號後綴先預留空間、只截物品名（adv-review：20 字物品名原本會截掉段號 → 各段同名無法分辨）
+    const suffix = macros.length > 1 ? ` 段${i + 1}/${macros.length}` : '';
+    const nameMax = Math.max(1, 20 - Array.from(suffix).length);
+    return { title: Array.from(itemName).slice(0, nameMax).join('') + suffix, lines: m };
+  })));
   const importUrl = `${MACRO_BUILDER_BASE}?import=${payload}`;
   const saveLink = importUrl.length <= 8192   // 超過 URL 安全線不出鈕（防呆；實務 1–3.5KB 遠低於線）
     ? `<div class="macro-tools"><a class="codex-btn codex-btn--ghost" href="${importUrl}" target="ffxiv-macro-builder" title="帶到巨集產生器，確認後存進巨集庫（共用同一分頁；不會自動寫入）">📥 存進巨集庫 ↗</a></div>`
