@@ -168,5 +168,23 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T6 sec-A2：無空 catch 區塊（失敗至少 console.warn）', empties.length === 0, `空 catch ${empties.length} 處`);
 }
 
+// ===== T7：crafting-list aggregateMats（清單素材彙總純函式；獨立 vm 載 crafting-list.js）=====
+{
+  const CL_SRC = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
+  const clSandbox = { console };
+  clSandbox.globalThis = clSandbox;
+  vm.createContext(clSandbox);
+  vm.runInContext(CL_SRC, clSandbox, { filename: 'crafting-list.js' });
+  const agg = clSandbox.CraftList.aggregateMats;
+  const ING = { '100': [[5, 2], [8, 1], [16, 3]], '200': [[5, 1], [9, 4]] };
+  const J = JSON.stringify;
+  eq('T7 aggregateMats 跨配方同素材加總×qty', J(agg([{ id: 100, qty: 2 }, { id: 200, qty: 1 }], ING)),
+    J([[5, 5], [8, 2], [9, 4], [16, 6]]));
+  eq('T7 aggregateMats qty=0/NaN → clamp 1', J(agg([{ id: 100, qty: 0 }], ING)), J([[5, 2], [8, 1], [16, 3]]));
+  eq('T7 aggregateMats qty>999 → clamp 999', J(agg([{ id: 200, qty: 5000 }], ING)), J([[5, 999], [9, 3996]]));
+  eq('T7 aggregateMats 未知配方 id 略過', J(agg([{ id: 999, qty: 3 }], ING)), J([]));
+  eq('T7 aggregateMats 空清單 → []', J(agg([], ING)), J([]));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

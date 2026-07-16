@@ -208,3 +208,27 @@ body {
 
 .attribution { margin-top: var(--space-5, 24px); opacity: .85; }
 .attribution a { color: var(--accent); }
+
+/* ---- 製造清單分頁 ---- */
+#tab-list .panel { max-width: 880px; margin-left: auto; margin-right: auto; }
+.ri-addlist { width: fit-content; background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--accent); font-family: inherit; }  /* 與 .ri-mblink 同視覺（link 型輕量動作）*/
+.ri-addlist:hover { text-decoration: underline; }
+.cl-row { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 40px;
+  padding: var(--space-1, 4px) 0; border-bottom: 1px solid var(--color-border); }
+.cl-ico { width: 28px; height: 28px; flex: 0 0 auto; }
+.cl-name-btn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-align: left; background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--color-text); font-family: inherit; font-size: var(--fs-body); font-weight: var(--fw-semibold, 600); }
+.cl-name-btn:hover { color: var(--accent, var(--color-accent-cyan)); }
+.cl-qty { display: inline-flex; align-items: center; gap: var(--space-1, 4px); white-space: nowrap; flex: 0 0 auto; }
+.cl-qty-in { width: 72px; text-align: center; }
+.cl-del { flex: 0 0 auto; }
+.cl-mats-title { margin-top: var(--space-4, 16px); }
+.cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-1, 4px) var(--space-4, 16px); margin-top: var(--space-2, 8px); }
+.cl-mat { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 30px; }
+.cl-mat-ico { width: 22px; height: 22px; flex: 0 0 auto; }
+.cl-mat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-mat-amt { margin-left: auto; flex: 0 0 auto; font-weight: var(--fw-semibold, 600); color: var(--accent); }
+.cl-empty { padding: var(--space-3, 12px) 0; }

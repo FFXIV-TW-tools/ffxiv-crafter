@@ -182,9 +182,11 @@ function refreshSelectedGear() {
       <div class="ri-name">${esc(recipe.item_name)}${recipe.is_expert ? ' <span class="codex-small">高難度</span>' : ''}</div>
       <div class="ri-stats"><span class="ri-stat ri-jobstat">${jico}${esc(recipe.job)}</span><span class="ri-stat">難度 <b>${maxP}</b></span><span class="ri-stat">品質 <b>${maxQ}</b></span><span class="ri-stat">耐久 <b>${maxD}</b></span></div>
       <a class="ri-mblink codex-small" href="${MARKETBOARD_BASE}#/craft/${recipe.item_id}" target="ffxiv-marketboard" title="到市場板看材料多層樹 / 各材料即時價 / 成本 / 利潤（共用同一分頁）">💰 材料行情・成本 →</a>
+      <button id="add-to-list" class="ri-addlist codex-small" type="button" title="加進「製造清單」分頁，彙總素材總需求">📋 加入製造清單</button>
     </div>
     <div class="ri-gear">${note}</div>`;
   const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats'); };
+  const ab = $('add-to-list'); if (ab) ab.onclick = () => { if (globalThis.CraftList) globalThis.CraftList.add(recipe.id); };
   $('opt-target').value = ''; $('opt-target').max = maxQ; $('opt-target').placeholder = '滿(' + maxQ + ')';
   $('opt-target').disabled = $('solve-mode').value === 'nq'; // NQ 模式目標品質欄停用（與 solve-mode 監聽一致）
   renderIngredients(recipe, maxQ);
@@ -495,6 +497,7 @@ function switchTab(name) {
   });
   $('tab-solve').hidden = name !== 'solve';
   $('tab-stats').hidden = name !== 'stats';
+  $('tab-list').hidden = name !== 'list';
 }
 function updateHint() { $('first-run-hint').hidden = anyGear(); }
 
@@ -557,6 +560,8 @@ function fallbackCopy(text) {
   $('cancel-btn').addEventListener('click', cancelSolve);
   $('change-recipe').addEventListener('click', showPicker);
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
+  // 製造清單（crafting-list.js classic script，先於本 module 執行）：注入依賴後接手 #craft-list 分頁
+  if (globalThis.CraftList) globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, toast });
   } catch (e) {
     console.error('[crafter] 初始化失敗:', e);
     $('recipe-table').innerHTML = ''; // 清掉首載「載入中…」佔位，避免與失敗橫幅並存殘留轉圈

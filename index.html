@@ -59,6 +59,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab is-active" data-tab="solve" role="tab" aria-selected="true" aria-controls="tab-solve">🔨 配方求解</button>
       <button class="tab" data-tab="stats" role="tab" aria-selected="false" aria-controls="tab-stats">🧑‍🔧 角色數值</button>
+      <button class="tab" data-tab="list" role="tab" aria-selected="false" aria-controls="tab-list">📋 製造清單</button>
     </nav>
 
     <!-- ===== 配方求解 ===== -->
@@ -188,11 +189,22 @@
       </section>
     </div>
 
+    <!-- ===== 製造清單 ===== -->
+    <div id="tab-list" class="tabpanel" role="tabpanel" hidden>
+      <section class="codex-tablet codex-tablet--cyan panel">
+        <span class="codex-hud"></span>
+        <h2 class="codex-h2">製造清單</h2>
+        <p class="codex-body hint">在配方詳情按「<b>📋 加入製造清單</b>」收集要做的配方，此處調數量、自動彙總<b>素材總需求</b>。資料只存本機。</p>
+        <div id="craft-list"></div>
+      </section>
+    </div>
+
     <p class="attribution codex-small">
       求解引擎來源 <a href="https://github.com/KonaeAkira/raphael-rs" target="_blank" rel="noopener">raphael-rs</a>（Apache-2.0）
     </p>
   </main>
 
+  <script src="crafting-list.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

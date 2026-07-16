@@ -7,6 +7,7 @@
 - **配方資料換源 zh-CN**：data/ 全量重建 11,803→13,874 配方（+2,148 筆 7.2–7.5 新配方、rlv 720→775）。**為什麼**：上游 tnze zh-TW 資料源停更於 7.1 世代（max recipe id 36059，實測與快照零差異），zh-CN 源與國際版同步；繁中名走 item_lookup `name_tc`（權威、非機轉），與舊 zh-TW 名交叉驗證 11,603 筆重疊 99.89% 一致（13 筆差異=item_lookup OpenCC fallback 名，root fix 歸 monorepo BACKLOG B-005）。上游換源實作在 best-craft `scripts/build-static-data.py`（zh-CN 爬取＋⑦繁中化＋ingredients 補爬）。
 - **舊染劑配方 30001–30200（200 筆）隨源移除＝遊戲 7.5 染劑改版**：逐色染劑配方在現行遊戲資料已刪除、改為每職業一筆「通用染劑」（38254–38261，已入列）——非資料缺漏，勿當 bug 回補。
 - **icon 換 xivapi v2 asset CDN**（`app.js` `iconUrl()` + `_headers` CSP img-src）：v1 `xivapi.com` 圖庫停更、7.5 新物品 icon 全 404（實測 057489 → 404、v2 → 200）。寫法對齊 marketboard `modules/icon.js`（DRY 權威），輸入沿用 data 層 v1 路徑格式免改資料。
+- **新增「製造清單」分頁**（Owner 需求，基底範圍拍板）：配方詳情「📋 加入製造清單」→ 清單分頁管理數量（次數）/ 移除 / 點名跳回求解，自動彙總素材總需求（晶體殿後對齊遊戲 BOM），localStorage 持久化＋資料改版自動剔除消失配方。**落新檔 `crafting-list.js`**（98 行 classic script，`globalThis.CraftList` 橋接——app.js 已破 500 不再加大、且保住 test-formulas 的 vm 載入手法）；彙總純函式 `aggregateMats` 進 T7 golden（測試基線 29→34）。
 
 ## 2026-07-11 — R2 複檢修復（M1 + sec/docs/UX 建議批）
 
