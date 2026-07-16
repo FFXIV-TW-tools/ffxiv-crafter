@@ -177,7 +177,7 @@ function refreshSelectedGear() {
     <div class="ri-main">
       <div class="ri-name">${esc(recipe.item_name)}${recipe.is_expert ? ' <span class="codex-small">高難度</span>' : ''}</div>
       <div class="ri-stats"><span class="ri-stat ri-jobstat">${jico}${esc(recipe.job)}</span><span class="ri-stat">難度 <b>${maxP}</b></span><span class="ri-stat">品質 <b>${maxQ}</b></span><span class="ri-stat">耐久 <b>${maxD}</b></span></div>
-      <a class="ri-mblink codex-small" href="${MARKETBOARD_BASE}#/craft/${recipe.item_id}" target="ffxiv-marketboard" rel="noopener" title="到市場板看材料多層樹 / 各材料即時價 / 成本 / 利潤（共用同一分頁）">💰 材料行情・成本 →</a>
+      <a class="ri-mblink codex-small" href="${MARKETBOARD_BASE}#/craft/${recipe.item_id}" target="ffxiv-marketboard" title="到市場板看材料多層樹 / 各材料即時價 / 成本 / 利潤（共用同一分頁）">💰 材料行情・成本 →</a>
     </div>
     <div class="ri-gear">${note}</div>`;
   const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats'); };
