@@ -1,7 +1,11 @@
 // 配方製作求解器 — 分頁式：配方求解（職業+等級瀏覽）/ 角色數值（各職裝備）。
 // 公式（已對抗驗證，spec §4）在此算，WASM worker 只跑引擎。
 const $ = (id) => document.getElementById(id);
-const ICON_BASE = 'https://xivapi.com';
+// icon URL — xivapi v2 asset CDN（v1 xivapi.com 圖庫停更，7.5 新 icon 404；權威寫法＝marketboard modules/icon.js，此為 v1 路徑輸入版）
+function iconUrl(p) {
+  const m = /^\/i\/(\d{6})\/(\d{6})\.png$/.exec(p || '');
+  return m ? `https://v2.xivapi.com/api/asset/ui/icon/${m[1]}/${m[2]}_hr1.tex?format=png` : '';
+}
 // 跨工具深連結：到 marketboard 看材料樹/行情/成本（dev 走 :8774 統一外部站，prod 走 pages.dev）
 const MARKETBOARD_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8774/ffxiv-tw-marketboard/'
@@ -73,7 +77,7 @@ function renderGearsets() {
     return `<td><input class="codex-input gear-in" data-job="${esc(job)}" data-f="${f}" type="number" min="0" inputmode="numeric" value="${v}" placeholder="${ph || ''}"></td>`;
   };
   const jico = (job) => JOB_ICON[job]
-    ? `<img class="gj-ico" src="${ICON_BASE}${JOB_ICON[job]}" alt="" loading="lazy">`
+    ? `<img class="gj-ico" src="${iconUrl(JOB_ICON[job])}" alt="" loading="lazy">`
     : '<span class="gj-ico gj-ico--empty" aria-hidden="true"></span>'; // 預設列無職業 icon → 等寬佔位讓職名對齊
   $('gearsets').innerHTML = `
     <table class="gear-table">
@@ -94,7 +98,7 @@ function onGearInput(e) {
 // ---------- 職業 chips + 配方表 ----------
 function renderChips() {
   $('job-chips').innerHTML = ['', ...DOH].map(j =>
-    `<button class="job-chip${j === jobFilter ? ' is-active' : ''}" data-job="${esc(j)}">${j && JOB_ICON[j] ? `<img src="${ICON_BASE}${JOB_ICON[j]}" alt="" loading="lazy">` : ''}${j || '全部'}</button>`).join('');
+    `<button class="job-chip${j === jobFilter ? ' is-active' : ''}" data-job="${esc(j)}">${j && JOB_ICON[j] ? `<img src="${iconUrl(JOB_ICON[j])}" alt="" loading="lazy">` : ''}${j || '全部'}</button>`).join('');
   $('job-chips').querySelectorAll('.job-chip').forEach(b => b.onclick = () => {
     jobFilter = b.dataset.job; renderChips(); renderTable();
   });
@@ -120,7 +124,7 @@ function renderTable() {
     <table class="rt">
       <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th></tr></thead>
       <tbody>${shown.map(r =>
-        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name">${r.icon ? `<img class="rt-ico" src="${ICON_BASE}${r.icon}" alt="" loading="lazy">` : ''}${esc(r.name)}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${ICON_BASE}${JOB_ICON[r.job]}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td></tr>`).join('')}</tbody>
+        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}${esc(r.name)}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td></tr>`).join('')}</tbody>
     </table>` : '';
   $('recipe-table').querySelectorAll('.rt-row').forEach(tr => {
     const pick = () => selectRecipe(+tr.dataset.id);
@@ -171,9 +175,9 @@ function refreshSelectedGear() {
     ? `<span class="gear-ok">套用「${esc(g._src)}」：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${Number(g.level) || 100}${g.level ? '' : '（假設，未填等級）'}</span>`
     : `<span class="gear-warn">⚠ 尚未設定「${esc(recipe.job)}」數值 — <a href="#" id="goto-stats">去填角色數值 →</a></span>`;
   const icon = (ITEMS[String(recipe.item_id)] || {}).icon;
-  const jico = JOB_ICON[recipe.job] ? `<img class="ri-jico" src="${ICON_BASE}${JOB_ICON[recipe.job]}" alt="">` : '';
+  const jico = JOB_ICON[recipe.job] ? `<img class="ri-jico" src="${iconUrl(JOB_ICON[recipe.job])}" alt="">` : '';
   $('recipe-info').innerHTML = `
-    ${icon ? `<img class="ri-icon" src="${ICON_BASE}${icon}" alt="">` : ''}
+    ${icon ? `<img class="ri-icon" src="${iconUrl(icon)}" alt="">` : ''}
     <div class="ri-main">
       <div class="ri-name">${esc(recipe.item_name)}${recipe.is_expert ? ' <span class="codex-small">高難度</span>' : ''}</div>
       <div class="ri-stats"><span class="ri-stat ri-jobstat">${jico}${esc(recipe.job)}</span><span class="ri-stat">難度 <b>${maxP}</b></span><span class="ri-stat">品質 <b>${maxQ}</b></span><span class="ri-stat">耐久 <b>${maxD}</b></span></div>
@@ -202,7 +206,7 @@ function renderIngredients(recipe, maxQ) {
   const rows = ordered.map(([iid, amount]) => {
     const it = ITEMS[String(iid)] || {};
     const name = it.name || ('#' + iid);
-    const ico = it.icon ? `<img class="ing-ico" src="${ICON_BASE}${it.icon}" alt="" loading="lazy">` : '';
+    const ico = it.icon ? `<img class="ing-ico" src="${iconUrl(it.icon)}" alt="" loading="lazy">` : '';
     const ctl = hqable(iid)
       ? `<span class="ing-hqctl">HQ <input class="ing-hq-in codex-input" data-iid="${iid}" data-amt="${amount}" type="number" min="0" max="${amount}" value="0" inputmode="numeric">/${amount}</span>`
       : '<span class="ing-na codex-small">不可 HQ</span>';
@@ -460,7 +464,7 @@ function bar(label, v, m, pct) {
     <span class="bar-num codex-small">${v}/${m}</span></div>`;
 }
 function actionName(v) { return (ACTIONS[v] && ACTIONS[v].nameTc) || v; }
-function actImg(v) { const a = ACTIONS[v]; return (a && a.icon) ? `<img class="act-ico" src="${ICON_BASE}${a.icon}" alt="" loading="lazy">` : ''; }
+function actImg(v) { const a = ACTIONS[v]; return (a && a.icon) ? `<img class="act-ico" src="${iconUrl(a.icon)}" alt="" loading="lazy">` : ''; }
 function actionChip(s) {
   return `<div class="chip" title="${esc(actionName(s.action))}">${actImg(s.action)}<span class="chip-name codex-xs">${esc(actionName(s.action))}</span></div>`;
 }
