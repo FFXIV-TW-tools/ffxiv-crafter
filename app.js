@@ -10,6 +10,17 @@ function iconUrl(p) {
 const MARKETBOARD_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8774/ffxiv-tw-marketboard/'
   : 'https://ffxiv-tw-marketboard.pages.dev/';
+// 跨工具深連結：求解巨集帶到 macro-builder 匯入（?import= 收端契約見 external/_NEW-TOOL.md；波次 2）
+const MACRO_BUILDER_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8774/ffxiv-tw-macro-builder/'
+  : 'https://ffxiv-tw-macro-builder.pages.dev/';
+// base64url（UTF-8 安全：中文必先 TextEncoder 轉 bytes，不能直接 btoa）
+function b64urlEncode(s) {
+  const bytes = new TextEncoder().encode(s);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 const DOH = ['木工', '鍛造', '甲冑', '金工', '皮革', '裁縫', '鍊金', '烹調']; // 8 DoH（= recipe.job 值，依製作職業列序）
 // DoH 職業 icon：classjob_id 8–15 → icon_id 62100+id（同 jobs.json framed icon 模式）
 const JOB_ICON = {
@@ -479,7 +490,17 @@ function renderMacro(steps) {
     c.push(`/echo 第 ${macros.length + 1} 段完成 <se.${(macros.length % 8) + 1}>`);
     macros.push(c);
   }
-  $('macro').innerHTML = macros.map((m, i) =>
+  // 存進巨集庫深連結（named target 共用分頁、不加 noopener——生態內互跳鐵則；收端經確認 modal 絕不自動寫入）
+  const itemName = (selected && selected.recipe && selected.recipe.item_name) || '製作巨集';
+  const payload = b64urlEncode(JSON.stringify(macros.map((m, i) => ({
+    title: Array.from(macros.length > 1 ? `${itemName} ${i + 1}/${macros.length}` : itemName).slice(0, 20).join(''),
+    lines: m,
+  }))));
+  const importUrl = `${MACRO_BUILDER_BASE}?import=${payload}`;
+  const saveLink = importUrl.length <= 8192   // 超過 URL 安全線不出鈕（防呆；實務 1–3.5KB 遠低於線）
+    ? `<div class="macro-tools"><a class="codex-btn codex-btn--ghost" href="${importUrl}" target="ffxiv-macro-builder" title="帶到巨集產生器，確認後存進巨集庫（共用同一分頁；不會自動寫入）">📥 存進巨集庫 ↗</a></div>`
+    : '';
+  $('macro').innerHTML = saveLink + macros.map((m, i) =>
     `<div class="macro-block">
        <div class="macro-head"><span class="codex-small">巨集 ${i + 1} / ${macros.length}（${m.length} 行）</span>
          <button class="codex-btn codex-btn--ghost copy-btn" data-i="${i}">複製</button></div>

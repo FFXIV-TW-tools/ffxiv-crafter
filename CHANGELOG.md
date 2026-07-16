@@ -2,6 +2,10 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-16 — 求解巨集一鍵存進巨集庫（portal deeplinks cycle 波次 2 出端）
+
+- 巨集區加「📥 存進巨集庫 ↗」：全部分段組 `[{title,lines}]` → base64url（UTF-8 先 TextEncoder，非裸 btoa）→ macro-builder `?import=`（named target 共用分頁、不加 noopener——生態互跳鐵則）。title＝「物品名 段X/Y」20 字元 Array.from 截斷；最終 URL >8KB 不出鈕（防呆，實務 ~1KB）。**為什麼**：求解完的巨集本來就要進遊戲巨集庫，過去要逐段複製貼上；收端有確認 modal、絕不自動寫入。**基線**：`test-formulas.mjs` 34 passed 持平；端到端實測（含 Owner 真實 UI 路徑＋壞 payload／取消／確認三態）過。傘狀 spec：portal `docs/specs/2026-07-16-cross-tool-deeplinks-design.md` 配對 2。
+
 ## 2026-07-16 — 配方資料換源 zh-CN 跟版 7.5 ＋ icon v2 CDN 修復（旁路 2026-07-16-data-source-sync）
 
 - **配方資料換源 zh-CN**：data/ 全量重建 11,803→13,874 配方（+2,148 筆 7.2–7.5 新配方、rlv 720→775）。**為什麼**：上游 tnze zh-TW 資料源停更於 7.1 世代（max recipe id 36059，實測與快照零差異），zh-CN 源與國際版同步；繁中名走 item_lookup `name_tc`（權威、非機轉），與舊 zh-TW 名交叉驗證 11,603 筆重疊 99.89% 一致（13 筆差異=item_lookup OpenCC fallback 名，root fix 歸 monorepo BACKLOG B-005）。上游換源實作在 best-craft `scripts/build-static-data.py`（zh-CN 爬取＋⑦繁中化＋ingredients 補爬）。
