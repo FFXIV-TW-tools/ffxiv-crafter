@@ -37,7 +37,8 @@ VARIANT_EN = {
     "StellarSteadyHand": "Stellar Steady Hand", "RapidSynthesis": "Rapid Synthesis",
     "HastyTouch": "Hasty Touch", "DaringTouch": "Daring Touch",
 }
-# CafeMaker 簡中服落後一版缺的（7.x）→ 手動補繁中（暫定，game_ref 之後有就自動取代）
+# game_ref 缺漏時的最後安全網（2026-07-16 起 game_ref 已補 46843 群星穩定 → 正常對到 35/35、本表閒置；
+# 僅當 game_ref 重建倒退時接手，勿刪）
 FALLBACK_TC = {"StellarSteadyHand": "群星穩定"}
 
 
