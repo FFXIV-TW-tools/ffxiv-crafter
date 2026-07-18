@@ -229,12 +229,12 @@ body {
 .cl-ico { width: 32px; height: 32px; flex: 0 0 auto; }
 .cl-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }  /* 名稱 + 職業/rlv 吃剩餘寬、可縮（icon+文字並排鐵則）*/
 .cl-name { font-weight: var(--fw-semibold, 600); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cl-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px); }
+/* 動作群：flex:0 0 auto 不縮 → 各列等寬（成品產量已移進資訊列）→ 前往求解/行情/次數/✕ 右側按鈕跨列垂直對齊 */
+.cl-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px); flex: 0 0 auto; }
 .cl-qty { display: inline-flex; align-items: center; gap: var(--space-1, 4px); white-space: nowrap; }
 .cl-qty-in { width: 68px; text-align: center; }
-.cl-yield { white-space: nowrap; }
 .cl-del { flex: 0 0 auto; }
-.cl-mats-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2, 8px); flex-wrap: wrap; margin-top: var(--space-4, 16px); }
+.cl-mats-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 8px); flex-wrap: wrap; margin-top: var(--space-4, 16px); }
 .cl-mats-title { margin: 0; }
 .cl-mats-title .codex-small { font-weight: var(--fw-regular, 400); }  /* 提示註記用字級分層、不降對比（灰字鐵則）*/
 .cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
