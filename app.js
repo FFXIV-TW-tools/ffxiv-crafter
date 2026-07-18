@@ -145,7 +145,7 @@ function renderTable() {
     <table class="rt">
       <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th><th class="rt-actcol">加入</th></tr></thead>
       <tbody>${shown.map(r =>
-        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmwrap"><span class="rt-nm">${esc(r.name)}</span>${r.category ? `<span class="rt-cat codex-small">${esc(r.category)}</span>` : ''}</span></span></td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td class="rt-act"><button type="button" class="codex-btn codex-btn--ghost codex-btn--icon rt-add" data-id="${r.id}" data-name="${esc(r.name)}" aria-label="將「${esc(r.name)}」加入製造清單" title="加入製造清單">＋</button></td></tr>`).join('')}</tbody>
+        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmwrap"><span class="rt-nmline"><span class="rt-nm">${esc(r.name)}</span></span>${r.category ? `<span class="rt-cat codex-small">${esc(r.category)}</span>` : ''}</span></span></td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td class="rt-act"><button type="button" class="codex-btn codex-btn--ghost codex-btn--icon rt-add" data-id="${r.id}" aria-label="將「${esc(r.name)}」加入製造清單" title="加入製造清單">＋</button></td></tr>`).join('')}</tbody>
     </table>` : '';
   // 事件委派（單一 handler，取代每列 2N listener → 篩選/搜尋重繪不重綁、行動裝置省 GC）；handler 綁在持久的 #recipe-table 上，innerHTML 換內容不掉線
   const table = $('recipe-table');
@@ -166,32 +166,23 @@ function renderTable() {
 }
 
 // 標記「已在製造清單」的配方列（in-place 更新、不重建表 → 保留焦點；renderTable 初繪與 CraftList 變更 onChange 共用）。
-// 答「頁面除通知外根本沒提示」＝三重持久提示：整列換底色（掃視主訊號）＋名稱旁「已加入 ×N」綠徽章＋右側 ＋→✓ 填色鈕。
+// 答「頁面除通知外根本沒提示、不知哪些已加入」＝持久提示：整列換綠底（掃視主訊號）＋名稱旁「已加入 ×N」綠徽章。
+// 按鈕**恆為 ＋**（動作一律「+1」）——不換 ✓/填色，避免「已完成/點擊取消」假 affordance（對抗審 grok F2）。
 function markListState() {
   const CL = globalThis.CraftList;
   const tbl = $('recipe-table');
-  if (!CL || !tbl) return;
+  if (!CL || typeof CL.count !== 'function' || !tbl) return; // 舊快取/半套 init：count 未 export 就跳過，不炸整表互動（對抗審 grok F4）
   tbl.querySelectorAll('.rt-row').forEach(tr => {
     const n = CL.count(+tr.dataset.id);
     const inList = n > 0;
     tr.classList.toggle('rt-in', inList);
-    const cell = tr.querySelector('.rt-cellflex');
-    if (cell) {
-      let badge = cell.querySelector('.rt-inlist');
-      if (inList) {
-        if (!badge) { badge = document.createElement('span'); badge.className = 'codex-badge codex-badge--success codex-badge--text rt-inlist'; cell.appendChild(badge); }
-        badge.textContent = n > 1 ? `已加入 ×${n}` : '已加入';
-      } else if (badge) { badge.remove(); }
-    }
-    const btn = tr.querySelector('.rt-add');
-    if (btn) {
-      const nm = btn.dataset.name || '此配方';
-      btn.classList.toggle('codex-btn--primary', inList);
-      btn.classList.toggle('codex-btn--ghost', !inList);
-      btn.textContent = inList ? '✓' : '＋';
-      btn.title = inList ? `已在製造清單${n > 1 ? ` ×${n}` : ''} · 點擊再加一個` : '加入製造清單';
-      btn.setAttribute('aria-label', inList ? `「${nm}」已在製造清單${n > 1 ? `（${n}）` : ''}，點擊再加一個` : `將「${nm}」加入製造清單`);
-    }
+    const line = tr.querySelector('.rt-nmline'); // 徽章插名稱同行（名稱旁）
+    if (!line) return;
+    let badge = line.querySelector('.rt-inlist');
+    if (inList) {
+      if (!badge) { badge = document.createElement('span'); badge.className = 'codex-badge codex-badge--success codex-badge--text rt-inlist'; line.appendChild(badge); }
+      badge.textContent = n > 1 ? `已加入 ×${n}` : '已加入';
+    } else if (badge) { badge.remove(); }
   });
 }
 

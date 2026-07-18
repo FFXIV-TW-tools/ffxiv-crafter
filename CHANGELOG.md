@@ -2,6 +2,28 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-19 — 配方瀏覽 UX 再強化（已加入清單綠底標示／道具種類副行／職業篩選方形化）＋ codex/grok 雙審修正
+
+依 Owner 一輪回饋（分頁序／加清單無反饋／橢圓標籤／不知哪些已加入／配方名補說明）。旁路 cycle `2026-07-19-browse-ux`。code commit `5e399d78`；對抗審 `.adversarial-reviews/5e399d78-{codex,grok}.md`（codex 3 / grok 11 findings）triage 後修正。
+
+**功能：**
+- **已在清單持久標示**（核心，Owner「頁面除通知外根本沒提示、不知哪些已加入」）：配方表已在清單的列**整列換綠底**（`color-mix` success 14%）＋左緣 success 色條＋名稱旁「已加入 ×N」綠徽章。加入/移除/改數量即時同步：`CraftList` 暴露 `has/count`＋`onChange` 回呼；app.js `markListState` **in-place 更新**（不重建表→保留焦點），renderTable 初繪與 CraftList 變更皆呼叫。**為什麼**：綠底掃視是「已加入」最直接訊號，補足原本只有一閃通知。
+- **道具種類副行**（Owner「配方名補說明如道具種類」）：配方名下方補繁中道具種類（`item_lookup.ui_category`，繁中正名、配方成品 100% 覆蓋 11333/11333）。`build-data.py` 加 `category` 欄（保持權威）、`items.json` surgical 重生（只讀已 commit 的 recipes/ingredients、不重抄 static-data 避免 drift；13759 items 全含 category）。
+- **職業篩選方形化**（Owner「不要橢圓標籤、參照共用設置」）：pill `.codex-chip` → 方形 `.codex-btn` 分段條（選中 `--primary` 填色 / 未選 `--ghost`），保留真實職業 icon（JOB_ICON→xivapi，非 emoji）；不本地覆寫 codex-* 屬性。參照生態既有（ranking role 篩選為方形條）。
+- **toast 帶配方名**：加入通知由通用文案改帶配方名。**分頁序**：角色數值移到最右（求解 / 清單 / 角色數值）。
+
+**codex/grok 雙審 triage（反查程式碼、真的才修）：**
+- 🔴 **cap 謊報**（codex 中 / grok 低）：qty 到 999 上限仍報「+1（共 999）」而資料沒變 → `add()` 早退＋warn toast，不謊報、不觸發無效 render/notify。
+- 🔴 **✓ 假 affordance**（grok 高）：in-list 按鈕原改 ✓ 填色，像「已完成/點擊取消」但實際 +1 → **按鈕恆為 ＋**（動作一致），in-list 只靠綠底＋徽章；順帶移除 `data-name`（grok 質疑雙重編解碼）。
+- **markListState 守衛**（grok 中）：加 `typeof CL.count !== 'function'` feature-detect（舊快取/半套 init 不炸整表互動）。
+- **is-sel + rt-in 疊加**（grok 中）：加 `.rt-in.is-sel` accent 淡染＋is-sel 外框 → 選中的 in-list 列選中態不被綠底吃掉（headless 實測 bg=accent16% / outline=cyan）。
+- **徽章位置**（grok 低）：移到名稱同行旁（`.rt-nmline`）。
+- **駁回（反查後）**：grok「toast XSS」＝誤報（portal `FFXIVToast` 用 `textContent`、item_name 可信遊戲資料，esc 反顯字面 `&lt;`）；grok「死 codex-chip CSS」＝已無殘留（grep 零）、flex-wrap 防溢出。
+- **測試固化**（codex/grok「新行為零測試」）：加 T10 清單 add/has/count＋上限誠實＋onChange 次數；**基線 40→50**。
+- **app.js 502 行 >500**（codex 阻擋 / grok 中）：拆分候選正式立 **B-007**（app-browse.js）交 Owner 拍板；本輪不當場擴 scope（鐵則「列候選不當場擴大」＋避免剛驗證的 code 回歸風險）。
+
+**驗證**：node --check／test-formulas **50 passed**／design-lint（success fallback 對齊 tokens `#7dd87d`）；瀏覽器實測綠底／徽章名稱行／按鈕保持 ＋／種類副行／篩選重建保留／選中疊加／分隔線對齊（td 底邊逐欄一致 448/495/…）皆綠。push 待 Owner。
+
 ## 2026-07-19 — B-002 app.js 職責拆分（658→488 行，<500 達標）＋ portal `.codex-btn[hidden]` 守衛
 
 Owner 核可 B-002。**為什麼**：整合改造後 app.js 達 645 行、兩輪雙審阻擋「god-file 續膨脹、跨功能回歸風險」。

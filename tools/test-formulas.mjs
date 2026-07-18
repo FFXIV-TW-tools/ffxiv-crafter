@@ -206,5 +206,51 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T9 selectRecipe 未知 id → false', T.selectRecipe(999999), false);
 }
 
+// ===== T10：crafting-list add/has/count 契約 + 上限誠實（對抗審 codex/grok：清單同步 + cap 謊報回歸鎖）=====
+{
+  const CL_SRC = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
+  const stubEl = () => ({ innerHTML: '', textContent: '', dataset: {},
+    classList: { toggle() {}, add() {}, remove() {} },
+    querySelector() { return null; }, querySelectorAll() { return []; },
+    appendChild() {}, addEventListener() {}, onclick: null });
+  const box = { store: null };  // localStorage 後備
+  const cl = {
+    console,
+    localStorage: { getItem() { return box.store; }, setItem(k, v) { box.store = v; }, removeItem() { box.store = null; } },
+    document: { getElementById() { return stubEl(); }, querySelector() { return null; }, querySelectorAll() { return []; }, createElement() { return stubEl(); }, body: stubEl() },
+  };
+  cl.globalThis = cl;
+  vm.createContext(cl);
+  vm.runInContext(CL_SRC, cl, { filename: 'crafting-list.js' });
+  const CL = cl.CraftList;
+  const RECIPES = [{ id: 100, item_name: '鐵錠' }, { id: 200, item_name: '鋼錠' }];
+  let notifyN = 0; const toasts = [];
+  const mkDeps = () => ({ $: () => stubEl(), esc: (s) => s, iconUrl: () => '', RECIPES,
+    ITEMS: {}, INGREDIENTS: {}, selectRecipe() {}, switchTab() {}, showPicker() {},
+    toast: (m, v) => toasts.push([m, v]), copyText() {}, mbItem: () => '#', mbCraft: () => '#',
+    onChange: () => { notifyN++; }, goSolve() {} });
+
+  box.store = null; CL.init(mkDeps());                    // 空清單起步
+  eq('T10 count 空清單 → 0', CL.count(100), 0);
+  eq('T10 has 空清單 → false', CL.has(100), false);
+  CL.add(100);
+  eq('T10 add 新配方 → count 1 + has true', CL.count(100) === 1 && CL.has(100) === true, true);
+  CL.add(100);
+  eq('T10 add 既有 → count 2', CL.count(100), 2);
+  eq('T10 未知 id add 無效（byId 無 → 不入清單）', (CL.add(999), CL.has(999)), false);
+  eq('T10 每次有效 add 觸發 onChange 一次（共 2）', notifyN, 2);
+
+  // 上限誠實：load 一筆 qty=999，再 add 不得超界／不得謊報 +1／不得觸發無效 onChange
+  box.store = JSON.stringify([{ id: 200, qty: 999 }]);
+  notifyN = 0; toasts.length = 0;
+  CL.init(mkDeps());
+  eq('T10 load qty 上限帶入 999', CL.count(200), 999);
+  CL.add(200);
+  eq('T10 add 到上限 → count 仍 999（不超界）', CL.count(200), 999);
+  eq('T10 add 到上限 → 不觸發 onChange', notifyN, 0);
+  const lt = toasts[toasts.length - 1] || ['', ''];
+  check('T10 add 到上限 → warn toast 且不謊報 +1', lt[1] === 'warn' && !/\+1/.test(lt[0]), JSON.stringify(lt));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -67,13 +67,16 @@ body {
 .rt-row.rt-in { background: color-mix(in srgb, var(--color-success, #7dd87d) 14%, transparent); }
 .rt-row.rt-in:hover { background: color-mix(in srgb, var(--color-success, #7dd87d) 24%, transparent); }
 .rt-row.rt-in > td:first-child { box-shadow: inset 3px 0 0 var(--color-success, #7dd87d); }
-.rt-inlist { margin-left: var(--space-2, 8px); flex: none; }  /* 名稱旁「已加入 ×N」綠徽章不被壓縮 */
+/* 選中 + 已在清單同時成立時：選中態（暫時焦點）優先於綠底 → accent 淡染 + is-sel 的 accent 外框仍在，確保「目前選到哪列」不被綠底吃掉（對抗審 grok F5）*/
+.rt-row.rt-in.is-sel { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.rt-inlist { flex: none; }  /* 名稱旁「已加入 ×N」綠徽章不被名稱壓縮（間距走 .rt-nmline gap） */
 /* ⚠ 勿對 <td> 設 display:flex — 會使該 cell 失去 table-cell 語意、不與同列等高，border-bottom 與他欄錯開（名稱/職業分隔線不對齊的老 bug）。flex 一律放 td 內層 wrapper。 */
 .rt-name { font-weight: var(--fw-semibold, 600); }
 .rt-cellflex { display: inline-flex; align-items: center; gap: var(--space-1, 4px); min-width: 0; max-width: 100%; vertical-align: middle; }
 .rt-ico { width: 24px; height: 24px; flex: none; }
-/* 名稱兩行：第一行成品名、第二行道具種類（繁中）補充說明。flex 放內層 wrapper，不動 td 的 table-cell 語意（名稱/職業分隔線對齊鐵則）*/
+/* 名稱兩行：第一行「成品名 + 已加入徽章」、第二行道具種類（繁中）補充說明。flex 放內層 wrapper，不動 td 的 table-cell 語意（名稱/職業分隔線對齊鐵則）*/
 .rt-nmwrap { display: flex; flex-direction: column; min-width: 0; line-height: var(--lh-tight, 1.2); }
+.rt-nmline { display: flex; align-items: center; gap: var(--space-2, 8px); min-width: 0; }  /* 名稱與「已加入 ×N」徽章同行並排（badge 由 markListState 插入） */
 .rt-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rt-cat { font-weight: var(--fw-regular, 400); }  /* 種類副行：靠字級（codex-small）+ 字重與名稱分層，不降對比（灰字鐵則：不與最小字級疊 muted）*/
 .rt-job { white-space: nowrap; }

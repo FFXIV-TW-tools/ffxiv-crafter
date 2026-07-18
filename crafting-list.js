@@ -40,6 +40,10 @@
     if (!deps || !byId.has(+recipeId)) return;
     const nm = byId.get(+recipeId).item_name || ('#' + recipeId);   // toast 帶配方名 → 使用者知道「加了哪個」（原通用文案無反饋感）
     const found = list.find((e) => e.id === +recipeId);
+    if (found && found.qty >= QTY_MAX) {   // 已達單筆上限：不謊報 +1、不觸發無效 render/notify（誠實鐵則；對抗審 codex/grok）
+      deps.toast(`「${nm}」已達單筆製作上限（${QTY_MAX} 次）`, 'warn');
+      return;
+    }
     if (found) found.qty = clampQty(found.qty + 1);
     else list.push({ id: +recipeId, qty: 1 });
     save(); render(); notify();
