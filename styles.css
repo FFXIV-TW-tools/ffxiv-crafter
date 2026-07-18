@@ -9,7 +9,7 @@ body {
   background:
     var(--pattern-overlay),
     var(--pattern-scanline),
-    var(--gradient-body, linear-gradient(135deg, #050a10, #0f151e, #1f2c3e));
+    var(--gradient-body, linear-gradient(180deg, #03060c 0%, #070b12 50%, #03060c 100%));
   color: var(--color-text);
   min-height: 100vh;
 }
