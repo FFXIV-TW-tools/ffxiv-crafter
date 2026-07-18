@@ -2,6 +2,17 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-19 — B-002 app.js 職責拆分（658→488 行，<500 達標）＋ portal `.codex-btn[hidden]` 守衛
+
+Owner 核可 B-002。**為什麼**：整合改造後 app.js 達 645 行、兩輪雙審阻擋「god-file 續膨脹、跨功能回歸風險」。
+- **拆分策略**：沿用本 repo 已驗證的 `crafting-list.js` **classic-script + deps 注入** pattern（非重寫每個狀態參照、非引入 globals 碰撞風險）。抽最自包含的兩層：
+  - `app-render.js`（`globalThis.CraftRender`，120 行）：hqPercent(純)/render/手法序列 chips/走查/巨集。注入 **getter**（getSelected/getItems/getActions）取 live 狀態——loadData 會重賦值 ITEMS/ACTIONS 綁定，持舊參照看不到新資料。
+  - `app-solve.js`（`globalThis.CraftSolve`，98 行）：worker 生命週期/doSolve/求解計時/結果分派/取消/setSolving。worker·solveClock 為該層私有；渲染委派 CraftRender、公式/gear/switchTab 由 app.js 注入。`invalidateResults` **留 app.js**（被 gear/原料/求解輸入多處外部呼叫、求解層內部不呼叫它）。
+- **未全做原 6 層**：formula/gear/data 仍在 app.js——`computeSettings` 是對抗驗證公式（AGENTS 鐵則「勿動」），機械化拆它風險高於效益，且 488 已達標。
+- **test-formulas 相容**：app.js 未用 ES import（仍 classic-interop via globalThis），vm 載入手法不破；hqPercent 改從先載的 app-render.js 取；**40 passed 持平**。
+- **portal 守衛**（B-006 部分，另 repo commit `cf3813d`）：`header.css` 加 `.codex-btn[hidden], .codex-chip[hidden] { display:none }` 集中守衛（display:inline-flex 蓋 UA [hidden]）；crafter 本地 interim 守衛待 CDN 上線後移除。
+- **驗證**：node --check ×5 檔 syntax OK / test-formulas 40 / check-actions 35=35 / cargo test 2；瀏覽器實測 rlv710 求解 doSolve→worker→onWorkerMsg→render 端到端正確（品質條/巨集分段/複製/手法序列 icon chips/走查/狀態列）、零 console error。
+
 ## 2026-07-19 — 整合改造第二輪雙審 + 增強（複製清單／等高欄／scope 修正）
 
 第二輪 codex+grok 雙審（span `744449ed`，報告 `.adversarial-reviews/744449ed-{codex,grok}.md`）triage ＋ Owner「優化與加強／求解器整齊美化」追加：

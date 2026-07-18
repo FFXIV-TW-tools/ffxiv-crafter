@@ -43,8 +43,7 @@ let jobFilter = '';     // '' = 全部
 let selected = null;    // { recipe, rlv }
 let openedFromList = false; // 由製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入則不顯示（避免幽靈導覽）
 let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
-let worker = null;
-let solveClock = null;  // 求解計時器（interval）：每秒更新已耗時；≥60s 升級可取消軟提示（不殺 worker，正常長求解仍在跑）
+// worker / solveClock 已移入 app-solve.js（該層私有狀態）
 
 // ---------- 資料 ----------
 async function loadData() {
@@ -358,84 +357,8 @@ function computeSettings(recipe, rlv, gear) {
   };
 }
 
-// ---------- 求解 ----------
-function newWorker() {
-  if (worker) worker.terminate();
-  worker = new Worker('worker.js', { type: 'module' });
-  worker.onmessage = onWorkerMsg;
-  worker.onerror = () => {                    // module/worker 載入失敗
-    worker = null;                            // 設 null → 下次 doSolve 的 if(!worker) 重建，不卡在壞掉的 worker
-    stopSolveClock();
-    setSolving(false);
-    toast('求解器載入失敗，請重新整理頁面後再試', 'error');
-  };
-}
-function doSolve() {
-  if (!selected) return;
-  const gear = gearFor(selected.recipe.job);
-  if (!gear) { toast('請先設定「' + selected.recipe.job + '」的角色數值', 'error'); switchTab('stats'); return; }
-  const settings = computeSettings(selected.recipe, selected.rlv, gear);
-  if (settings.base_progress <= 0 || settings.base_quality <= 0) { toast('作業/加工數值過低', 'error'); return; }
-  setSolving(true);
-  if (!worker) newWorker();
-  worker.postMessage({ input: settings }); // worker 只跑 solve（simulate 尚未接 UI），無需 cmd dispatch 欄
-  startSolveClock();
-}
-// 求解計時：每秒更新已耗時（求解跑在 worker，主執行緒空閒故計數不凍結）；≥60s 升級為可取消軟提示。
-// 軟提示不殺 worker（正常長求解仍在跑）；成功/取消/載入失敗三路徑均 stopSolveClock（別讓計數殘留）。
-function startSolveClock() {
-  stopSolveClock();
-  const t0 = Date.now();
-  const paint = () => {
-    if ($('cancel-btn').hidden) { stopSolveClock(); return; }  // 已結束的保險
-    const secs = Math.floor((Date.now() - t0) / 1000);
-    const overtime = secs >= 60 ? ' — 仍在計算中，可繼續等待或按「取消」' : '';
-    $('solve-status').innerHTML = `<span class="codex-spinner"></span> 求解中… 已耗時 ${secs} 秒（高難度配方可能數十秒）${overtime}`;
-  };
-  paint();
-  solveClock = setInterval(paint, 1000);
-}
-function stopSolveClock() { if (solveClock) { clearInterval(solveClock); solveClock = null; } }
-// SolverException（raphael）3 變體 + serde 反序列化錯誤 → 繁中人話 + 下一步
-function solveErrorMessage(raw) {
-  const s = String(raw || '');
-  if (s === 'NoSolution') return '以目前數值無法完成此配方 — 試著提升作業精度／加工精度／等級、開啟食物藥水或專家之證，或降低目標品質後再求解。';
-  if (s === 'Interrupted') return '求解被中斷，請再試一次。';
-  if (/internal error|bug report/i.test(s)) return '求解器內部錯誤，請稍後再試（技術細節已記錄於主控台）。';
-  if (/invalid value|expected u\d|integer/i.test(s)) return '角色數值超出合理範圍 — 請確認作業精度／加工精度／CP／等級的數字是否正確。';
-  return '求解失敗，請調整設定後再試一次。';
-}
-function onWorkerMsg(e) {
-  stopSolveClock();
-  setSolving(false);
-  if (!e.data.ok) {
-    console.warn('[crafter] 求解失敗:', e.data.error);   // 技術原文進主控台，不丟給玩家
-    toast(solveErrorMessage(e.data.error), 'error');
-    return;
-  }
-  try {
-    globalThis.CraftRender.render(e.data.result, true);  // 結果渲染已抽到 app-render.js
-  } catch (err) {                             // WASM Output 契約漂移等 → 有可見降級而非空白
-    console.error('[crafter] 結果渲染失敗:', err);
-    toast('結果解析失敗，請重新求解', 'error');
-    $('results').hidden = true;
-    $('results-placeholder').hidden = false;
-    $('results-placeholder').innerHTML = PH_HTML;
-  }
-}
-function cancelSolve() { stopSolveClock(); newWorker(); setSolving(false); toast('已取消求解', 'warn'); $('solve-btn').focus(); } // 取消後移焦回求解鈕（鍵盤流暢）
-function setSolving(on) {
-  $('solve-btn').hidden = on;
-  $('cancel-btn').hidden = !on;
-  if (on) {
-    $('results').hidden = true;
-    $('results-placeholder').hidden = false;
-    $('results-placeholder').innerHTML = '<span class="codex-spinner"></span> 求解中…';
-  } else if (!$('results') || $('results').hidden) {
-    $('results-placeholder').innerHTML = PH_HTML; // 取消/錯誤結束 → 還原提示（成功時 render 會隱藏）
-  }
-  $('solve-status').innerHTML = on ? '<span class="codex-spinner"></span> 求解中…（高難度配方可能數十秒）' : '';
-}
+// ---------- 求解（已抽到 app-solve.js：globalThis.CraftSolve；worker/solveClock 為該層私有狀態）----------
+// invalidateResults 留此：被 gear/原料/求解輸入等多處外部呼叫，且求解編排層內部不呼叫它。
 // 已顯示的求解結果在任一求解輸入變更後即過期 → 隱藏舊結果避免複製到與當前設定不符的巨集（白做一爐）
 function invalidateResults() {
   if (!$('results') || $('results').hidden) return; // 尚無結果就不動
@@ -507,7 +430,11 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
 // ---------- init ----------
 (async function () {
   try {
-  newWorker(); // 預熱 WASM — 提前於 loadData，讓 WASM download 與資料 fetch 並行（縮短最壞情況首解等待）
+  // 求解編排（app-solve.js classic script）：注入依賴後預熱 WASM（提前於 loadData，讓 download 與 fetch 並行）
+  if (globalThis.CraftSolve) {
+    globalThis.CraftSolve.init({ $, toast, PH_HTML, getSelected: () => selected, gearFor, computeSettings, switchTab });
+    globalThis.CraftSolve.newWorker();
+  }
   await loadData();
   loadGear();
   renderChips();
@@ -536,8 +463,8 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   $('recipe-search').addEventListener('input', debouncedRender);
   $('level-filter').addEventListener('change', renderTable);
   $('rlv-filter').addEventListener('input', debouncedRender);
-  $('solve-btn').addEventListener('click', doSolve);
-  $('cancel-btn').addEventListener('click', cancelSolve);
+  $('solve-btn').addEventListener('click', () => globalThis.CraftSolve.doSolve());
+  $('cancel-btn').addEventListener('click', () => globalThis.CraftSolve.cancelSolve());
   $('change-recipe').addEventListener('click', showPicker);
   const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats', true);
   document.querySelectorAll('#main-tabs .codex-tab').forEach(t => {
