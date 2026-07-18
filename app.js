@@ -156,24 +156,26 @@ function renderTable() {
 
 function selectRecipe(id, fromList) {
   const recipe = RECIPES.find(r => r.id === id);
-  if (!recipe) return;
+  if (!recipe) return false;
   const rlv = RLV[String(recipe.rlv)];
-  if (!rlv) { toast('此配方缺 recipe level 資料', 'error'); return; }
+  if (!rlv) { toast('此配方缺 recipe level 資料', 'error'); return false; }   // 回傳成功與否 → 呼叫端（goSolve）失敗時不強制切頁
   selected = { recipe, rlv };
   openedFromList = !!fromList;   // 從製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入為 false
-  // 收合配方表，騰出空間；麵包屑導覽（真 nav 語意：配方瀏覽 › 當前配方 aria-current）
+  // 收合配方表；返回控件＝右上「← 返回配方列表」鈕（唯一可點）。此處只放誠實的「當前位置」狀態，不做「配方瀏覽›」假 nav 麵包屑（死 span 誤導可點）。
   $('picker').hidden = true;
   $('change-recipe').hidden = false;
   $('selected-bar').hidden = false;
-  $('selected-bar').innerHTML = `<span class="sb-crumb">配方瀏覽</span><span class="sb-sep" aria-hidden="true">›</span><b class="sb-cur" aria-current="page">${esc(recipe.item_name)}</b><span class="codex-small">${esc(recipe.job)} · Lv ${rlv.class_job_level} · rlv ${recipe.rlv}</span>`;
+  $('selected-bar').innerHTML = `目前配方：<b class="sb-cur">${esc(recipe.item_name)}</b> <span class="codex-small">${esc(recipe.job)} · Lv ${rlv.class_job_level} · rlv ${recipe.rlv}</span>`;
   $('work').hidden = false;
   $('results').hidden = true;
   $('results-placeholder').hidden = false;
   $('results-placeholder').innerHTML = PH_HTML;
   refreshSelectedGear();
   $('work').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  return true;
 }
 function showPicker() {
+  openedFromList = false;   // 返回瀏覽即結束「從清單進入」情境 → 下次選配方不殘留「← 回製造清單」
   $('picker').hidden = false;
   $('change-recipe').hidden = true;
   $('selected-bar').hidden = true;
@@ -219,9 +221,10 @@ function refreshSelectedGear() {
       </div>
     </div>
     <div class="ri-gear">${note}</div>`;
-  const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats'); };
+  const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats', true); };
   const ab = $('add-to-list'); if (ab) ab.onclick = () => { if (globalThis.CraftList) globalThis.CraftList.add(recipe.id); };
-  const bl = $('back-to-list'); if (bl) bl.onclick = () => switchTab('list');
+  // 回清單即結束「從清單進入」情境：清 flag + 收鈕（防之後切回 solve 殘留幽靈導覽）+ 移焦到 list tab
+  const bl = $('back-to-list'); if (bl) bl.onclick = () => { openedFromList = false; bl.hidden = true; switchTab('list', true); };
   $('opt-target').value = ''; $('opt-target').max = maxQ; $('opt-target').placeholder = '滿(' + maxQ + ')';
   $('opt-target').disabled = $('solve-mode').value === 'nq'; // NQ 模式目標品質欄停用（與 solve-mode 監聽一致）
   renderIngredients(recipe, maxQ);
@@ -244,10 +247,8 @@ function renderIngredients(recipe, maxQ) {
     const it = ITEMS[String(iid)] || {};
     const name = it.name || ('#' + iid);
     const ico = it.icon ? `<img class="ing-ico" src="${iconUrl(it.icon)}" alt="" loading="lazy">` : '';
-    // 素材名掛 marketboard 查價/來源深連結（DRY mbItem；晶體無交易意義故不連）
-    const nameHtml = isCrystal(iid)
-      ? `<span class="ing-name">${esc(name)}</span>`
-      : `<a class="ing-name ing-name--link" href="${mbItem(iid)}" target="ffxiv-marketboard" title="到市場板查「${esc(name)}」價格與來源（共用同一分頁）">${esc(name)}</a>`;
+    // 素材名掛 marketboard 查價/來源深連結（DRY mbItem）；晶體/水晶/晶簇亦可上市場板交易，故一律連（isCrystal 僅用於排序殿後）
+    const nameHtml = `<a class="ing-name ing-name--link" href="${mbItem(iid)}" target="ffxiv-marketboard" title="到市場板查「${esc(name)}」價格與來源（共用同一分頁）">${esc(name)}</a>`;
     const ctl = hqable(iid)
       ? `<span class="ing-hqctl">HQ <input class="ing-hq-in codex-input" data-iid="${iid}" data-amt="${amount}" type="number" min="0" max="${amount}" value="0" inputmode="numeric">/${amount}</span>`
       : '<span class="ing-na codex-small">不可 HQ</span>';
@@ -540,9 +541,11 @@ function renderMacro(steps) {
 }
 
 // ---------- 分頁 ----------
-function switchTab(name) {
+function switchTab(name, moveFocus) {
+  let activeTab = null;
   document.querySelectorAll('.codex-tab').forEach(t => {
     const on = t.dataset.tab === name;
+    if (on) activeTab = t;
     t.classList.toggle('is-active', on);
     t.setAttribute('aria-selected', on ? 'true' : 'false'); // 同步分頁選中狀態給螢幕閱讀器
     t.tabIndex = on ? 0 : -1;                                // roving tabindex（tablist 標準：只有選中 tab 進 Tab 序）
@@ -550,6 +553,7 @@ function switchTab(name) {
   $('tab-solve').hidden = name !== 'solve';
   $('tab-stats').hidden = name !== 'stats';
   $('tab-list').hidden = name !== 'list';
+  if (moveFocus && activeTab) activeTab.focus(); // 程式化切頁移焦到選中 tab，避免焦點卡在被隱藏的按鈕（鍵盤/SR a11y）
 }
 // tablist 鍵盤導覽（ARIA APG 水平：←→ 切換 + Home/End；焦點隨切換移動）
 function onTabKey(e) {
@@ -626,15 +630,15 @@ function fallbackCopy(text) {
   $('solve-btn').addEventListener('click', doSolve);
   $('cancel-btn').addEventListener('click', cancelSolve);
   $('change-recipe').addEventListener('click', showPicker);
-  const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats');
+  const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats', true);
   document.querySelectorAll('.codex-tab').forEach(t => {
     t.onclick = () => switchTab(t.dataset.tab);
     t.onkeydown = onTabKey;
     t.tabIndex = t.classList.contains('is-active') ? 0 : -1; // 初始 roving tabindex（tablist a11y）
   });
   // 製造清單（crafting-list.js classic script，先於本 module 執行）：注入依賴後接手 #craft-list 分頁
-  if (globalThis.CraftList) globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, toast, mbItem, mbCraft,
-    goSolve: (id) => { selectRecipe(id, true); switchTab('solve'); } }); // 前往求解：帶 fromList 旗標 → 詳情顯示「← 回製造清單」
+  if (globalThis.CraftList) globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, showPicker, toast, mbItem, mbCraft,
+    goSolve: (id) => { if (selectRecipe(id, true)) switchTab('solve', true); } }); // 前往求解：selectRecipe 失敗（缺 rlv）就不切頁；成功才切+移焦，詳情顯示「← 回製造清單」
   } catch (e) {
     console.error('[crafter] 初始化失敗:', e);
     $('recipe-table').innerHTML = ''; // 清掉首載「載入中…」佔位，避免與失敗橫幅並存殘留轉圈

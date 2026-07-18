@@ -4,9 +4,10 @@
 /* 圖示一律不可拖曳：<img> 預設可拖曳，點技能時微滑會觸發瀏覽器原生拖曳殘影（半透明圖示浮在游標旁，曾被誤判為版面 bug）。 */
 .codex-container img { -webkit-user-drag: none; user-select: none; }
 
-/* [hidden] 守衛：.codex-btn 的 display:inline-flex 蓋過 UA [hidden]{display:none} → 帶 hidden 屬性的按鈕（change-recipe / cancel-btn）仍會顯示。
-   比照設計系統既有 .codex-modal-overlay[hidden] / .codex-help-pop[hidden] 守衛補上。★ portal header.css 宜全域補 .codex-btn[hidden]（同類 badge 已有此鐵則）。 */
-.codex-btn[hidden] { display: none !important; }
+/* [hidden] 守衛（interim）：.codex-btn 的 display:inline-flex 蓋過 UA [hidden]{display:none} → 帶 hidden 的按鈕（change-recipe / cancel-btn）仍會顯示。
+   `.codex-btn[hidden]`(0,2,0) specificity 已高於 `.codex-btn`(0,1,0)，故不需 !important（不會永久壓過 portal 未來規則）。
+   比照設計系統既有 .codex-modal-overlay[hidden] / .codex-help-pop[hidden] 守衛。★TODO：portal header.css 宜全域補 .codex-btn[hidden]（同 badge 既有鐵則），屆時刪本地。 */
+.codex-btn[hidden] { display: none; }
 
 body {
   font-family: var(--font-sans, "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif);
@@ -68,11 +69,10 @@ body {
 .rt-ico { width: 24px; height: 24px; flex: none; }
 .rt-job { white-space: nowrap; }
 .rt-jico { width: 18px; height: 18px; vertical-align: middle; margin-right: 2px; }
-/* 麵包屑導覽（配方瀏覽 › 當前配方）；返回控件＝右上「← 返回配方列表」鈕（唯一可點，避免重複控件）*/
+/* 當前位置狀態列（目前配方：X）；返回控件＝右上「← 返回配方列表」鈕。不做「配方瀏覽›」假 nav 麵包屑（死 span 會誤導可點）。*/
 .selected-bar { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-1, 4px) var(--space-2, 8px);
   font-size: var(--fs-body); margin-top: var(--space-2, 8px); }
-.selected-bar[hidden] { display: none; }   /* display:flex 蓋 UA [hidden] → 補守衛（showPicker 靠 hidden 收合麵包屑）*/
-.sb-sep { color: var(--color-text-muted); }
+.selected-bar[hidden] { display: none; }   /* display:flex 蓋 UA [hidden] → 補守衛（showPicker 靠 hidden 收合）*/
 .sb-cur { color: var(--accent); font-weight: var(--fw-bold, 700); }
 
 /* ---- 設定/結果 兩欄 ---- */

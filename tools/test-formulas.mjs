@@ -44,7 +44,7 @@ const sandbox = {
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(
-  APP_SRC + '\n;globalThis.__t = { computeSettings, hqPercent, recipeMaxes, effectiveStats, esc };',
+  APP_SRC + '\n;globalThis.__t = { computeSettings, hqPercent, recipeMaxes, effectiveStats, esc, mbItem, mbCraft };',
   sandbox, { filename: 'crafter-app.js' });
 const T = sandbox.__t;
 
@@ -184,6 +184,14 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T7 aggregateMats qty>999 → clamp 999', J(agg([{ id: 200, qty: 5000 }], ING)), J([[5, 999], [9, 3996]]));
   eq('T7 aggregateMats 未知配方 id 略過', J(agg([{ id: 999, qty: 3 }], ING)), J([]));
   eq('T7 aggregateMats 空清單 → []', J(agg([], ING)), J([]));
+}
+
+// ===== T8：marketboard 深連結 helper URL 契約（來源整合；痛點2 對抗審回歸）=====
+{
+  eq('T8 mbItem → #/item/{iid}', T.mbItem(5468), 'http://localhost:8774/ffxiv-tw-marketboard/#/item/5468');
+  eq('T8 mbCraft → #/craft/{itemId}', T.mbCraft(12345), 'http://localhost:8774/ffxiv-tw-marketboard/#/craft/12345');
+  // item(查價) 與 craft(BOM) route 前綴不得混淆（item_id≠recipe id 的契約，對抗審 codex/grok 共同點）
+  check('T8 mbItem/mbCraft route 前綴分明', /#\/item\/1$/.test(T.mbItem(1)) && /#\/craft\/1$/.test(T.mbCraft(1)) && T.mbItem(1) !== T.mbCraft(1));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

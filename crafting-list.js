@@ -62,7 +62,7 @@
         <button class="cl-empty-cta codex-btn codex-btn--ghost" type="button">前往配方瀏覽 →</button>
       </div>`;
       const cta = box.querySelector('.cl-empty-cta');
-      if (cta) cta.onclick = () => deps.switchTab('solve');
+      if (cta) cta.onclick = () => { deps.showPicker(); deps.switchTab('solve', true); }; // 先 showPicker 確保落在瀏覽表（非殘留的配方詳情）+ 移焦
       return;
     }
     const totalRuns = list.reduce((s, e) => s + e.qty, 0);   // 總製作次數（≠配方種數；語意分清）
@@ -92,10 +92,8 @@
     const ordered = [...mats.filter((m) => !m.crystal), ...mats.filter((m) => m.crystal)]; // 晶體殿後，對齊遊戲 BOM 呈現
     const matRows = ordered.map((m) => {
       const ico = m.icon ? `<img class="cl-mat-ico" src="${iconUrl(m.icon)}" alt="" loading="lazy">` : '<span class="cl-mat-ico" aria-hidden="true"></span>';
-      // 素材名 → marketboard #/item（查價/來源）；晶體無交易意義故不連
-      const nameHtml = m.crystal
-        ? `<span class="cl-mat-name">${esc(m.name)}</span>`
-        : `<a class="cl-mat-name cl-mat-name--link" href="${deps.mbItem(m.iid)}" target="ffxiv-marketboard" title="到市場板查「${esc(m.name)}」價格與來源（共用同一分頁）">${esc(m.name)}</a>`;
+      // 素材名 → marketboard #/item（查價/來源）；晶體/水晶/晶簇亦可上市場板交易，故一律連（m.crystal 僅用於排序殿後）
+      const nameHtml = `<a class="cl-mat-name cl-mat-name--link" href="${deps.mbItem(m.iid)}" target="ffxiv-marketboard" title="到市場板查「${esc(m.name)}」價格與來源（共用同一分頁）">${esc(m.name)}</a>`;
       return `<div class="cl-mat">${ico}${nameHtml}<span class="cl-mat-amt">×${m.total}</span></div>`;
     }).join('');
     box.innerHTML = `<div class="cl-summary codex-small">清單 <b>${list.length}</b> 種配方 · 總製作 <b>${totalRuns}</b> 次</div>

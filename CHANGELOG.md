@@ -2,6 +2,21 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-19 — 頁面整合 UX 改造（三頁等寬／快速加清單／marketboard 來源整合／導覽／codex 遷移）
+
+依 Owner 反映「頁面整合很弱」五痛點（grok+codex 諮詢 → 實作 → 雙審 triage）。旁路 cycle `2026-07-19-page-integration`。
+
+- **三分頁等寬**（痛點5）：角色數值/製造清單原各 max-width 720/880 置中、求解滿版 → 切頁內容寬度跳動。改三頁一律吃滿 `.codex-container`，內表以 `margin-inline:auto` 置中。**為什麼**：切頁 panel 邊界不跳＝整合感基礎。
+- **瀏覽表快速加清單**（痛點4a）：配方表每列加 `＋` ghost icon 鈕，`stopPropagation` 只加清單不進詳情；row keydown 加 `e.target===tr` 守衛防 button 冒泡誤選。
+- **返回導覽**（痛點4b）：選配方後右上「← 返回配方列表」鈕（唯一返回控件）＋「目前配方：X」誠實狀態列；showPicker 還焦。（**雙審修正**：原做「配方瀏覽›」假 nav 麵包屑、死 span 誤導可點 → 改誠實狀態文字。）
+- **清單↔求解**（痛點3）：清單列「前往求解 →」明示鈕（selectRecipe 回傳成功才切頁＋移焦，**雙審修正**：原失敗仍切頁）；從清單進入才顯示「← 回製造清單」，回清單/返回瀏覽即清 `openedFromList` flag＋收鈕（**雙審嚴重修正**：原 flag 不清 → 切回 solve 殘留幽靈導覽）。
+- **marketboard 來源整合**（痛點2）：DRY helper `mbItem`/`mbCraft`（item_id≠recipe id 分清）；清單素材/求解原料→`#/item`（查價・來源）、配方→`#/craft`（BOM・利潤）；晶體亦可上市場板交易故一律連（**雙審修正**：原排除晶體 → 文案/行為不一致）。named target 共用分頁、沿用不加 noopener 慣例（全 repo 一致性決策待拍板，見 B-006）。
+- **美觀整合**（痛點1）：分頁→`.codex-tabs`、職業篩選→`.codex-chip`(aria-pressed)、空狀態→`.codex-empty`+CTA、詳情動作列統一 ghost 鈕群、清單摘要（種數/總次數語意分清）、首次提示加「前往角色數值」CTA。
+- **順修既有 bug**：① `.codex-btn[hidden]` 守衛（`display:inline-flex` 蓋 UA `[hidden]` → change-recipe/cancel-btn 誤顯；`[hidden]` specificity 已足、不用 !important；portal 宜全域補，見 B-006）② 配方表 `.rt-name` flex 移到內層 `.rt-cellflex`（勿對 `<td>` 設 flex → 名稱欄 border-bottom 與他欄不對齊，Owner 回報的老 bug）。
+- **a11y**：tablist ←→/Home/End + roving tabindex + 程式化切頁移焦；icon 鈕皆 aria-label。
+- **基線**：VERIFY **四閘全綠**（node --check／test-formulas **34→37**：+T8 mbItem/mbCraft URL 契約 golden／check-actions 35=35／`cargo test` 2 passed）＋瀏覽器全流程 smoke（三頁等寬、快速加入、導覽往返、清單→求解→回清單 flag 生命週期、素材→marketboard `#/item` 端到端）零 console error。雙審報告＝`.adversarial-reviews/e256d015-{codex,grok}.md`。
+- **未竟（升級 Owner）**：app.js 645 行破 500（B-002 拆分重浮檯面）；marketboard 連結 noopener 全 repo 慣例 + portal `.codex-btn[hidden]` 全域守衛（B-006）。巢狀互動 a11y（可聚焦列內含按鈕，`e.target===tr` 守衛保鍵盤正確）與配方表 per-row listener（CAP 120，可改事件委派）＝既有模式、記錄不本輪大改。
+
 ## 2026-07-16 — 求解巨集一鍵存進巨集庫（portal deeplinks cycle 波次 2 出端）
 
 - 巨集區加「📥 存進巨集庫 ↗」：全部分段組 `[{title,lines}]` → base64url（UTF-8 先 TextEncoder，非裸 btoa）→ macro-builder `?import=`（named target 共用分頁、不加 noopener——生態互跳鐵則）。title＝「物品名 段X/Y」20 字元 Array.from 截斷；最終 URL >8KB 不出鈕（防呆，實務 ~1KB）。**為什麼**：求解完的巨集本來就要進遊戲巨集庫，過去要逐段複製貼上；收端有確認 modal、絕不自動寫入。**基線**：`test-formulas.mjs` 34 passed 持平；端到端實測（含 Owner 真實 UI 路徑＋壞 payload／取消／確認三態）過。傘狀 spec：portal `docs/specs/2026-07-16-cross-tool-deeplinks-design.md` 配對 2。
