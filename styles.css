@@ -4,10 +4,10 @@
 /* 圖示一律不可拖曳：<img> 預設可拖曳，點技能時微滑會觸發瀏覽器原生拖曳殘影（半透明圖示浮在游標旁，曾被誤判為版面 bug）。 */
 .codex-container img { -webkit-user-drag: none; user-select: none; }
 
-/* [hidden] 守衛（interim）：.codex-btn 的 display:inline-flex 蓋過 UA [hidden]{display:none} → 帶 hidden 的按鈕（change-recipe / cancel-btn）仍會顯示。
-   `.codex-btn[hidden]`(0,2,0) specificity 已高於 `.codex-btn`(0,1,0)，故不需 !important（不會永久壓過 portal 未來規則）。
-   比照設計系統既有 .codex-modal-overlay[hidden] / .codex-help-pop[hidden] 守衛。★TODO：portal header.css 宜全域補 .codex-btn[hidden]（同 badge 既有鐵則），屆時刪本地。 */
-.codex-btn[hidden] { display: none; }
+/* [hidden] 守衛：.codex-btn 的 display:inline-flex 蓋過 UA [hidden]{display:none} → 帶 hidden 的按鈕仍顯示。
+   收窄到本工具具體按鈕 ID（**不覆寫共用 .codex-btn 根 selector**，避免與 portal 未來規則衝突／全域改所有 CDN 按鈕行為）。
+   ★TODO：portal header.css 宜全域補 .codex-btn[hidden]（同 badge 既有鐵則）＝BACKLOG B-006，屆時刪本地。 */
+#change-recipe[hidden], #cancel-btn[hidden], #solve-btn[hidden], #back-to-list[hidden] { display: none; }
 
 body {
   font-family: var(--font-sans, "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif);
@@ -76,12 +76,14 @@ body {
 .sb-cur { color: var(--accent); font-weight: var(--fw-bold, 700); }
 
 /* ---- 設定/結果 兩欄 ---- */
-/* 左右兩欄：設定（左）＋ 結果/巨集（右） */
-.work { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4, 16px); align-items: start; }
+/* 左右兩欄：設定（左）＋ 結果/巨集（右）。align-items:stretch → 兩欄等高（消「左高右矮」長短混亂）*/
+.work { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4, 16px); align-items: stretch; }
 .work[hidden] { display: none; }  /* grid 會蓋掉 hidden 屬性，須補回 */
 .work .panel { margin-bottom: 0; }
-@media (max-width: 760px) { .work { grid-template-columns: 1fr; } }
-.results-ph { padding: var(--space-6, 32px) var(--space-3, 12px); text-align: center; color: var(--color-text-muted); line-height: var(--lh-normal, 1.5); }
+@media (max-width: 760px) { .work { grid-template-columns: 1fr; } }  /* 窄屏單欄堆疊，等高失效無妨 */
+/* 結果欄：flex 直欄 → 未求解時 placeholder 於等高面板內垂直置中（不再孤懸左上），求解後結果自然頂對齊 */
+#results-col { display: flex; flex-direction: column; }
+.results-ph { margin: auto; padding: var(--space-6, 32px) var(--space-3, 12px); text-align: center; color: var(--color-text-muted); line-height: var(--lh-normal, 1.5); }
 
 .recipe-info { display: flex; align-items: center; gap: var(--space-3, 12px); margin-bottom: var(--space-3, 12px);
   flex-wrap: wrap; }
@@ -232,7 +234,8 @@ body {
 .cl-qty-in { width: 68px; text-align: center; }
 .cl-yield { white-space: nowrap; }
 .cl-del { flex: 0 0 auto; }
-.cl-mats-title { margin-top: var(--space-4, 16px); }
+.cl-mats-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2, 8px); flex-wrap: wrap; margin-top: var(--space-4, 16px); }
+.cl-mats-title { margin: 0; }
 .cl-mats-title .codex-small { font-weight: var(--fw-regular, 400); }  /* 提示註記用字級分層、不降對比（灰字鐵則）*/
 .cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-1, 4px) var(--space-4, 16px); margin-top: var(--space-2, 8px); }

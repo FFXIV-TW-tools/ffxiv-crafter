@@ -43,11 +43,11 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 
 ## ✅ VERIFY（改動後跑，未過不算完成）
 
-> 機械閘基線 **4 項全綠**（只准升不准降；2026-07-11 R2 加 test-formulas.mjs → 29 passed；2026-07-16 加 T7 製造清單彙總 → 34 passed）。
+> 機械閘基線 **4 項全綠**（只准升不准降；2026-07-11 R2 加 test-formulas.mjs → 29 passed；2026-07-16 加 T7 製造清單彙總 → 34 passed；2026-07-19 加 T8 marketboard URL 契約 + T9 selectRecipe 回傳 → 40 passed）。
 
 ```bash
 node --check app.js crafting-list.js worker.js   # JS 語法
-node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總（34 passed）
+node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳（40 passed）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一（2 passed）
 ```

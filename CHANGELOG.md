@@ -2,6 +2,19 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-19 — 整合改造第二輪雙審 + 增強（複製清單／等高欄／scope 修正）
+
+第二輪 codex+grok 雙審（span `744449ed`，報告 `.adversarial-reviews/744449ed-{codex,grok}.md`）triage ＋ Owner「優化與加強／求解器整齊美化」追加：
+- 🔴 **openedFromList 頂部 tab 洩漏**（雙審，上輪未補完）：原只在返回鈕/showPicker 清 flag、**點頂部「製造清單」tab 沒清** → 集中到 `switchTab` 離開 solve 即清 flag + 收返回鈕（涵蓋所有出口）。
+- 🔴 **`.codex-tab` 全域選擇器劫持**（codex 高）：switchTab/init 用 `document.querySelectorAll('.codex-tab')` 會綁到 portal 共用分頁元件 → tablist 加 `#main-tabs` 容器 id、所有查詢 scope 化。
+- **`.codex-btn[hidden]` 收窄**：由覆寫共用 `.codex-btn` 改為本工具具體按鈕 ID（`#change-recipe/#cancel-btn/#solve-btn/#back-to-list[hidden]`），不碰共用根 selector（codex 阻擋）。
+- **配方表事件委派**：取代每列 2N listener（篩選重繪不重綁、行動省 GC）；＋ 缺 CraftList 補 error toast（不靜默吞）。
+- **mbItem/mbCraft 型別收斂**：非正整數 → `'#'`（禁 `#/item/undefined`）；T8 改測 route 契約（endsWith，env 無關）+ 壞輸入，加 T9 selectRecipe 回傳契約；**基線 37→40**。
+- **增強：複製素材清單**（Owner「加強」）：清單「📋 複製清單」→ 彙總素材轉純文字（每行「名稱 ×數量」）貼遊戲/記事本採買；`copyText` 泛化成功訊息與巨集複製共用。
+- **UI 整齊**（Owner「求解器整齊美化／長短高度不要混亂」）：求解兩欄 `align-items:stretch` 等高（消「左高右矮」長短混亂）、未求解時 placeholder 於等高結果欄垂直置中。
+- **升級 Owner 未自改**：app.js 645 行（B-002 狀態改「待 Owner 重新拍板」）；noopener 全 repo 慣例 + portal `.codex-btn[hidden]` 全域守衛（B-006）。巢狀 a11y row+button：委派後仍記錄（設計系統無「可點列」primitive；自製 name-button 犯上輪點的另一問題，取捨標記）。
+- **基線**：四閘全綠（test-formulas **40** / cargo test 2 未動 / check-actions 35=35 / node --check）+ 瀏覽器複驗（頂部 tab 洩漏、等高欄、複製清單、事件委派選配方/加入）零 console error。
+
 ## 2026-07-19 — 頁面整合 UX 改造（三頁等寬／快速加清單／marketboard 來源整合／導覽／codex 遷移）
 
 依 Owner 反映「頁面整合很弱」五痛點（grok+codex 諮詢 → 實作 → 雙審 triage）。旁路 cycle `2026-07-19-page-integration`。

@@ -47,7 +47,7 @@
   const isCrystal = (iid, name) => iid < 20 || /晶簇|水晶|碎晶/.test(name || '');
 
   function renderTabCount() {
-    const tab = document.querySelector('.codex-tab[data-tab="list"]');
+    const tab = document.querySelector('#main-tabs .codex-tab[data-tab="list"]');
     if (tab) tab.textContent = `📋 製造清單${list.length ? `（${list.length}）` : ''}`;
   }
 
@@ -96,10 +96,19 @@
       const nameHtml = `<a class="cl-mat-name cl-mat-name--link" href="${deps.mbItem(m.iid)}" target="ffxiv-marketboard" title="到市場板查「${esc(m.name)}」價格與來源（共用同一分頁）">${esc(m.name)}</a>`;
       return `<div class="cl-mat">${ico}${nameHtml}<span class="cl-mat-amt">×${m.total}</span></div>`;
     }).join('');
+    const matText = ordered.map((m) => `${m.name} ×${m.total}`).join('\n');   // 純文字採買清單（每行「名稱 ×數量」，貼遊戲/記事本）
+    const copyBtn = ordered.length
+      ? `<button class="cl-copy-mats codex-btn codex-btn--ghost" type="button" title="複製素材總需求為純文字（每行「名稱 ×數量」，可貼進遊戲或記事本）">📋 複製清單</button>`
+      : '';
     box.innerHTML = `<div class="cl-summary codex-small">清單 <b>${list.length}</b> 種配方 · 總製作 <b>${totalRuns}</b> 次</div>
       <div class="cl-rows">${rows}</div>
-      <h3 class="codex-h3 cl-mats-title">素材總需求 <span class="codex-small">（點素材名到市場板查價・來源）</span></h3>
+      <div class="cl-mats-head">
+        <h3 class="codex-h3 cl-mats-title">素材總需求 <span class="codex-small">（點素材名到市場板查價・來源）</span></h3>
+        ${copyBtn}
+      </div>
       <div class="cl-mats">${matRows || '<span class="codex-small">（無素材資料）</span>'}</div>`;
+    const cm = box.querySelector('.cl-copy-mats');
+    if (cm) cm.onclick = () => deps.copyText(matText, '✓ 已複製素材清單');
     box.querySelectorAll('.cl-row').forEach((row) => {
       const id = +row.dataset.id;
       row.querySelector('.cl-go').onclick = () => deps.goSolve(id);   // 前往求解（選定配方 + 切求解分頁 + 帶 fromList 旗標）

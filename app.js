@@ -10,9 +10,10 @@ function iconUrl(p) {
 const MARKETBOARD_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8774/ffxiv-tw-marketboard/'
   : 'https://ffxiv-tw-marketboard.pages.dev/';
-// marketboard 深連結 helper（DRY：base 一處；item_id≠recipe id 分清）。named target 共用分頁、刻意不加 rel=noopener＝生態內互跳慣例（見 renderMacro 註解），noopener 會斷 named context 重用。
-const mbItem = (iid) => `${MARKETBOARD_BASE}#/item/${iid}`;      // 查價 / 歷史 / 來源
-const mbCraft = (itemId) => `${MARKETBOARD_BASE}#/craft/${itemId}`; // BOM 樹 / 每材料價 / 利潤試算
+// marketboard 深連結 helper（DRY：base 一處；item_id≠recipe id 分清）。named target 共用分頁、刻意不加 rel=noopener＝生態內互跳慣例（見 renderMacro 註解；全 repo noopener 慣例待 Owner 拍板＝BACKLOG B-006）。
+const mbUrl = (route, id) => { const n = Number(id); return Number.isFinite(n) && n > 0 ? `${MARKETBOARD_BASE}#/${route}/${n}` : '#'; }; // 型別收斂+防壞連結（非正整數→'#'，禁 #/item/undefined）
+const mbItem = (iid) => mbUrl('item', iid);       // 查價 / 歷史 / 來源
+const mbCraft = (itemId) => mbUrl('craft', itemId); // BOM 樹 / 每材料價 / 利潤試算
 // 跨工具深連結：求解巨集帶到 macro-builder 匯入（?import= 收端契約見 external/_NEW-TOOL.md；波次 2）
 const MACRO_BUILDER_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8774/ffxiv-tw-macro-builder/'
@@ -142,16 +143,21 @@ function renderTable() {
       <tbody>${shown.map(r =>
         `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}${esc(r.name)}</span></td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td class="rt-act"><button type="button" class="codex-btn codex-btn--ghost codex-btn--icon rt-add" data-id="${r.id}" aria-label="將「${esc(r.name)}」加入製造清單" title="加入製造清單">＋</button></td></tr>`).join('')}</tbody>
     </table>` : '';
-  $('recipe-table').querySelectorAll('.rt-row').forEach(tr => {
-    const pick = () => selectRecipe(+tr.dataset.id);
-    tr.onclick = pick;
-    // Space/Enter 只在 row 本身聚焦時選配方；聚焦在 row 內的「＋」鈕時放行給它自己（e.target===tr 守衛，防 button keydown 冒泡誤選）
-    tr.onkeydown = (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); pick(); } };
-  });
-  $('recipe-table').querySelectorAll('.rt-add').forEach(btn => btn.onclick = (e) => {
-    e.stopPropagation();                     // 只加清單、不觸發整列 selectRecipe（不進詳情）
-    if (globalThis.CraftList) globalThis.CraftList.add(+btn.dataset.id);
-  });
+  // 事件委派（單一 handler，取代每列 2N listener → 篩選/搜尋重繪不重綁、行動裝置省 GC）；handler 綁在持久的 #recipe-table 上，innerHTML 換內容不掉線
+  const table = $('recipe-table');
+  table.onclick = (e) => {
+    const add = e.target.closest('.rt-add');
+    if (add) {                               // ＋：只加清單、不進詳情
+      if (globalThis.CraftList) globalThis.CraftList.add(+add.dataset.id);
+      else toast('製造清單模組未載入，請重新整理頁面', 'error');  // 缺依賴不靜默吞（禁假成功）
+      return;
+    }
+    const row = e.target.closest('.rt-row');
+    if (row) selectRecipe(+row.dataset.id);
+  };
+  table.onkeydown = (e) => {                  // 列本身聚焦時 Enter/Space 選配方；＋ 是原生 button，其 Enter/Space 由瀏覽器觸發 click → 冒泡到上面 onclick（不重複）
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('rt-row')) { e.preventDefault(); selectRecipe(+e.target.dataset.id); }
+  };
 }
 
 function selectRecipe(id, fromList) {
@@ -223,8 +229,8 @@ function refreshSelectedGear() {
     <div class="ri-gear">${note}</div>`;
   const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats', true); };
   const ab = $('add-to-list'); if (ab) ab.onclick = () => { if (globalThis.CraftList) globalThis.CraftList.add(recipe.id); };
-  // 回清單即結束「從清單進入」情境：清 flag + 收鈕（防之後切回 solve 殘留幽靈導覽）+ 移焦到 list tab
-  const bl = $('back-to-list'); if (bl) bl.onclick = () => { openedFromList = false; bl.hidden = true; switchTab('list', true); };
+  // 回清單：switchTab('list') 已集中清 openedFromList + 收返回鈕（見 switchTab），此處只需切頁+移焦
+  const bl = $('back-to-list'); if (bl) bl.onclick = () => switchTab('list', true);
   $('opt-target').value = ''; $('opt-target').max = maxQ; $('opt-target').placeholder = '滿(' + maxQ + ')';
   $('opt-target').disabled = $('solve-mode').value === 'nq'; // NQ 模式目標品質欄停用（與 solve-mode 監聽一致）
   renderIngredients(recipe, maxQ);
@@ -537,13 +543,15 @@ function renderMacro(steps) {
          <button class="codex-btn codex-btn--ghost copy-btn" data-i="${i}">複製</button></div>
        <textarea class="macro-text codex-textarea" rows="${m.length}" readonly>${esc(m.join('\n'))}</textarea>
      </div>`).join('');
-  $('macro').querySelectorAll('.copy-btn').forEach(b => b.onclick = () => copyText(macros[+b.dataset.i].join('\n')));
+  $('macro').querySelectorAll('.copy-btn').forEach(b => b.onclick = () => copyText(macros[+b.dataset.i].join('\n'), '✓ 已複製巨集'));
 }
 
 // ---------- 分頁 ----------
 function switchTab(name, moveFocus) {
+  // 離開求解分頁即結束「從清單進入」情境 → 集中清 openedFromList + 收起殘留返回鈕（涵蓋所有出口：頂部 tab / 返回鈕 / 回清單鈕，修頂部 tab 洩漏）
+  if (name !== 'solve') { openedFromList = false; const b = $('back-to-list'); if (b) b.hidden = true; }
   let activeTab = null;
-  document.querySelectorAll('.codex-tab').forEach(t => {
+  document.querySelectorAll('#main-tabs .codex-tab').forEach(t => {  // scope 到本工具 tablist，勿劫持 portal 共用 .codex-tab（header/settings 若用同 class）
     const on = t.dataset.tab === name;
     if (on) activeTab = t;
     t.classList.toggle('is-active', on);
@@ -558,7 +566,7 @@ function switchTab(name, moveFocus) {
 // tablist 鍵盤導覽（ARIA APG 水平：←→ 切換 + Home/End；焦點隨切換移動）
 function onTabKey(e) {
   const dir = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
-  const tabs = [...document.querySelectorAll('.codex-tab')];
+  const tabs = [...document.querySelectorAll('#main-tabs .codex-tab')];
   const i = tabs.indexOf(e.target);
   if (i < 0) return;
   let j;
@@ -581,18 +589,18 @@ function toast(msg, v) {
 }
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 // 複製：優先 async clipboard；行動 webview / 非安全脈絡（http、file://）無 navigator.clipboard → execCommand 降級
-function copyText(text) {
-  if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(text).then(() => toast('✓ 已複製巨集', 'ok'), () => fallbackCopy(text)); return; }
-  fallbackCopy(text);
+function copyText(text, okMsg = '✓ 已複製') {   // okMsg 泛化：巨集/素材清單共用同一 clipboard fallback（DRY）
+  if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(text).then(() => toast(okMsg, 'ok'), () => fallbackCopy(text, okMsg)); return; }
+  fallbackCopy(text, okMsg);
 }
-function fallbackCopy(text) {
+function fallbackCopy(text, okMsg = '✓ 已複製') {
   const ta = document.createElement('textarea');
   ta.value = text; ta.style.position = 'fixed'; ta.style.top = '-9999px'; ta.setAttribute('readonly', '');
   document.body.appendChild(ta); ta.select();
   let ok = false;
   try { ok = document.execCommand('copy'); } catch (e) { console.warn('[crafter] execCommand copy 失敗:', e); }
   document.body.removeChild(ta);
-  toast(ok ? '✓ 已複製巨集' : '複製失敗，請長按巨集文字手動複製', ok ? 'ok' : 'error');
+  toast(ok ? okMsg : '複製失敗，請長按文字手動複製', ok ? 'ok' : 'error');
 }
 
 // ---------- init ----------
@@ -631,13 +639,13 @@ function fallbackCopy(text) {
   $('cancel-btn').addEventListener('click', cancelSolve);
   $('change-recipe').addEventListener('click', showPicker);
   const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats', true);
-  document.querySelectorAll('.codex-tab').forEach(t => {
+  document.querySelectorAll('#main-tabs .codex-tab').forEach(t => {
     t.onclick = () => switchTab(t.dataset.tab);
     t.onkeydown = onTabKey;
     t.tabIndex = t.classList.contains('is-active') ? 0 : -1; // 初始 roving tabindex（tablist a11y）
   });
   // 製造清單（crafting-list.js classic script，先於本 module 執行）：注入依賴後接手 #craft-list 分頁
-  if (globalThis.CraftList) globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, showPicker, toast, mbItem, mbCraft,
+  if (globalThis.CraftList) globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, showPicker, toast, copyText, mbItem, mbCraft,
     goSolve: (id) => { if (selectRecipe(id, true)) switchTab('solve', true); } }); // 前往求解：selectRecipe 失敗（缺 rlv）就不切頁；成功才切+移焦，詳情顯示「← 回製造清單」
   } catch (e) {
     console.error('[crafter] 初始化失敗:', e);

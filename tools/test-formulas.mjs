@@ -44,7 +44,7 @@ const sandbox = {
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(
-  APP_SRC + '\n;globalThis.__t = { computeSettings, hqPercent, recipeMaxes, effectiveStats, esc, mbItem, mbCraft };',
+  APP_SRC + '\n;globalThis.__t = { computeSettings, hqPercent, recipeMaxes, effectiveStats, esc, mbItem, mbCraft, selectRecipe };',
   sandbox, { filename: 'crafter-app.js' });
 const T = sandbox.__t;
 
@@ -186,12 +186,22 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T7 aggregateMats 空清單 → []', J(agg([], ING)), J([]));
 }
 
-// ===== T8：marketboard 深連結 helper URL 契約（來源整合；痛點2 對抗審回歸）=====
+// ===== T8：marketboard 深連結 helper 契約（來源整合；痛點2 對抗審回歸）=====
 {
-  eq('T8 mbItem → #/item/{iid}', T.mbItem(5468), 'http://localhost:8774/ffxiv-tw-marketboard/#/item/5468');
-  eq('T8 mbCraft → #/craft/{itemId}', T.mbCraft(12345), 'http://localhost:8774/ffxiv-tw-marketboard/#/craft/12345');
-  // item(查價) 與 craft(BOM) route 前綴不得混淆（item_id≠recipe id 的契約，對抗審 codex/grok 共同點）
-  check('T8 mbItem/mbCraft route 前綴分明', /#\/item\/1$/.test(T.mbItem(1)) && /#\/craft\/1$/.test(T.mbCraft(1)) && T.mbItem(1) !== T.mbCraft(1));
+  // route 契約用 endsWith/regex，不鎖死 base URL → dev(localhost)/prod(pages.dev) 環境無關（對抗審：勿寫死 localhost URL）
+  check('T8 mbItem → …#/item/{iid}', /#\/item\/5468$/.test(T.mbItem(5468)));
+  check('T8 mbCraft → …#/craft/{itemId}', /#\/craft\/12345$/.test(T.mbCraft(12345)));
+  check('T8 item(查價) 與 craft(BOM) route 前綴不混淆', /#\/item\//.test(T.mbItem(1)) && /#\/craft\//.test(T.mbCraft(1)) && T.mbItem(1) !== T.mbCraft(1));
+  // 型別收斂：非正整數 id 不得產出壞連結（#/item/undefined、NaN…），一律回退 '#'
+  check('T8 壞輸入(undefined/字串/0/負/null/NaN) → #',
+    [undefined, 'abc', 0, -1, null, NaN].every((bad) => T.mbItem(bad) === '#' && T.mbCraft(bad) === '#'));
+  check('T8 合法數字字串 id 收斂為數字', /#\/item\/42$/.test(T.mbItem('42')));
+}
+
+// ===== T9：selectRecipe 回傳契約（goSolve 失敗不切頁的守衛依據；對抗審狀態機覆蓋）=====
+{
+  // harness 無資料（loadData fetch reject → RECIPES=[]）→ 任何 id 皆找不到配方 → 必回 false（goSolve 據此不切頁）
+  eq('T9 selectRecipe 未知 id → false', T.selectRecipe(999999), false);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
