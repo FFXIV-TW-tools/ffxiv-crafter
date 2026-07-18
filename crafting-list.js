@@ -9,6 +9,7 @@
   let list = [];        // [{ id, qty }]（qty＝製作次數）
 
   const clampQty = (q) => Math.max(QTY_MIN, Math.min(QTY_MAX, Math.floor(+q) || QTY_MIN));
+  const notify = () => { if (deps && deps.onChange) deps.onChange(); };  // 清單任一變更 → 通知求解分頁配方表更新「已加入」標示
 
   // 純函式（golden 測試面）：entries=[{id,qty}] × ingredientsMap（INGREDIENTS 形狀）→ [[iid, total], …] iid 升冪。
   // 未知 recipe id 略過；qty 先 clamp（0/NaN→1、>999→999）。
@@ -37,11 +38,12 @@
 
   function add(recipeId) {
     if (!deps || !byId.has(+recipeId)) return;
+    const nm = byId.get(+recipeId).item_name || ('#' + recipeId);   // toast 帶配方名 → 使用者知道「加了哪個」（原通用文案無反饋感）
     const found = list.find((e) => e.id === +recipeId);
     if (found) found.qty = clampQty(found.qty + 1);
     else list.push({ id: +recipeId, qty: 1 });
-    save(); render();
-    deps.toast(found ? '✓ 已在清單，數量 +1' : '✓ 已加入製造清單', 'ok');
+    save(); render(); notify();
+    deps.toast(found ? `✓「${nm}」已在清單 · 數量 +1（共 ${found.qty} 次）` : `✓ 已加入「${nm}」到製造清單`, 'ok');
   }
 
   const isCrystal = (iid, name) => iid < 20 || /晶簇|水晶|碎晶/.test(name || '');
@@ -113,10 +115,10 @@
     box.querySelectorAll('.cl-row').forEach((row) => {
       const id = +row.dataset.id;
       row.querySelector('.cl-go').onclick = () => deps.goSolve(id);   // 前往求解（選定配方 + 切求解分頁 + 帶 fromList 旗標）
-      row.querySelector('.cl-del').onclick = () => { list = list.filter((e) => e.id !== id); save(); render(); };
+      row.querySelector('.cl-del').onclick = () => { list = list.filter((e) => e.id !== id); save(); render(); notify(); };
       row.querySelector('.cl-qty-in').addEventListener('change', (ev) => {   // change（非 input）：邊打字不重繪、失焦才彙總
         const e = list.find((x) => x.id === id);
-        if (e) { e.qty = clampQty(ev.target.value); ev.target.value = e.qty; save(); render(); }
+        if (e) { e.qty = clampQty(ev.target.value); ev.target.value = e.qty; save(); render(); notify(); }
       });
     });
   }
@@ -124,6 +126,8 @@
   globalThis.CraftList = {
     init(d) { deps = d; byId = new Map(d.RECIPES.map((r) => [r.id, r])); load(); render(); },
     add,
+    has: (id) => list.some((e) => e.id === +id),                              // 配方表「已加入」標示查詢
+    count: (id) => { const e = list.find((x) => x.id === +id); return e ? e.qty : 0; },  // 0＝未加入
     aggregateMats,
   };
 })();

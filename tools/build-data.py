@@ -102,12 +102,13 @@ def main():
     items, miss = {}, 0
     for iid in needed:
         row = icon_con.execute(
-            "SELECT id,name_tc,level_item,can_be_hq,icon FROM items WHERE id=?", (iid,)).fetchone()
+            "SELECT id,name_tc,level_item,can_be_hq,icon,ui_category FROM items WHERE id=?", (iid,)).fetchone()
         if not row:
             miss += 1
             continue
         items[str(iid)] = {"id": row[0], "name": row[1] or ("#" + str(row[0])),
-                           "level": row[2] or 0, "can_be_hq": bool(row[3]), "icon": row[4] or None}
+                           "level": row[2] or 0, "can_be_hq": bool(row[3]), "icon": row[4] or None,
+                           "category": row[5] or ""}  # 道具種類（ItemUICategory 繁中，item_lookup ui_category）→ UI 配方名副行說明
     icon_con.close()
     with open(os.path.join(OUT, "items.json"), "w", encoding="utf-8") as f:
         json.dump(items, f, ensure_ascii=False, separators=(",", ":"))

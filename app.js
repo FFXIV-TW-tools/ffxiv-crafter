@@ -64,6 +64,7 @@ async function loadData() {
     id: r.id, name: r.item_name || '', job: r.job || '', rlv: r.rlv,
     level: (RLV[String(r.rlv)] && RLV[String(r.rlv)].class_job_level) || 0,
     icon: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].icon) || null,
+    category: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].category) || '', // 道具種類（繁中）→ 配方名副行說明
   }));
 }
 
@@ -112,10 +113,14 @@ function onGearInput(e) {
 
 // ---------- 職業 chips + 配方表 ----------
 function renderChips() {
-  // 職業篩選＝可篩選 tag → 設計系統 .codex-chip button + aria-pressed（選中態語意直接驅動樣式）
-  $('job-chips').innerHTML = ['', ...DOH].map(j =>
-    `<button type="button" class="codex-chip" aria-pressed="${j === jobFilter}" data-job="${esc(j)}">${j && JOB_ICON[j] ? `<img src="${iconUrl(JOB_ICON[j])}" alt="" loading="lazy">` : ''}${j || '全部'}</button>`).join('');
-  $('job-chips').querySelectorAll('.codex-chip').forEach(b => b.onclick = () => {
+  // 職業篩選＝共用 .codex-btn 方形分段（shawn 拍板：不用 pill 橢圓）：選中＝--primary 填色 / 未選＝--ghost，aria-pressed 同步 a11y。
+  // 沿用真實職業 icon（JOB_ICON→xivapi），勿換 emoji。picker 與求解 work 互斥顯示 → 選中職業的 --primary 不會與 solve-btn 主 CTA 同框。
+  $('job-chips').innerHTML = ['', ...DOH].map(j => {
+    const on = j === jobFilter;
+    const ico = j && JOB_ICON[j] ? `<img src="${iconUrl(JOB_ICON[j])}" alt="" loading="lazy">` : '';
+    return `<button type="button" class="codex-btn ${on ? 'codex-btn--primary' : 'codex-btn--ghost'} job-btn" aria-pressed="${on}" data-job="${esc(j)}">${ico}${j || '全部'}</button>`;
+  }).join('');
+  $('job-chips').querySelectorAll('.job-btn').forEach(b => b.onclick = () => {
     jobFilter = b.dataset.job; renderChips(); renderTable();
   });
 }
@@ -140,7 +145,7 @@ function renderTable() {
     <table class="rt">
       <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th><th class="rt-actcol">加入</th></tr></thead>
       <tbody>${shown.map(r =>
-        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}${esc(r.name)}</span></td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td class="rt-act"><button type="button" class="codex-btn codex-btn--ghost codex-btn--icon rt-add" data-id="${r.id}" aria-label="將「${esc(r.name)}」加入製造清單" title="加入製造清單">＋</button></td></tr>`).join('')}</tbody>
+        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmwrap"><span class="rt-nm">${esc(r.name)}</span>${r.category ? `<span class="rt-cat codex-small">${esc(r.category)}</span>` : ''}</span></span></td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td class="rt-act"><button type="button" class="codex-btn codex-btn--ghost codex-btn--icon rt-add" data-id="${r.id}" data-name="${esc(r.name)}" aria-label="將「${esc(r.name)}」加入製造清單" title="加入製造清單">＋</button></td></tr>`).join('')}</tbody>
     </table>` : '';
   // 事件委派（單一 handler，取代每列 2N listener → 篩選/搜尋重繪不重綁、行動裝置省 GC）；handler 綁在持久的 #recipe-table 上，innerHTML 換內容不掉線
   const table = $('recipe-table');
@@ -157,6 +162,37 @@ function renderTable() {
   table.onkeydown = (e) => {                  // 列本身聚焦時 Enter/Space 選配方；＋ 是原生 button，其 Enter/Space 由瀏覽器觸發 click → 冒泡到上面 onclick（不重複）
     if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('rt-row')) { e.preventDefault(); selectRecipe(+e.target.dataset.id); }
   };
+  markListState();  // 標記已在製造清單的列（換底色 + 徽章 + ＋→✓ 按鈕）
+}
+
+// 標記「已在製造清單」的配方列（in-place 更新、不重建表 → 保留焦點；renderTable 初繪與 CraftList 變更 onChange 共用）。
+// 答「頁面除通知外根本沒提示」＝三重持久提示：整列換底色（掃視主訊號）＋名稱旁「已加入 ×N」綠徽章＋右側 ＋→✓ 填色鈕。
+function markListState() {
+  const CL = globalThis.CraftList;
+  const tbl = $('recipe-table');
+  if (!CL || !tbl) return;
+  tbl.querySelectorAll('.rt-row').forEach(tr => {
+    const n = CL.count(+tr.dataset.id);
+    const inList = n > 0;
+    tr.classList.toggle('rt-in', inList);
+    const cell = tr.querySelector('.rt-cellflex');
+    if (cell) {
+      let badge = cell.querySelector('.rt-inlist');
+      if (inList) {
+        if (!badge) { badge = document.createElement('span'); badge.className = 'codex-badge codex-badge--success codex-badge--text rt-inlist'; cell.appendChild(badge); }
+        badge.textContent = n > 1 ? `已加入 ×${n}` : '已加入';
+      } else if (badge) { badge.remove(); }
+    }
+    const btn = tr.querySelector('.rt-add');
+    if (btn) {
+      const nm = btn.dataset.name || '此配方';
+      btn.classList.toggle('codex-btn--primary', inList);
+      btn.classList.toggle('codex-btn--ghost', !inList);
+      btn.textContent = inList ? '✓' : '＋';
+      btn.title = inList ? `已在製造清單${n > 1 ? ` ×${n}` : ''} · 點擊再加一個` : '加入製造清單';
+      btn.setAttribute('aria-label', inList ? `「${nm}」已在製造清單${n > 1 ? `（${n}）` : ''}，點擊再加一個` : `將「${nm}」加入製造清單`);
+    }
+  });
 }
 
 function selectRecipe(id, fromList) {
@@ -476,8 +512,11 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   if (globalThis.CraftRender) globalThis.CraftRender.init({ $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE,
     getSelected: () => selected, getItems: () => ITEMS, getActions: () => ACTIONS });
   // 製造清單（crafting-list.js classic script，先於本 module 執行）：注入依賴後接手 #craft-list 分頁
-  if (globalThis.CraftList) globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, showPicker, toast, copyText, mbItem, mbCraft,
-    goSolve: (id) => { if (selectRecipe(id, true)) switchTab('solve', true); } }); // 前往求解：selectRecipe 失敗（缺 rlv）就不切頁；成功才切+移焦，詳情顯示「← 回製造清單」
+  if (globalThis.CraftList) {
+    globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, showPicker, toast, copyText, mbItem, mbCraft, onChange: markListState,
+      goSolve: (id) => { if (selectRecipe(id, true)) switchTab('solve', true); } }); // 前往求解：selectRecipe 失敗（缺 rlv）就不切頁；成功才切+移焦，詳情顯示「← 回製造清單」
+    markListState(); // 初載：清單已 load，回填首屏配方表的「已加入」標示（renderTable 早於 init 執行時清單尚空）
+  }
   } catch (e) {
     console.error('[crafter] 初始化失敗:', e);
     $('recipe-table').innerHTML = ''; // 清掉首載「載入中…」佔位，避免與失敗橫幅並存殘留轉圈
