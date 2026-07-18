@@ -10,6 +10,9 @@ function iconUrl(p) {
 const MARKETBOARD_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8774/ffxiv-tw-marketboard/'
   : 'https://ffxiv-tw-marketboard.pages.dev/';
+// marketboard 深連結 helper（DRY：base 一處；item_id≠recipe id 分清）。named target 共用分頁、刻意不加 rel=noopener＝生態內互跳慣例（見 renderMacro 註解），noopener 會斷 named context 重用。
+const mbItem = (iid) => `${MARKETBOARD_BASE}#/item/${iid}`;      // 查價 / 歷史 / 來源
+const mbCraft = (itemId) => `${MARKETBOARD_BASE}#/craft/${itemId}`; // BOM 樹 / 每材料價 / 利潤試算
 // 跨工具深連結：求解巨集帶到 macro-builder 匯入（?import= 收端契約見 external/_NEW-TOOL.md；波次 2）
 const MACRO_BUILDER_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8774/ffxiv-tw-macro-builder/'
@@ -37,6 +40,7 @@ let FOOD = {}, POTION = {};  // name → { nq, hq }
 let gearsets = {};      // { 職業: {level,cms,ctrl,cp} }
 let jobFilter = '';     // '' = 全部
 let selected = null;    // { recipe, rlv }
+let openedFromList = false; // 由製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入則不顯示（避免幽靈導覽）
 let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
 let worker = null;
 let solveClock = null;  // 求解計時器（interval）：每秒更新已耗時；≥60s 升級可取消軟提示（不殺 worker，正常長求解仍在跑）
@@ -108,9 +112,10 @@ function onGearInput(e) {
 
 // ---------- 職業 chips + 配方表 ----------
 function renderChips() {
+  // 職業篩選＝可篩選 tag → 設計系統 .codex-chip button + aria-pressed（選中態語意直接驅動樣式）
   $('job-chips').innerHTML = ['', ...DOH].map(j =>
-    `<button class="job-chip${j === jobFilter ? ' is-active' : ''}" data-job="${esc(j)}">${j && JOB_ICON[j] ? `<img src="${iconUrl(JOB_ICON[j])}" alt="" loading="lazy">` : ''}${j || '全部'}</button>`).join('');
-  $('job-chips').querySelectorAll('.job-chip').forEach(b => b.onclick = () => {
+    `<button type="button" class="codex-chip" aria-pressed="${j === jobFilter}" data-job="${esc(j)}">${j && JOB_ICON[j] ? `<img src="${iconUrl(JOB_ICON[j])}" alt="" loading="lazy">` : ''}${j || '全部'}</button>`).join('');
+  $('job-chips').querySelectorAll('.codex-chip').forEach(b => b.onclick = () => {
     jobFilter = b.dataset.job; renderChips(); renderTable();
   });
 }
@@ -133,28 +138,34 @@ function renderTable() {
     : (jobFilter || range || q ? '無符合配方' : '');
   $('recipe-table').innerHTML = shown.length ? `
     <table class="rt">
-      <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th></tr></thead>
+      <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th><th class="rt-actcol">加入</th></tr></thead>
       <tbody>${shown.map(r =>
-        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}${esc(r.name)}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td></tr>`).join('')}</tbody>
+        `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}${esc(r.name)}</span></td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td class="rt-act"><button type="button" class="codex-btn codex-btn--ghost codex-btn--icon rt-add" data-id="${r.id}" aria-label="將「${esc(r.name)}」加入製造清單" title="加入製造清單">＋</button></td></tr>`).join('')}</tbody>
     </table>` : '';
   $('recipe-table').querySelectorAll('.rt-row').forEach(tr => {
     const pick = () => selectRecipe(+tr.dataset.id);
     tr.onclick = pick;
-    tr.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } }; // 鍵盤可選（Space 防捲動）
+    // Space/Enter 只在 row 本身聚焦時選配方；聚焦在 row 內的「＋」鈕時放行給它自己（e.target===tr 守衛，防 button keydown 冒泡誤選）
+    tr.onkeydown = (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); pick(); } };
+  });
+  $('recipe-table').querySelectorAll('.rt-add').forEach(btn => btn.onclick = (e) => {
+    e.stopPropagation();                     // 只加清單、不觸發整列 selectRecipe（不進詳情）
+    if (globalThis.CraftList) globalThis.CraftList.add(+btn.dataset.id);
   });
 }
 
-function selectRecipe(id) {
+function selectRecipe(id, fromList) {
   const recipe = RECIPES.find(r => r.id === id);
   if (!recipe) return;
   const rlv = RLV[String(recipe.rlv)];
   if (!rlv) { toast('此配方缺 recipe level 資料', 'error'); return; }
   selected = { recipe, rlv };
-  // 收合配方表，騰出空間
+  openedFromList = !!fromList;   // 從製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入為 false
+  // 收合配方表，騰出空間；麵包屑導覽（真 nav 語意：配方瀏覽 › 當前配方 aria-current）
   $('picker').hidden = true;
   $('change-recipe').hidden = false;
   $('selected-bar').hidden = false;
-  $('selected-bar').innerHTML = `已選配方：<b>${esc(recipe.item_name)}</b> <span class="codex-small">${esc(recipe.job)} · Lv ${rlv.class_job_level} · rlv ${recipe.rlv}</span>`;
+  $('selected-bar').innerHTML = `<span class="sb-crumb">配方瀏覽</span><span class="sb-sep" aria-hidden="true">›</span><b class="sb-cur" aria-current="page">${esc(recipe.item_name)}</b><span class="codex-small">${esc(recipe.job)} · Lv ${rlv.class_job_level} · rlv ${recipe.rlv}</span>`;
   $('work').hidden = false;
   $('results').hidden = true;
   $('results-placeholder').hidden = false;
@@ -167,8 +178,10 @@ function showPicker() {
   $('change-recipe').hidden = true;
   $('selected-bar').hidden = true;
   $('work').hidden = true;
-  renderTable();
+  renderTable();  // 篩選/搜尋值保留在 input 上、不清（返回不重置瀏覽狀態）
   $('pick-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const back = $('recipe-table').querySelector('.rt-row.is-sel') || $('recipe-search'); // 還焦：優先原選中列、否則搜尋框（a11y 返回焦點不遺失）
+  if (back && back.focus) back.focus({ preventScroll: true });
 }
 // 配方三上限（進展/品質/耐久）：顯示（refreshSelectedGear）與求解（computeSettings）共用同一算式，防兩處漂移（CQ-01）
 function recipeMaxes(recipe, rlv) {
@@ -187,17 +200,28 @@ function refreshSelectedGear() {
     : `<span class="gear-warn">⚠ 尚未設定「${esc(recipe.job)}」數值 — <a href="#" id="goto-stats">去填角色數值 →</a></span>`;
   const icon = (ITEMS[String(recipe.item_id)] || {}).icon;
   const jico = JOB_ICON[recipe.job] ? `<img class="ri-jico" src="${iconUrl(JOB_ICON[recipe.job])}" alt="">` : '';
+  // 動作列：統一 ghost 按鈕群（設計系統，取代自寫 link-button）。marketboard 連結只在有 item_id 時出（防壞連結）。
+  const mbLink = recipe.item_id
+    ? `<a class="codex-btn codex-btn--ghost" href="${mbCraft(recipe.item_id)}" target="ffxiv-marketboard" title="到市場板看材料多層樹 / 各材料即時價 / 成本 / 利潤（共用同一分頁）">💰 材料樹與利潤</a>`
+    : '';
+  const backToList = openedFromList
+    ? `<button id="back-to-list" class="codex-btn codex-btn--ghost" type="button" title="回到製造清單分頁">← 回製造清單</button>`
+    : '';
   $('recipe-info').innerHTML = `
     ${icon ? `<img class="ri-icon" src="${iconUrl(icon)}" alt="">` : ''}
     <div class="ri-main">
       <div class="ri-name">${esc(recipe.item_name)}${recipe.is_expert ? ' <span class="codex-small">高難度</span>' : ''}</div>
       <div class="ri-stats"><span class="ri-stat ri-jobstat">${jico}${esc(recipe.job)}</span><span class="ri-stat">難度 <b>${maxP}</b></span><span class="ri-stat">品質 <b>${maxQ}</b></span><span class="ri-stat">耐久 <b>${maxD}</b></span></div>
-      <a class="ri-mblink codex-small" href="${MARKETBOARD_BASE}#/craft/${recipe.item_id}" target="ffxiv-marketboard" title="到市場板看材料多層樹 / 各材料即時價 / 成本 / 利潤（共用同一分頁）">💰 材料行情・成本 →</a>
-      <button id="add-to-list" class="ri-addlist codex-small" type="button" title="加進「製造清單」分頁，彙總素材總需求">📋 加入製造清單</button>
+      <div class="ri-actions">
+        <button id="add-to-list" class="codex-btn codex-btn--ghost" type="button" title="加進「製造清單」分頁，彙總素材總需求">📋 加入製造清單</button>
+        ${mbLink}
+        ${backToList}
+      </div>
     </div>
     <div class="ri-gear">${note}</div>`;
   const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats'); };
   const ab = $('add-to-list'); if (ab) ab.onclick = () => { if (globalThis.CraftList) globalThis.CraftList.add(recipe.id); };
+  const bl = $('back-to-list'); if (bl) bl.onclick = () => switchTab('list');
   $('opt-target').value = ''; $('opt-target').max = maxQ; $('opt-target').placeholder = '滿(' + maxQ + ')';
   $('opt-target').disabled = $('solve-mode').value === 'nq'; // NQ 模式目標品質欄停用（與 solve-mode 監聽一致）
   renderIngredients(recipe, maxQ);
@@ -220,10 +244,14 @@ function renderIngredients(recipe, maxQ) {
     const it = ITEMS[String(iid)] || {};
     const name = it.name || ('#' + iid);
     const ico = it.icon ? `<img class="ing-ico" src="${iconUrl(it.icon)}" alt="" loading="lazy">` : '';
+    // 素材名掛 marketboard 查價/來源深連結（DRY mbItem；晶體無交易意義故不連）
+    const nameHtml = isCrystal(iid)
+      ? `<span class="ing-name">${esc(name)}</span>`
+      : `<a class="ing-name ing-name--link" href="${mbItem(iid)}" target="ffxiv-marketboard" title="到市場板查「${esc(name)}」價格與來源（共用同一分頁）">${esc(name)}</a>`;
     const ctl = hqable(iid)
       ? `<span class="ing-hqctl">HQ <input class="ing-hq-in codex-input" data-iid="${iid}" data-amt="${amount}" type="number" min="0" max="${amount}" value="0" inputmode="numeric">/${amount}</span>`
       : '<span class="ing-na codex-small">不可 HQ</span>';
-    return `<div class="ing${hqable(iid) ? ' ing--hq' : ''}">${ico}<span class="ing-name">${esc(name)}</span><span class="ing-amt">×${amount}</span>${ctl}</div>`;
+    return `<div class="ing${hqable(iid) ? ' ing--hq' : ''}">${ico}${nameHtml}<span class="ing-amt">×${amount}</span>${ctl}</div>`;
   }).join('');
   $('ingredients').innerHTML = `
     <div class="ing-head"><span class="ing-group-title">配方原料</span>${anyHq ? '<button class="codex-btn codex-btn--ghost ing-allhq">全部 HQ</button>' : ''}</div>
@@ -513,14 +541,30 @@ function renderMacro(steps) {
 
 // ---------- 分頁 ----------
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => {
+  document.querySelectorAll('.codex-tab').forEach(t => {
     const on = t.dataset.tab === name;
     t.classList.toggle('is-active', on);
     t.setAttribute('aria-selected', on ? 'true' : 'false'); // 同步分頁選中狀態給螢幕閱讀器
+    t.tabIndex = on ? 0 : -1;                                // roving tabindex（tablist 標準：只有選中 tab 進 Tab 序）
   });
   $('tab-solve').hidden = name !== 'solve';
   $('tab-stats').hidden = name !== 'stats';
   $('tab-list').hidden = name !== 'list';
+}
+// tablist 鍵盤導覽（ARIA APG 水平：←→ 切換 + Home/End；焦點隨切換移動）
+function onTabKey(e) {
+  const dir = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+  const tabs = [...document.querySelectorAll('.codex-tab')];
+  const i = tabs.indexOf(e.target);
+  if (i < 0) return;
+  let j;
+  if (dir != null) j = (i + dir + tabs.length) % tabs.length;
+  else if (e.key === 'Home') j = 0;
+  else if (e.key === 'End') j = tabs.length - 1;
+  else return;
+  e.preventDefault();
+  switchTab(tabs[j].dataset.tab);
+  tabs[j].focus();
 }
 function updateHint() { $('first-run-hint').hidden = anyGear(); }
 
@@ -582,9 +626,15 @@ function fallbackCopy(text) {
   $('solve-btn').addEventListener('click', doSolve);
   $('cancel-btn').addEventListener('click', cancelSolve);
   $('change-recipe').addEventListener('click', showPicker);
-  document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
+  const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats');
+  document.querySelectorAll('.codex-tab').forEach(t => {
+    t.onclick = () => switchTab(t.dataset.tab);
+    t.onkeydown = onTabKey;
+    t.tabIndex = t.classList.contains('is-active') ? 0 : -1; // 初始 roving tabindex（tablist a11y）
+  });
   // 製造清單（crafting-list.js classic script，先於本 module 執行）：注入依賴後接手 #craft-list 分頁
-  if (globalThis.CraftList) globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, toast });
+  if (globalThis.CraftList) globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, toast, mbItem, mbCraft,
+    goSolve: (id) => { selectRecipe(id, true); switchTab('solve'); } }); // 前往求解：帶 fromList 旗標 → 詳情顯示「← 回製造清單」
   } catch (e) {
     console.error('[crafter] 初始化失敗:', e);
     $('recipe-table').innerHTML = ''; // 清掉首載「載入中…」佔位，避免與失敗橫幅並存殘留轉圈

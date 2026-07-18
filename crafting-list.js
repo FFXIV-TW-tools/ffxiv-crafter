@@ -47,7 +47,7 @@
   const isCrystal = (iid, name) => iid < 20 || /晶簇|水晶|碎晶/.test(name || '');
 
   function renderTabCount() {
-    const tab = document.querySelector('.tab[data-tab="list"]');
+    const tab = document.querySelector('.codex-tab[data-tab="list"]');
     if (tab) tab.textContent = `📋 製造清單${list.length ? `（${list.length}）` : ''}`;
   }
 
@@ -55,33 +55,56 @@
     renderTabCount();
     const { $, esc, iconUrl, ITEMS } = deps;
     const box = $('craft-list');
-    if (!list.length) {
-      box.innerHTML = '<p class="cl-empty codex-body">清單是空的 — 到「配方求解」選好配方後，按配方詳情的「📋 加入製造清單」。</p>';
+    if (!list.length) {   // 空狀態＝設計系統 .codex-empty（給下一步 CTA，非只寫「無資料」）
+      box.innerHTML = `<div class="codex-empty">
+        <div class="codex-empty__icon" aria-hidden="true">📋</div>
+        <div>清單是空的 — 到「<b>配方求解</b>」瀏覽表按每列的「<b>＋</b>」，或選配方後按「<b>📋 加入製造清單</b>」收集配方。</div>
+        <button class="cl-empty-cta codex-btn codex-btn--ghost" type="button">前往配方瀏覽 →</button>
+      </div>`;
+      const cta = box.querySelector('.cl-empty-cta');
+      if (cta) cta.onclick = () => deps.switchTab('solve');
       return;
     }
+    const totalRuns = list.reduce((s, e) => s + e.qty, 0);   // 總製作次數（≠配方種數；語意分清）
     const rows = list.map((e) => {
       const r = byId.get(e.id);
       const it = ITEMS[String(r.item_id)] || {};
       const ico = it.icon ? `<img class="cl-ico" src="${iconUrl(it.icon)}" alt="" loading="lazy">` : '<span class="cl-ico" aria-hidden="true"></span>';
-      const yields = (r.item_amount || 1) > 1 ? `<span class="codex-small">成品 ×${e.qty * r.item_amount}</span>` : '';
-      return `<div class="cl-row" data-id="${r.id}">${ico}
-        <button class="cl-name-btn" type="button" title="回配方求解">${esc(r.item_name)} <span class="codex-small">${esc(r.job)} · rlv ${r.rlv}</span></button>
-        <span class="cl-qty codex-small">次數 <input class="cl-qty-in codex-input" type="number" min="${QTY_MIN}" max="${QTY_MAX}" inputmode="numeric" value="${e.qty}" aria-label="製作次數"></span>${yields}
-        <button class="cl-del codex-btn codex-btn--ghost codex-btn--icon" type="button" aria-label="移除">✕</button>
+      const yields = (r.item_amount || 1) > 1 ? `<span class="cl-yield codex-small">成品 ×${e.qty * r.item_amount}</span>` : '';
+      // 配方成品 → marketboard #/craft（BOM 樹/利潤）；只在有 item_id 時出（防壞連結）
+      const mb = r.item_id ? `<a class="cl-mb codex-btn codex-btn--ghost" href="${deps.mbCraft(r.item_id)}" target="ffxiv-marketboard" title="到市場板看材料樹 / 各材料價 / 利潤（共用同一分頁）">💰 行情</a>` : '';
+      return `<div class="cl-row" data-id="${r.id}">
+        ${ico}
+        <div class="cl-info"><span class="cl-name">${esc(r.item_name)}</span><span class="cl-sub codex-small">${esc(r.job)} · rlv ${r.rlv}</span></div>
+        <div class="cl-actions">
+          <button class="cl-go codex-btn codex-btn--ghost" type="button" title="選定此配方並切到求解分頁">前往求解 →</button>
+          ${mb}
+          <span class="cl-qty codex-small">次數 <input class="cl-qty-in codex-input" type="number" min="${QTY_MIN}" max="${QTY_MAX}" inputmode="numeric" value="${e.qty}" aria-label="「${esc(r.item_name)}」製作次數"></span>${yields}
+          <button class="cl-del codex-btn codex-btn--ghost codex-btn--icon" type="button" aria-label="從清單移除「${esc(r.item_name)}」">✕</button>
+        </div>
       </div>`;
     }).join('');
     const mats = aggregateMats(list, deps.INGREDIENTS).map(([iid, total]) => {
       const it = ITEMS[String(iid)] || {};
-      return { iid, total, name: it.name || ('#' + iid), icon: it.icon || null };
+      const name = it.name || ('#' + iid);
+      return { iid, total, name, icon: it.icon || null, crystal: isCrystal(iid, name) };
     });
-    const ordered = [...mats.filter((m) => !isCrystal(m.iid, m.name)), ...mats.filter((m) => isCrystal(m.iid, m.name))]; // 晶體殿後，對齊遊戲 BOM 呈現
-    const matRows = ordered.map((m) => `<div class="cl-mat">${m.icon ? `<img class="cl-mat-ico" src="${iconUrl(m.icon)}" alt="" loading="lazy">` : '<span class="cl-mat-ico" aria-hidden="true"></span>'}<span class="cl-mat-name">${esc(m.name)}</span><span class="cl-mat-amt">×${m.total}</span></div>`).join('');
-    box.innerHTML = `<div class="cl-rows">${rows}</div>
-      <h3 class="codex-h3 cl-mats-title">素材總需求</h3>
+    const ordered = [...mats.filter((m) => !m.crystal), ...mats.filter((m) => m.crystal)]; // 晶體殿後，對齊遊戲 BOM 呈現
+    const matRows = ordered.map((m) => {
+      const ico = m.icon ? `<img class="cl-mat-ico" src="${iconUrl(m.icon)}" alt="" loading="lazy">` : '<span class="cl-mat-ico" aria-hidden="true"></span>';
+      // 素材名 → marketboard #/item（查價/來源）；晶體無交易意義故不連
+      const nameHtml = m.crystal
+        ? `<span class="cl-mat-name">${esc(m.name)}</span>`
+        : `<a class="cl-mat-name cl-mat-name--link" href="${deps.mbItem(m.iid)}" target="ffxiv-marketboard" title="到市場板查「${esc(m.name)}」價格與來源（共用同一分頁）">${esc(m.name)}</a>`;
+      return `<div class="cl-mat">${ico}${nameHtml}<span class="cl-mat-amt">×${m.total}</span></div>`;
+    }).join('');
+    box.innerHTML = `<div class="cl-summary codex-small">清單 <b>${list.length}</b> 種配方 · 總製作 <b>${totalRuns}</b> 次</div>
+      <div class="cl-rows">${rows}</div>
+      <h3 class="codex-h3 cl-mats-title">素材總需求 <span class="codex-small">（點素材名到市場板查價・來源）</span></h3>
       <div class="cl-mats">${matRows || '<span class="codex-small">（無素材資料）</span>'}</div>`;
     box.querySelectorAll('.cl-row').forEach((row) => {
       const id = +row.dataset.id;
-      row.querySelector('.cl-name-btn').onclick = () => { deps.selectRecipe(id); deps.switchTab('solve'); };
+      row.querySelector('.cl-go').onclick = () => deps.goSolve(id);   // 前往求解（選定配方 + 切求解分頁 + 帶 fromList 旗標）
       row.querySelector('.cl-del').onclick = () => { list = list.filter((e) => e.id !== id); save(); render(); };
       row.querySelector('.cl-qty-in').addEventListener('change', (ev) => {   // change（非 input）：邊打字不重繪、失焦才彙總
         const e = list.find((x) => x.id === id);

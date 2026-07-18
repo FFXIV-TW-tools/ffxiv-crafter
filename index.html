@@ -56,16 +56,17 @@
   </header>
 
   <main class="codex-container">
-    <nav class="tabs" role="tablist">
-      <button class="tab is-active" data-tab="solve" role="tab" aria-selected="true" aria-controls="tab-solve">🔨 配方求解</button>
-      <button class="tab" data-tab="stats" role="tab" aria-selected="false" aria-controls="tab-stats">🧑‍🔧 角色數值</button>
-      <button class="tab" data-tab="list" role="tab" aria-selected="false" aria-controls="tab-list">📋 製造清單</button>
+    <nav class="codex-tabs" role="tablist">
+      <button class="codex-tab is-active" data-tab="solve" role="tab" aria-selected="true" aria-controls="tab-solve">🔨 配方求解</button>
+      <button class="codex-tab" data-tab="stats" role="tab" aria-selected="false" aria-controls="tab-stats">🧑‍🔧 角色數值</button>
+      <button class="codex-tab" data-tab="list" role="tab" aria-selected="false" aria-controls="tab-list">📋 製造清單</button>
     </nav>
 
     <!-- ===== 配方求解 ===== -->
     <div id="tab-solve" class="tabpanel" role="tabpanel">
       <div id="first-run-hint" class="run-hint" hidden>
-        👉 首次使用：先到「<b>角色數值</b>」分頁填各職裝備數值，再回來選配方求解。
+        <span>👉 首次使用：先到「<b>角色數值</b>」分頁填各職裝備數值，再回來選配方求解。</span>
+        <button id="goto-stats-hint" class="codex-btn codex-btn--ghost" type="button">前往角色數值 →</button>
       </div>
 
       <!-- 選配方（可收合） -->
@@ -73,7 +74,7 @@
         <span class="codex-hud"></span>
         <div class="pick-head">
           <h2 class="codex-h2">選配方</h2>
-          <button id="change-recipe" class="codex-btn codex-btn--ghost" hidden>＋ 更換配方</button>
+          <button id="change-recipe" class="codex-btn codex-btn--ghost" type="button" hidden>← 返回配方列表</button>
         </div>
         <div id="picker">
           <div class="job-chips" id="job-chips"></div>
@@ -92,7 +93,7 @@
           <div id="recipe-count" class="recipe-count codex-small"></div>
           <div id="recipe-table" class="recipe-table"><div class="recipe-loading codex-small">📦 載入配方資料中…（首次載入資料量較大，請稍候）</div></div>
         </div>
-        <div id="selected-bar" class="selected-bar" hidden></div>
+        <nav id="selected-bar" class="selected-bar" aria-label="目前位置" hidden></nav>
       </section>
 
       <!-- 設定（左）＋ 結果（右） -->
@@ -194,7 +195,7 @@
       <section class="codex-tablet codex-tablet--cyan panel">
         <span class="codex-hud"></span>
         <h2 class="codex-h2">製造清單</h2>
-        <p class="codex-body hint">在配方詳情按「<b>📋 加入製造清單</b>」收集要做的配方，此處調數量、自動彙總<b>素材總需求</b>。資料只存本機。</p>
+        <p class="codex-body hint">在「<b>配方求解</b>」瀏覽表按每列的「<b>＋</b>」或配方詳情的「<b>📋 加入製造清單</b>」收集配方，此處調數量、自動彙總<b>素材總需求</b>，每項素材可一鍵到<b>市場板</b>查價與來源。資料只存本機。</p>
         <div id="craft-list"></div>
       </section>
     </div>
