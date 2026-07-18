@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..');
 const APP_SRC = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+const RENDER_SRC = fs.readFileSync(path.join(ROOT, 'app-render.js'), 'utf8'); // 結果渲染層（hqPercent 純函式住此）
 
 // ---------- 可控 DOM stub ----------
 const dom = {};
@@ -43,8 +44,9 @@ const sandbox = {
 };
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
+vm.runInContext(RENDER_SRC, sandbox, { filename: 'app-render.js' }); // 先定義 globalThis.CraftRender（hqPercent 純函式、不需 init）
 vm.runInContext(
-  APP_SRC + '\n;globalThis.__t = { computeSettings, hqPercent, recipeMaxes, effectiveStats, esc, mbItem, mbCraft, selectRecipe };',
+  APP_SRC + '\n;globalThis.__t = { computeSettings, recipeMaxes, effectiveStats, esc, mbItem, mbCraft, selectRecipe, hqPercent: globalThis.CraftRender.hqPercent };',
   sandbox, { filename: 'crafter-app.js' });
 const T = sandbox.__t;
 
