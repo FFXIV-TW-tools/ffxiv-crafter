@@ -2,6 +2,13 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-19 — 對抗審修復 + 製造清單雙卡片重整（C1/C2/C4 + Owner UI）
+
+P0 交棒兩 commit（送端 crafter `4290059`、收端 marketboard `75c3828`）的 codex+grok 對抗審後修復 + Owner UI 回饋。本 repo 送端 `260e310`；收端修復在 marketboard `8b7c9ea`（原子 addMany/補償 rollback/gen 路由守衛/種件文案/mbChoice focus，M1–M6，247 綠）。
+- **UI（Owner 回饋）**：製造清單「配方清單 / 素材總需求」拆成上下兩張獨立 `.cl-card`（`--color-surface` 底＋`--color-border` 框，不再平鋪混一起）；按鈕組（複製清單/開採購清單）移進素材卡頭右側對齊；配方瀏覽表 `.recipe-table` max-height 320px→60vh（用滿頁面空間、不再只露 ~6 列）；精簡分頁說明文字。全 token、零裸 hex、瀏覽器實測 + design-lint 過。
+- **送端 harden（對抗審 C）**：C1 `invalidCount>0` 誠實 toast（不當整份成功）；C2 失敗文案分型（超限 vs 無可交棒，不再一律「過大」）；C4 `window.open` null 守衛 + `buildShoplistCsv` 依 itemId 升冪（穩定輸出）。
+- 測試：test-formulas 60→**68**（T12 補多 item 排序契約）。旁路 cycle `2026-07-19-adv-review-fixes`。
+
 ## 2026-07-19 — 篩選控件包成獨立子面板（.filter-group，界線再硬）
 
 承上「視覺分模塊」，Owner「把職業篩選＋搜尋列整組包進獨立子面板、界線更硬」（先給 dev 預覽核可後實作）。職業篩選 + 搜尋/等級列包進 `.filter-group`（index.html 加 wrapper）：raised 灰框卡（`--color-surface-hover` 底＋`--color-border` 框＋`--radius-md` 圓角＋`--space-3` padding），與下方結果列表（recessed cyan-bordered well）硬分兩區。**顏色全對照 portal tokens.css**（`--color-bg/-surface-hover/-border`、`--space-3/-4`、`--radius-md`、`--accent`=alias `--color-accent-cyan`），零裸 hex；`color-mix(--accent, --color-border)` 派生法同 header.css `.codex-btn--ghost:hover`。JS 無影響（wrapper 不動 ID 查詢）。瀏覽器實測兩區分開 + design-lint 過。旁路 cycle `2026-07-19-filter-group-panel`。
