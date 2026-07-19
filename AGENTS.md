@@ -78,7 +78,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 
 ## 開發循環（DEVLOOP）
 
-正典：`~/.claude/process/DEVLOOP.md`。本 repo 工件：`CHANGELOG.md`、`docs/BACKLOG.md`、`docs/health-reviews/`（健檢檔案庫）。**設計 spec 落外部 portal repo**（`external/ffxiv-tw-tools-portal/docs/specs/2026-06-22-craft-solver-spec.md` + ADR-013），本 repo 不另立 specs/。摘要（對齊 DEVLOOP v1.12；正典不可得時以此為準）：
+正典：`~/.claude/process/DEVLOOP.md`。本 repo 工件：`CHANGELOG.md`、`docs/BACKLOG.md`、`docs/health-reviews/`（健檢檔案庫）。**設計 spec 落外部 portal repo**（`external/ffxiv-tw-tools-portal/docs/specs/2026-06-22-craft-solver-spec.md` + ADR-013），本 repo 不另立 specs/。摘要（對齊 DEVLOOP v1.13；正典不可得時以此為準）：
 
 1. 循環：Intake→Brainstorm→[Gate1 Owner 拍板 spec]→Plan→Build(TDD，適用可測行為變更；純文件走 lint/smoke)→Verify→Review→Record(changelog)→Close+Propose→[Gate2 驗收＋排序]→回 BACKLOG。
 2. 小修旁路可跳 spec/plan；**Verify 與 Record 永不可跳**；資料模型／對外契約／刪除遷移／安全類**即使單檔不可旁路**。
