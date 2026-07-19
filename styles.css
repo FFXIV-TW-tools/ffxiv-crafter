@@ -35,6 +35,9 @@ body {
 /* ---- 選配方 ---- */
 .pick-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3, 12px); }
 .pick-head .codex-h2 { margin: 0; }
+/* 篩選子面板：職業 + 搜尋/等級 整組成 raised 灰框卡（bg 亮一階、gray border）→ 與下方結果列表（recessed cyan-bordered well）硬分兩區（Owner：界線更硬）。組內間距靠 padding，job-chips 底 margin 收掉避免雙重間距 */
+.filter-group { background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: var(--radius-md, 8px); padding: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); }
+.filter-group .job-chips { margin-bottom: var(--space-2, 8px); }
 /* 職業篩選＝共用 .codex-btn 方形分段（選中 --primary 填色 / 未選 --ghost）；此處僅補 icon 尺寸，不覆寫 codex-btn 屬性（gap/padding/radius/box-sizing 走元件本身）*/
 .job-chips { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
 #job-chips .job-btn img { width: 18px; height: 18px; }

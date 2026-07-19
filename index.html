@@ -77,6 +77,8 @@
           <button id="change-recipe" class="codex-btn codex-btn--ghost" type="button" hidden>← 返回配方列表</button>
         </div>
         <div id="picker">
+          <!-- 篩選子面板：職業 + 搜尋/等級 組成獨立卡，與下方結果列表硬分兩區（Owner：界線更硬）-->
+          <div class="filter-group">
           <div class="job-chips" id="job-chips"></div>
           <div class="filter-row">
             <input id="recipe-search" class="codex-input grow" type="text" placeholder="搜尋配方名稱…" aria-label="搜尋配方名稱" autocomplete="off">
@@ -90,6 +92,7 @@
             </select>
             <input id="rlv-filter" class="codex-input rlv-in" type="number" min="0" inputmode="numeric" placeholder="配方等級" aria-label="配方等級">
           </div>
+          </div><!-- /filter-group -->
           <div id="recipe-count" class="recipe-count codex-small"></div>
           <div id="recipe-table" class="recipe-table"><div class="recipe-loading codex-small">📦 載入配方資料中…（首次載入資料量較大，請稍候）</div></div>
         </div>

@@ -2,6 +2,10 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-19 — 篩選控件包成獨立子面板（.filter-group，界線再硬）
+
+承上「視覺分模塊」，Owner「把職業篩選＋搜尋列整組包進獨立子面板、界線更硬」（先給 dev 預覽核可後實作）。職業篩選 + 搜尋/等級列包進 `.filter-group`（index.html 加 wrapper）：raised 灰框卡（`--color-surface-hover` 底＋`--color-border` 框＋`--radius-md` 圓角＋`--space-3` padding），與下方結果列表（recessed cyan-bordered well）硬分兩區。**顏色全對照 portal tokens.css**（`--color-bg/-surface-hover/-border`、`--space-3/-4`、`--radius-md`、`--accent`=alias `--color-accent-cyan`），零裸 hex；`color-mix(--accent, --color-border)` 派生法同 header.css `.codex-btn--ghost:hover`。JS 無影響（wrapper 不動 ID 查詢）。瀏覽器實測兩區分開 + design-lint 過。旁路 cycle `2026-07-19-filter-group-panel`。
+
 ## 2026-07-19 — 配方表與搜尋控件視覺分模塊（styles.css）
 
 Owner 反映「搜尋框跟顯示的列表框顏色太近、分不清哪個模塊」。根因：結果表 `.recipe-table` 用**跟 `.codex-input` 同款灰框 `--color-border`** ＋透明底（顯 panel 色）→ 讀作「另一個輸入框」。搜尋框為 portal 共用 `.codex-input`（不可覆寫），故強化本地結果表分模塊（全 token、無裸 hex）：
