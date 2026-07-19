@@ -113,9 +113,10 @@ function onGearInput(e) {
 // ---------- 職業 chips + 配方表（已抽到 app-browse.js：globalThis.CraftBrowse；jobFilter 為該層私有狀態）----------
 // proxy：既有呼叫點 / 事件綁定 / CraftList onChange 沿用同名，實體在 CraftBrowse（init 注入依賴：getter 取 live RINDEX/selected）。
 // 抽出理由＝app.js >500 觸拆分閘門（B-007，Owner 核可）；配方瀏覽表為內聚獨立單元（jobFilter 私有、對外僅注入依賴溝通）。
-const renderChips = () => globalThis.CraftBrowse.renderChips();
-const renderTable = () => globalThis.CraftBrowse.renderTable();
-const markListState = () => globalThis.CraftBrowse.markListState();
+// 用 function 宣告（有 hoisting、貼近原碼契約）→ 避免 const arrow 的 TDZ：日後若在定義前呼叫不會 ReferenceError（對抗審 grok F4）
+function renderChips() { return globalThis.CraftBrowse.renderChips(); }
+function renderTable() { return globalThis.CraftBrowse.renderTable(); }
+function markListState() { return globalThis.CraftBrowse.markListState(); }
 
 function selectRecipe(id, fromList) {
   const recipe = RECIPES.find(r => r.id === id);
@@ -185,7 +186,7 @@ function refreshSelectedGear() {
     </div>
     <div class="ri-gear">${note}</div>`;
   const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats', true); };
-  const ab = $('add-to-list'); if (ab) ab.onclick = () => { if (globalThis.CraftList) globalThis.CraftList.add(recipe.id); };
+  const ab = $('add-to-list'); if (ab) ab.onclick = () => { if (typeof globalThis.CraftList?.add === 'function') globalThis.CraftList.add(recipe.id); };
   // 回清單：switchTab('list') 已集中清 openedFromList + 收返回鈕（見 switchTab），此處只需切頁+移焦
   const bl = $('back-to-list'); if (bl) bl.onclick = () => switchTab('list', true);
   $('opt-target').value = ''; $('opt-target').max = maxQ; $('opt-target').placeholder = '滿(' + maxQ + ')';
@@ -396,6 +397,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   await loadData();
   loadGear();
   // 配方瀏覽層（app-browse.js classic script）：注入依賴後才能 render（getter 取 live RINDEX/selected——loadData 會重賦值綁定）
+  if (!globalThis.CraftBrowse) throw new Error('app-browse.js 未載入（部署不完整）'); // 明確早報 → 落 catch 顯錯誤橫幅，非等 render 才 undefined.X 白屏（對抗審 grok F3）
   globalThis.CraftBrowse.init({ $, esc, iconUrl, DOH, JOB_ICON, NAME_COLLATOR,
     getRINDEX: () => RINDEX, getSelected: () => selected, selectRecipe, toast });
   renderChips();

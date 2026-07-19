@@ -7,6 +7,7 @@
   let jobFilter = '';   // '' = 全部（本層私有；app.js 不再讀寫）
 
   function renderChips() {
+    if (!deps) return;   // 未 init 即被呼叫（app.js 已保證順序）→ 防 destructure null 崩潰（對抗審 grok F2）
     const { $, esc, iconUrl, DOH, JOB_ICON } = deps;
     // 職業篩選＝共用 .codex-btn 方形分段（shawn 拍板：不用 pill 橢圓）：選中＝--primary 填色 / 未選＝--ghost，aria-pressed 同步 a11y。
     // 沿用真實職業 icon（JOB_ICON→xivapi），勿換 emoji。picker 與求解 work 互斥顯示 → 選中職業的 --primary 不會與 solve-btn 主 CTA 同框。
@@ -21,6 +22,7 @@
   }
 
   function renderTable() {
+    if (!deps) return;   // 同 renderChips：防未 init 崩潰（對抗審 grok F2）
     const { $, esc, iconUrl, JOB_ICON, NAME_COLLATOR, getRINDEX, getSelected, selectRecipe, toast } = deps;
     const RINDEX = getRINDEX();
     const selected = getSelected();
@@ -39,7 +41,7 @@
     const shown = list.slice(0, CAP);
     $('recipe-count').textContent = total
       ? `${total} 個配方${total > CAP ? `（顯示前 ${CAP}，請用職業／等級／搜尋縮小）` : ''}`
-      : (jobFilter || range || q ? '無符合配方' : '');
+      : (jobFilter || range || rlvVal || q ? '無符合配方' : '');  // rlvVal 納入判斷：僅配方等級篩選且 0 命中也顯「無符合配方」（對抗審 codex/grok，搬移前既有 bug）
     $('recipe-table').innerHTML = shown.length ? `
       <table class="rt">
         <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th><th class="rt-actcol">加入</th></tr></thead>
@@ -51,8 +53,8 @@
     table.onclick = (e) => {
       const add = e.target.closest('.rt-add');
       if (add) {                               // ＋：只加清單、不進詳情
-        if (globalThis.CraftList) globalThis.CraftList.add(+add.dataset.id);
-        else toast('製造清單模組未載入，請重新整理頁面', 'error');  // 缺依賴不靜默吞（禁假成功）
+        if (typeof globalThis.CraftList?.add === 'function') globalThis.CraftList.add(+add.dataset.id);
+        else toast('製造清單模組未載入，請重新整理頁面', 'error');  // 檢 add 是否為函式（非只檢物件存在）→ 半套/舊版 global 不炸 TypeError（對抗審 codex）
         return;
       }
       const row = e.target.closest('.rt-row');
@@ -68,6 +70,7 @@
   // 答「頁面除通知外根本沒提示、不知哪些已加入」＝持久提示：整列換綠底（掃視主訊號）＋名稱旁「已加入 ×N」綠徽章。
   // 按鈕**恆為 ＋**（動作一律「+1」）——不換 ✓/填色，避免「已完成/點擊取消」假 affordance（對抗審 grok F2）。
   function markListState() {
+    if (!deps) return;   // 同上：防未 init 崩潰（對抗審 grok F2）
     const { $ } = deps;
     const CL = globalThis.CraftList;
     const tbl = $('recipe-table');
@@ -86,8 +89,14 @@
     });
   }
 
+  const REQUIRED = ['$', 'esc', 'iconUrl', 'DOH', 'JOB_ICON', 'NAME_COLLATOR', 'getRINDEX', 'getSelected', 'selectRecipe', 'toast'];
   globalThis.CraftBrowse = {
-    init(d) { deps = d; },  // { $, esc, iconUrl, DOH, JOB_ICON, NAME_COLLATOR, getRINDEX, getSelected, selectRecipe, toast }
+    // 注入契約變可測不變量：缺鍵即早炸（→ app.js init try/catch 顯錯誤橫幅），非等到 render 才靜默錯行為（對抗審 grok F5）
+    init(d) {
+      const miss = REQUIRED.filter(k => d == null || d[k] == null);
+      if (miss.length) throw new Error('CraftBrowse.init 缺依賴: ' + miss.join(', '));
+      deps = d;
+    },
     renderChips,
     renderTable,
     markListState,

@@ -252,5 +252,66 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T10 add 到上限 → warn toast 且不謊報 +1', lt[1] === 'warn' && !/\+1/.test(lt[0]), JSON.stringify(lt));
 }
 
+// ===== T11：app-browse.js 配方瀏覽層（對抗審 codex/grok：拆分後瀏覽層需真測，非靠 app.js 公式閘背書）=====
+{
+  const AB_SRC = fs.readFileSync(path.join(ROOT, 'app-browse.js'), 'utf8');
+  const els = {};
+  const abEl = () => ({ value: '', textContent: '', innerHTML: '', dataset: {},
+    classList: { toggle() {}, add() {}, remove() {} },
+    querySelector() { return null; }, querySelectorAll() { return []; },
+    appendChild() {}, addEventListener() {}, onclick: null, onkeydown: null });
+  const $ = (id) => els[id] || (els[id] = abEl());
+  const ab = { console, document: { createElement: abEl, getElementById: $ } };
+  ab.globalThis = ab;
+  vm.createContext(ab);
+  vm.runInContext(AB_SRC, ab, { filename: 'app-browse.js' });
+  const CB = ab.CraftBrowse;
+  const DOH = ['木工', '鍛造', '甲冑', '金工', '皮革', '裁縫', '鍊金', '烹調'];
+  const DEP = { $, esc: (s) => String(s), iconUrl: () => '', DOH, JOB_ICON: {},
+    NAME_COLLATOR: new Intl.Collator('zh-Hant'), getRINDEX: () => rindex, getSelected: () => null,
+    selectRecipe: () => {}, toast: () => {} };
+
+  // init 缺依賴 assert（grok F5）
+  let threwMiss = false;
+  try { CB.init({ $ }); } catch (e) { threwMiss = /缺依賴/.test(e.message); }
+  check('T11 init 缺依賴 → 早炸（注入契約不變量）', threwMiss);
+
+  let rindex = [
+    { id: 1, name: '青銅錠', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬' },
+    { id: 2, name: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材' },
+    { id: 3, name: '亞麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料' },
+  ];
+  CB.init(DEP);
+
+  CB.renderChips();
+  eq('T11 renderChips → 9 顆職業按鈕（全部+8 DoH）', ($('job-chips').innerHTML.match(/job-btn/g) || []).length, 9);
+
+  const rowCount = () => ($('recipe-table').innerHTML.match(/class="rt-row/g) || []).length;
+  $('recipe-search').value = ''; $('level-filter').value = ''; $('rlv-filter').value = '';
+  CB.renderTable();
+  eq('T11 renderTable 無篩選 → 3 列', rowCount(), 3);
+  eq('T11 recipe-count 顯示總數', $('recipe-count').textContent, '3 個配方');
+  eq('T11 種類副行渲染（rt-cat）', /rt-cat[^>]*>金屬</.test($('recipe-table').innerHTML), true);
+
+  $('recipe-search').value = '青銅'; CB.renderTable();
+  eq('T11 搜尋「青銅」→ 1 列', rowCount(), 1);
+
+  // rlvVal 空狀態修正（codex/grok：僅 rlv 篩選 0 命中 → 「無符合配方」非空白）
+  $('recipe-search').value = ''; $('rlv-filter').value = '999'; CB.renderTable();
+  eq('T11 僅 rlv 篩選 0 命中 → 「無符合配方」', $('recipe-count').textContent, '無符合配方');
+
+  // CAP=120（130 筆 → 顯示前 120）
+  $('rlv-filter').value = '';
+  rindex = Array.from({ length: 130 }, (_, i) => ({ id: i + 1, name: '物' + i, job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬' }));
+  CB.renderTable();
+  eq('T11 130 筆 → CAP 顯示 120 列', rowCount(), 120);
+  eq('T11 超 CAP → recipe-count 提示「顯示前 120」', /顯示前 120/.test($('recipe-count').textContent), true);
+
+  // markListState 無 CraftList → 守衛不拋錯（grok F4/F2）
+  let threwMLS = false;
+  try { CB.markListState(); } catch (e) { threwMLS = true; }
+  check('T11 markListState 無 CraftList → 守衛早退不拋錯', !threwMLS);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

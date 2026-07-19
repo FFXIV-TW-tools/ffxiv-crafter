@@ -2,6 +2,17 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-19 — B-007 拆分對抗審修正（codex/grok d6ad9102）
+
+Owner「請跑驗證」→ codex+grok 對抗審拆分 commit（codex 4 / grok 7 findings）triage（反查程式碼、真的才修）：
+- **四閘全跑**（codex 阻擋）：實跑並記錄 node --check / test-formulas / check-actions / cargo test 全綠——原僅記 2 項、以「未動 actions/Rust」略過 check-actions/cargo，不符「未過不算完成」鐵則。
+- **瀏覽層真測**（codex 中 / grok 高）：加 **T11** 直接載 app-browse.js（假 DOM ＋ 注入 deps）測 init 缺依賴 assert / renderChips 9 鈕 / renderTable 篩選 / CAP=120 / 種類副行 / 空狀態 / markListState 守衛 → **基線 50→60**（原 50 passed 不覆蓋 CraftBrowse，本輪補實）。
+- **proxy/deps 脆弱**（grok F2/F3/F4/F5）：① proxy `const`→**`function` 宣告**（復 hoisting、消 TDZ）② renderChips/renderTable/markListState 加 `if(!deps)return` 守衛 ③ app.js init 加 `if(!globalThis.CraftBrowse)` 缺失早報（→ 錯誤橫幅非白屏）④ CraftBrowse.init 加**缺依賴 assert**（注入契約成不變量）。
+- **CraftList 相容檢查**（codex 中）：＋鈕與詳情加清單由 `if(CraftList)` → `typeof CraftList?.add==='function'`（半套/舊版 global 不炸 TypeError）。
+- **rlvVal 空狀態**（codex/grok 低，搬移前既有 bug）：`recipe-count` 空判斷補 `rlvVal` → 僅配方等級篩選 0 命中顯「無符合配方」（T11 鎖）。
+- **行數更正**（codex/grok 低）：改用 **wc -l**（pre-commit gate 同法）：app.js 454（先前 Measure-Object 437 低估）、app-browse.js 104（先前 91）。
+- **驗證**：四閘全綠（test-formulas **60** / check-actions 35=35 / cargo test 2 / node --check）；瀏覽器實測整條瀏覽流程（表 120/職業篩選/選配方/返回/綠底標示）零 console error。push 待 Owner。
+
 ## 2026-07-19 — B-007 抽 app-browse.js（配方瀏覽層拆分，app.js 502→437 <500）
 
 Owner 核可 B-007（「有多個可拆分的獨立功能可拆」）。對抗審點名 app.js god-file 續脹 >500。
