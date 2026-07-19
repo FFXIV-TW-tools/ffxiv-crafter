@@ -252,6 +252,39 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T10 add 到上限 → warn toast 且不謊報 +1', lt[1] === 'warn' && !/\+1/.test(lt[0]), JSON.stringify(lt));
 }
 
+// ===== T12：crafting-list 成品採購清單 CSV（送端契約 + 三道收端上限）=====
+{
+  const CL_SRC = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
+  const cl = { console };
+  cl.globalThis = cl;
+  vm.createContext(cl);
+  vm.runInContext(CL_SRC, cl, { filename: 'crafting-list.js' });
+  const build = cl.CraftList.buildShoplistCsv;
+  const recipes = new Map([
+    [100, { item_id: 5000, item_amount: 3 }],
+    [200, { item_id: 6000 }],
+    [201, { item_id: 5000, item_amount: 2 }],
+    [300, {}],
+  ]);
+  const J = JSON.stringify;
+  eq('T12 正常 CSV 使用成品 id 並計算 yield', J(build([{ id: 100, qty: 2 }], recipes)),
+    J({ csv: '5000:6', error: null, count: 1, invalidCount: 0 }));
+  eq('T12 同 item_id 合併不同配方產量', J(build([{ id: 100, qty: 1 }, { id: 201, qty: 2 }], recipes)),
+    J({ csv: '5000:7', error: null, count: 1, invalidCount: 0 }));
+  eq('T12 空清單 → null CSV', J(build([], recipes)),
+    J({ csv: null, error: null, count: 0, invalidCount: 0 }));
+  const overTypes = new Map(Array.from({ length: 101 }, (_, i) => [i + 1, { item_id: 10000 + i }]));
+  const overTypeResult = build(Array.from({ length: 101 }, (_, i) => ({ id: i + 1, qty: 1 })), overTypes);
+  check('T12 成品種類超過 100 → error', overTypeResult.error !== null && overTypeResult.count === 101);
+  const overQtyResult = build([{ id: 100, qty: 10000 }], recipes);
+  check('T12 單項 finished qty 超過 9999 → error', overQtyResult.error !== null && overQtyResult.count === 1);
+  const longRecipes = new Map(Array.from({ length: 100 }, (_, i) => [i + 1, { item_id: 1000000000000001 + i }]));
+  const longResult = build(Array.from({ length: 100 }, (_, i) => ({ id: i + 1, qty: 1 })), longRecipes);
+  check('T12 CSV 超過 1800 字元 → error', longResult.error !== null && longResult.count === 100);
+  eq('T12 無 item_id 略過並計 invalidCount', J(build([{ id: 100, qty: 1 }, { id: 300, qty: 4 }], recipes)),
+    J({ csv: '5000:3', error: null, count: 1, invalidCount: 1 }));
+}
+
 // ===== T11：app-browse.js 配方瀏覽層（對抗審 codex/grok：拆分後瀏覽層需真測，非靠 app.js 公式閘背書）=====
 {
   const AB_SRC = fs.readFileSync(path.join(ROOT, 'app-browse.js'), 'utf8');

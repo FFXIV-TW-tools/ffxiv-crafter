@@ -1,9 +1,11 @@
 // crafting-list.js — 製造清單分頁：配方＋數量收集、素材總需求彙總、localStorage 持久化。
 // classic script（無 module 語法）：發佈 globalThis.CraftList，app.js init 時注入依賴——
-// 同 tools/test-formulas.mjs 的 vm 載入手法可直接測 aggregateMats 純函式。
+// 同 tools/test-formulas.mjs 的 vm 載入手法可直接測 aggregateMats/buildShoplistCsv 純函式。
 (function () {
   const KEY = 'ffxiv-crafter-craftlist-v1';
   const QTY_MIN = 1, QTY_MAX = 999;
+  const SHOPLIST_MAX_TYPES = 100, SHOPLIST_MAX_QTY = 9999, SHOPLIST_MAX_CSV = 1800;
+  const SHOPLIST_TOO_LARGE = 'shoplist-over-limit';
   let deps = null;      // app.js 注入：{ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, toast }
   let byId = new Map(); // recipe id → recipe
   let list = [];        // [{ id, qty }]（qty＝製作次數）
@@ -22,6 +24,34 @@
       }
     }
     return [...totals.entries()].sort((a, b) => a[0] - b[0]);
+  }
+
+  // 純函式（golden 測試面）：entries=[{id,qty}] × recipe id Map → 市場板成品 CSV。
+  // qty 是製作次數，乘上配方 item_amount 後才是送往 marketboard 的成品件數；無 item_id 的配方略過。
+  function buildShoplistCsv(entries, recipesById) {
+    const totals = new Map();
+    let invalidCount = 0;
+    for (const entry of entries || []) {
+      const recipe = recipesById && typeof recipesById.get === 'function' ? recipesById.get(+entry?.id) : null;
+      const itemId = Number(recipe && recipe.item_id);
+      const qty = Number(entry && entry.qty);
+      const amount = Number(recipe && (recipe.item_amount || 1));
+      const finishedQty = qty * amount;
+      if (!Number.isSafeInteger(itemId) || itemId <= 0 || !Number.isSafeInteger(finishedQty) || finishedQty <= 0) {
+        invalidCount++;
+        continue;
+      }
+      totals.set(itemId, (totals.get(itemId) || 0) + finishedQty);
+    }
+    const count = totals.size;
+    if (!count) return { csv: null, error: null, count, invalidCount };
+    if (count > SHOPLIST_MAX_TYPES) return { csv: null, error: SHOPLIST_TOO_LARGE, count, invalidCount };
+    if ([...totals.values()].some((qty) => qty > SHOPLIST_MAX_QTY)) {
+      return { csv: null, error: SHOPLIST_TOO_LARGE, count, invalidCount };
+    }
+    const csv = [...totals.entries()].map(([itemId, qty]) => `${itemId}:${qty}`).join(',');
+    if (csv.length > SHOPLIST_MAX_CSV) return { csv: null, error: SHOPLIST_TOO_LARGE, count, invalidCount };
+    return { csv, error: null, count, invalidCount };
   }
 
   function load() {
@@ -107,15 +137,29 @@
     const copyBtn = ordered.length
       ? `<button class="cl-copy-mats codex-btn codex-btn--ghost" type="button" title="複製素材總需求為純文字（每行「名稱 ×數量」，可貼進遊戲或記事本）">📋 複製清單</button>`
       : '';
+    const shoplist = buildShoplistCsv(list, byId);
+    const shopBtn = shoplist.count
+      ? `<button class="cl-shoplist codex-btn codex-btn--ghost" type="button" title="把成品數量交棒到市場板採購清單">🛒 在市場板開採購清單</button>`
+      : '';
     box.innerHTML = `<div class="cl-summary codex-small">清單 <b>${list.length}</b> 種配方 · 總製作 <b>${totalRuns}</b> 次</div>
       <div class="cl-rows">${rows}</div>
       <div class="cl-mats-head">
         <h3 class="codex-h3 cl-mats-title">素材總需求 <span class="codex-small">（點素材名到市場板查價・來源）</span></h3>
-        ${copyBtn}
+        ${copyBtn}${shopBtn}
       </div>
       <div class="cl-mats">${matRows || '<span class="codex-small">（無素材資料）</span>'}</div>`;
     const cm = box.querySelector('.cl-copy-mats');
     if (cm) cm.onclick = () => deps.copyText(matText, '✓ 已複製素材清單');
+    const sb = box.querySelector('.cl-shoplist');
+    if (sb) sb.onclick = () => {
+      const result = buildShoplistCsv(list, byId);
+      if (result.error || !result.csv) {
+        deps.toast('清單過大，無法一次交棒到市場板（上限 100 種成品 / 單項 9999 件）', 'warn');
+        return;
+      }
+      const url = `${deps.MARKETBOARD_BASE}#/shoplist?add=${result.csv}&v=1&n=${Date.now()}`;
+      window.open(url, 'ffxiv-marketboard');
+    };
     box.querySelectorAll('.cl-row').forEach((row) => {
       const id = +row.dataset.id;
       row.querySelector('.cl-go').onclick = () => deps.goSolve(id);   // 前往求解（選定配方 + 切求解分頁 + 帶 fromList 旗標）
@@ -133,5 +177,6 @@
     has: (id) => list.some((e) => e.id === +id),                              // 配方表「已加入」標示查詢
     count: (id) => { const e = list.find((x) => x.id === +id); return e ? e.qty : 0; },  // 0＝未加入
     aggregateMats,
+    buildShoplistCsv,
   };
 })();
