@@ -44,12 +44,14 @@ body {
 .filter-row .codex-select { flex: 0 0 auto; min-width: 130px; }
 .filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
 .recipe-count { margin: var(--space-2, 8px) 0; }
-.recipe-table { max-height: 320px; overflow-y: auto; overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+/* 結果列表與上方搜尋/篩選控件視覺分模塊（shawn：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
+.recipe-table { max-height: 320px; overflow-y: auto; overflow-x: auto; background: var(--color-bg); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
 .recipe-loading { padding: var(--space-6, 32px); text-align: center; color: var(--color-text-muted); }  /* 首載配方資料佔位 */
 /* 名稱欄吸收剩餘寬撐滿面板（不留空塊）；職業/Lv/配方等級給舒適固定寬 + 置中 → 不再擠在最右 */
 .rt { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
-.rt thead th { position: sticky; top: 0; background: var(--color-surface); color: var(--accent); text-align: left;
-  padding: var(--space-2, 8px); border-bottom: 1px solid var(--color-border); font-weight: var(--fw-semibold, 600); }
+/* 表頭加亮（原 --color-surface 與 panel 同色會融）＋下緣 accent 分隔線 → 明確界定列表頂、與篩選區分開 */
+.rt thead th { position: sticky; top: 0; background: var(--color-surface-hover); color: var(--accent); text-align: left;
+  padding: var(--space-2, 8px); border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, var(--color-border)); font-weight: var(--fw-semibold, 600); }
 .rt td { padding: var(--space-1, 4px) var(--space-2, 8px); border-bottom: 1px solid var(--color-border); }
 /* 名稱欄吸收剩餘寬；職業/Lv/配方等級給舒適固定寬 + 置中 → 不再擠右、版面均衡 */
 .rt th:not(:first-child), .rt td:not(.rt-name) { white-space: nowrap; text-align: center; }

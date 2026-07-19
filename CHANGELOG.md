@@ -2,6 +2,13 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-19 — 配方表與搜尋控件視覺分模塊（styles.css）
+
+Owner 反映「搜尋框跟顯示的列表框顏色太近、分不清哪個模塊」。根因：結果表 `.recipe-table` 用**跟 `.codex-input` 同款灰框 `--color-border`** ＋透明底（顯 panel 色）→ 讀作「另一個輸入框」。搜尋框為 portal 共用 `.codex-input`（不可覆寫），故強化本地結果表分模塊（全 token、無裸 hex）：
+- `.recipe-table`：accent 染框 `color-mix(--accent 32%, --color-border)`（青框 vs 灰框輸入拉開）＋遞進實底 `--color-bg`（比 panel 深一階＝獨立內容井）。
+- `.rt thead th`：底色 `--color-surface`→`--color-surface-hover`（原與 panel 同色會融）＋下緣 `1px --color-border`→`2px accent 染線`（明確界定列表頂）。
+- 驗證：瀏覽器實測搜尋框（灰框）與結果表（青框＋加亮表頭）視覺分開；pre-commit design-lint 過。旁路 cycle `2026-07-19-list-panel-contrast`。
+
 ## 2026-07-19 — B-007 拆分對抗審修正（codex/grok d6ad9102）
 
 Owner「請跑驗證」→ codex+grok 對抗審拆分 commit（codex 4 / grok 7 findings）triage（反查程式碼、真的才修）：
