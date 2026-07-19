@@ -2,6 +2,16 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-19 — B-007 抽 app-browse.js（配方瀏覽層拆分，app.js 502→437 <500）
+
+Owner 核可 B-007（「有多個可拆分的獨立功能可拆」）。對抗審點名 app.js god-file 續脹 >500。
+- **抽出**：`app-browse.js`（`globalThis.CraftBrowse`，91 行）＝ `renderChips`（職業方形按鈕條）/ `renderTable`（配方表）/ `markListState`（已加入綠底標示）＋私有 `jobFilter`（僅本層讀寫，app.js 移除該 state）。
+- **留 app.js**：`selectRecipe`/`showPicker`/`refreshSelectedGear`/公式/所有 state——選擇與詳情狀態機耦合過重（引用 selected/openedFromList/gearFor/renderIngredients/switchTab…），同批移風險高於效益。只抽最內聚、對外僅注入依賴溝通的「配方瀏覽表」單元。
+- **pattern**：沿用 app-render/app-solve/crafting-list 已驗證的 **classic-script + deps 注入**（非 module 化，免破壞 test-formulas vm 載入）。RINDEX/selected 由 **getter** 注入取 live 值（loadData 會重賦值綁定、持舊參照看不到新資料）；selectRecipe/toast 注入。
+- **零改呼叫點**：app.js 以**同名 proxy const**（`renderChips`/`renderTable`/`markListState` = `() => globalThis.CraftBrowse.X()`）委派 → 既有 init/showPicker/debouncedRender/level-filter 監聽/CraftList onChange 全部沿用不動。`CraftBrowse.init` 於 loadData 後、render 前注入。
+- **index.html**：app-browse.js classic script 加在 app-solve.js 後、app.js(module) 前。
+- **驗證**：node --check（app.js/app-browse.js）/ test-formulas **50 passed**（app.js 仍 classic-interop、vm 載入不破；CraftBrowse 未載但 proxy 未被觸及＝loadData reject 先中止 init）；瀏覽器實測整條瀏覽流程（CraftBrowse init / 表渲染 120 / 職業篩選鍊金全對 / 選配方收合 picker＋填詳情 / 返回列表 / 已加入綠底初繪＋篩選重建各 4）**零 console error**。push 待 Owner。
+
 ## 2026-07-19 — 配方瀏覽 UX 再強化（已加入清單綠底標示／道具種類副行／職業篩選方形化）＋ codex/grok 雙審修正
 
 依 Owner 一輪回饋（分頁序／加清單無反饋／橢圓標籤／不知哪些已加入／配方名補說明）。旁路 cycle `2026-07-19-browse-ux`。code commit `5e399d78`；對抗審 `.adversarial-reviews/5e399d78-{codex,grok}.md`（codex 3 / grok 11 findings）triage 後修正。

@@ -26,9 +26,10 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 | 檔案 / 目錄 | 職責 |
 |------|------|
 | `index.html` | 靜態骨架 + `document.write` 注入 portal CDN bootstrap（tokens/header/settings）+ SEO/JSON-LD |
-| `app.js` | 前端控制器（module 入口）：資料載入 / gear(localStorage) / 公式 computeSettings / 選配方 / 配方詳情 / 消耗品 / 分頁 / 配方表瀏覽(renderChips/renderTable/markListState) / init 接線（**502 行**，B-002 拆分後因配方表整合標示回長 >500 → 拆分候選 B-007 待 Owner 拍板；渲染與求解編排已抽出） |
+| `app.js` | 前端控制器（module 入口）：資料載入 / gear(localStorage) / 公式 computeSettings / 選配方 selectRecipe / 配方詳情 refreshSelectedGear / 消耗品 / 分頁 / init 接線（**437 行**，B-002＋B-007 拆分後；渲染/求解編排/配方瀏覽表已抽出，同名 proxy 委派 CraftBrowse） |
 | `app-render.js` | 結果渲染層（classic script `globalThis.CraftRender`）：hqPercent(純) / render / 手法序列 chips / 走查表 / 巨集。app.js init 注入 getter 取 live 狀態（loadData 會重賦值 ITEMS/ACTIONS 綁定） |
 | `app-solve.js` | 求解編排層（classic script `globalThis.CraftSolve`）：worker 生命週期 / doSolve / 求解計時 / 結果回傳分派 / 取消 / setSolving。worker·solveClock 為該層私有；渲染委派 CraftRender、公式/gear 由 app.js 注入 |
+| `app-browse.js` | 配方瀏覽層（classic script `globalThis.CraftBrowse`，B-007 拆分）：職業篩選 chips renderChips / 配方表 renderTable / 已加入清單標示 markListState。私有狀態 `jobFilter`；app.js init 注入依賴（getter 取 live RINDEX/selected＋selectRecipe/toast）。app.js 以同名 proxy 沿用既有呼叫點 |
 | `crafting-list.js` | 製造清單分頁：清單狀態(localStorage) / 素材彙總 `aggregateMats`（純函式，T7 golden 守）/ 分頁 render。classic script 發佈 `globalThis.CraftList`，app.js init 注入依賴（免 module 化破壞 test-formulas vm 載入） |
 | `worker.js` | web worker：載 raphael WASM 跑 `solve`（只跑 solve，simulate 尚未接 UI，故無 cmd dispatch） |
 | `styles.css` | 工具樣式，token 全來自 portal CDN（tokens.css / header.css） |
@@ -48,7 +49,7 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 > 機械閘基線 **4 項全綠**（只准升不准降；2026-07-11 R2 加 test-formulas.mjs → 29 passed；2026-07-16 加 T7 製造清單彙總 → 34 passed；2026-07-19 加 T8 marketboard URL 契約 + T9 selectRecipe 回傳 → 40 passed；2026-07-19 加 T10 清單 add/has/count + 上限誠實 → 50 passed）。
 
 ```bash
-node --check app.js app-render.js app-solve.js crafting-list.js worker.js   # JS 語法
+node --check app.js app-render.js app-solve.js app-browse.js crafting-list.js worker.js   # JS 語法
 node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實（50 passed）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一（2 passed）
