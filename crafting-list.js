@@ -49,7 +49,7 @@
     if ([...totals.values()].some((qty) => qty > SHOPLIST_MAX_QTY)) {
       return { csv: null, error: SHOPLIST_TOO_LARGE, count, invalidCount };
     }
-    const csv = [...totals.entries()].map(([itemId, qty]) => `${itemId}:${qty}`).join(',');
+    const csv = [...totals.entries()].sort((a, b) => a[0] - b[0]).map(([itemId, qty]) => `${itemId}:${qty}`).join(',');  // itemId 升冪：輸出穩定、對齊 aggregateMats（對抗審 grok）
     if (csv.length > SHOPLIST_MAX_CSV) return { csv: null, error: SHOPLIST_TOO_LARGE, count, invalidCount };
     return { csv, error: null, count, invalidCount };
   }
@@ -141,24 +141,41 @@
     const shopBtn = shoplist.count
       ? `<button class="cl-shoplist codex-btn codex-btn--ghost" type="button" title="把成品數量交棒到市場板採購清單">🛒 在市場板開採購清單</button>`
       : '';
-    box.innerHTML = `<div class="cl-summary codex-small">清單 <b>${list.length}</b> 種配方 · 總製作 <b>${totalRuns}</b> 次</div>
-      <div class="cl-rows">${rows}</div>
-      <div class="cl-mats-head">
-        <h3 class="codex-h3 cl-mats-title">素材總需求 <span class="codex-small">（點素材名到市場板查價・來源）</span></h3>
-        ${copyBtn}${shopBtn}
-      </div>
-      <div class="cl-mats">${matRows || '<span class="codex-small">（無素材資料）</span>'}</div>`;
+    // 上下兩張獨立卡片：配方清單卡 / 素材總需求卡（Owner：兩者不要混在一起、上下分開）
+    box.innerHTML = `
+      <section class="cl-card">
+        <div class="cl-card-head">
+          <h3 class="codex-h3">配方清單</h3>
+          <span class="cl-count codex-small">${list.length} 種 · 製作 ${totalRuns} 次</span>
+        </div>
+        <div class="cl-rows">${rows}</div>
+      </section>
+      <section class="cl-card">
+        <div class="cl-card-head">
+          <h3 class="codex-h3">素材總需求</h3>
+          <div class="cl-card-actions">${copyBtn}${shopBtn}</div>
+        </div>
+        <div class="cl-mats">${matRows || '<span class="codex-small">（無素材資料）</span>'}</div>
+      </section>`;
     const cm = box.querySelector('.cl-copy-mats');
     if (cm) cm.onclick = () => deps.copyText(matText, '✓ 已複製素材清單');
     const sb = box.querySelector('.cl-shoplist');
     if (sb) sb.onclick = () => {
       const result = buildShoplistCsv(list, byId);
-      if (result.error || !result.csv) {
-        deps.toast('清單過大，無法一次交棒到市場板（上限 100 種成品 / 單項 9999 件）', 'warn');
+      if (result.error === SHOPLIST_TOO_LARGE) {   // C2：超限（種類/單項/長度）與「無可交棒」分型，不再一律謊報「過大」
+        deps.toast('成品種類或數量過多，無法一次交棒（上限 100 種 / 單項 9999 件）', 'warn');
         return;
       }
+      if (!result.csv) {   // 空清單 / 全數缺 item_id → 無可交棒成品
+        deps.toast('清單沒有可交棒到市場板的成品', 'warn');
+        return;
+      }
+      if (result.invalidCount > 0) {   // C1：有成品缺市場資料被略過 → 誠實提示，不當整份成功
+        deps.toast(`有 ${result.invalidCount} 項無市場資料、已略過`, 'warn');
+      }
       const url = `${deps.MARKETBOARD_BASE}#/shoplist?add=${result.csv}&v=1&n=${Date.now()}`;
-      window.open(url, 'ffxiv-marketboard');
+      const win = window.open(url, 'ffxiv-marketboard');   // C4：彈窗攔截守衛（回 null → 提示，不靜默失敗）
+      if (!win) deps.toast('瀏覽器攔截了視窗，請允許彈出視窗後再試', 'warn');
     };
     box.querySelectorAll('.cl-row').forEach((row) => {
       const id = +row.dataset.id;

@@ -283,6 +283,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T12 CSV 超過 1800 字元 → error', longResult.error !== null && longResult.count === 100);
   eq('T12 無 item_id 略過並計 invalidCount', J(build([{ id: 100, qty: 1 }, { id: 300, qty: 4 }], recipes)),
     J({ csv: '5000:3', error: null, count: 1, invalidCount: 1 }));
+  eq('T12 多 item_id 依 itemId 升冪排序（反序輸入 → 穩定輸出）', J(build([{ id: 200, qty: 1 }, { id: 100, qty: 1 }], recipes)),
+    J({ csv: '5000:3,6000:1', error: null, count: 2, invalidCount: 0 }));
 }
 
 // ===== T11：app-browse.js 配方瀏覽層（對抗審 codex/grok：拆分後瀏覽層需真測，非靠 app.js 公式閘背書）=====

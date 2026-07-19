@@ -48,7 +48,7 @@ body {
 .filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
 .recipe-count { margin: var(--space-2, 8px) 0; }
 /* 結果列表與上方搜尋/篩選控件視覺分模塊（shawn：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
-.recipe-table { max-height: 320px; overflow-y: auto; overflow-x: auto; background: var(--color-bg); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
+.recipe-table { max-height: 60vh; overflow-y: auto; overflow-x: auto; background: var(--color-bg); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
 .recipe-loading { padding: var(--space-6, 32px); text-align: center; color: var(--color-text-muted); }  /* 首載配方資料佔位 */
 /* 名稱欄吸收剩餘寬撐滿面板（不留空塊）；職業/Lv/配方等級給舒適固定寬 + 置中 → 不再擠在最右 */
 .rt { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
@@ -237,8 +237,13 @@ body {
 .attribution a { color: var(--accent); }
 
 /* ---- 製造清單分頁（panel 吃滿版 container，與其他兩頁一致；痛點5）---- */
-.cl-summary { margin-bottom: var(--space-3, 12px); }
-.cl-summary b { color: var(--accent); }
+/* 上下兩張獨立卡片（配方清單 / 素材總需求）：surface 底與 tablet 分層、彼此硬分開（Owner）*/
+.cl-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md, 8px); padding: var(--space-4, 16px); margin-bottom: var(--space-4, 16px); }
+.cl-card:last-child { margin-bottom: 0; }
+.cl-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 8px); flex-wrap: wrap; margin-bottom: var(--space-3, 12px); }
+.cl-card-head > .codex-h3 { margin: 0; }
+.cl-card-actions { display: flex; align-items: center; gap: var(--space-2, 8px); flex-wrap: wrap; }  /* 複製 / 開採購清單 按鈕組 → 卡頭右側對齊 */
+.cl-count { color: var(--color-text); }
 .cl-empty-cta { margin-top: var(--space-2, 8px); }
 /* 配方列：icon + 名稱資訊（吃剩餘寬）+ 動作群（前往求解 / 行情 / 次數 / 刪除）*/
 .cl-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px); min-height: 44px;
@@ -251,11 +256,9 @@ body {
 .cl-qty { display: inline-flex; align-items: center; gap: var(--space-1, 4px); white-space: nowrap; }
 .cl-qty-in { width: 68px; text-align: center; }
 .cl-del { flex: 0 0 auto; }
-.cl-mats-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 8px); flex-wrap: wrap; margin-top: var(--space-4, 16px); }
-.cl-mats-title { margin: 0; }
-.cl-mats-title .codex-small { font-weight: var(--fw-regular, 400); }  /* 提示註記用字級分層、不降對比（灰字鐵則）*/
+.cl-rows .cl-row:last-child { border-bottom: none; }  /* 卡片內最後一列不留懸邊 */
 .cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-1, 4px) var(--space-4, 16px); margin-top: var(--space-2, 8px); }
+  gap: var(--space-1, 4px) var(--space-4, 16px); }
 .cl-mat { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 32px; }
 .cl-mat-ico { width: 22px; height: 22px; flex: 0 0 auto; }
 .cl-mat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
