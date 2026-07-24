@@ -6,6 +6,11 @@
   let deps = null; // { $, toast, PH_HTML, getSelected, gearFor, computeSettings, switchTab }
   let worker = null;
   let solveClock = null;  // 求解計時器（interval）：每秒更新已耗時；≥60s 升級可取消軟提示（不殺 worker，正常長求解仍在跑）
+  // 求解世代號（2026-07-25 健檢 HIGH）：每次 doSolve 遞增並隨 postMessage 送出，worker 原樣回傳。
+  // onWorkerMsg 只採用 gen === solveGen 的結果 —— 換配方 / 改設定 / 取消後，飛行中的舊求解回來會被丟棄。
+  // 沒有這道守衛時：selectRecipe 不 cancel in-flight job，且 invalidateResults 在 results.hidden 時
+  // early return（求解中正是 hidden）→ 舊配方的手法會渲染在新配方的標題下，玩家可能複製到錯綁巨集。
+  let solveGen = 0;
 
   function newWorker() {
     if (worker) worker.terminate();
@@ -28,7 +33,8 @@
     if (settings.base_progress <= 0 || settings.base_quality <= 0) { toast('作業/加工數值過低', 'error'); return; }
     setSolving(true);
     if (!worker) newWorker();
-    worker.postMessage({ input: settings }); // worker 只跑 solve（simulate 尚未接 UI），無需 cmd dispatch 欄
+    // gen 是這次求解的身分；worker 原樣回傳，onWorkerMsg 據此丟棄過期結果
+    worker.postMessage({ input: settings, gen: ++solveGen }); // worker 只跑 solve（simulate 尚未接 UI），無需 cmd dispatch 欄
     startSolveClock();
   }
   // 求解計時：每秒更新已耗時（求解跑在 worker，主執行緒空閒故計數不凍結）；≥60s 升級為可取消軟提示。
@@ -58,6 +64,9 @@
   }
   function onWorkerMsg(e) {
     const { $, toast, PH_HTML } = deps;
+    // 過期世代（使用者已換配方 / 改設定 / 取消）→ 整幀丟棄：不渲染、不 toast、不動 UI 狀態，
+    // 因為當前可能已有另一次求解在跑，動 UI 會把「求解中」錯誤地收掉。
+    if (e.data.gen !== solveGen) return;
     stopSolveClock();
     setSolving(false);
     if (!e.data.ok) {
@@ -75,7 +84,9 @@
       $('results-placeholder').innerHTML = PH_HTML;
     }
   }
-  function cancelSolve() { stopSolveClock(); newWorker(); setSolving(false); deps.toast('已取消求解', 'warn'); deps.$('solve-btn').focus(); } // 取消後移焦回求解鈕（鍵盤流暢）
+  // 取消：遞增世代讓 in-flight 結果失效（terminate 之外的第二道保險——terminate 與訊息投遞有 race），
+  // 再換新 worker 釋放 CPU。取消後移焦回求解鈕（鍵盤流暢）。
+  function cancelSolve() { solveGen++; stopSolveClock(); newWorker(); setSolving(false); deps.toast('已取消求解', 'warn'); deps.$('solve-btn').focus(); }
   function setSolving(on) {
     const { $, PH_HTML } = deps;
     $('solve-btn').hidden = on;
@@ -90,9 +101,18 @@
     $('solve-status').innerHTML = on ? '<span class="codex-spinner"></span> 求解中…（高難度配方可能數十秒）' : '';
   }
 
+  // 供外部（換配方 / 返回配方列表）在「求解中」時作廢當前求解：
+  // 世代守衛已保證舊結果不會被渲染，但 UI 狀態（solve-btn 藏著、cancel-btn 亮著）會殘留到新配方頁面，
+  // 且舊求解還在燒 CPU。回傳是否真的取消了（沒在求解時不做事、也不 toast）。
+  function invalidateInFlight() {
+    if (!deps || deps.$('cancel-btn').hidden) return false;
+    cancelSolve();
+    return true;
+  }
+
   globalThis.CraftSolve = {
     init(d) { deps = d; },
     newWorker,   // 預熱 WASM（app.js init 提前呼叫，讓 WASM download 與資料 fetch 並行）
-    doSolve, cancelSolve,
+    doSolve, cancelSolve, invalidateInFlight,
   };
 })();

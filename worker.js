@@ -4,12 +4,14 @@ import init, { solve } from './pkg/crafter_wasm.js';
 const ready = init(); // 抓 pkg/crafter_wasm_bg.wasm（同源）
 
 self.onmessage = async (e) => {
-  const { input } = e.data || {}; // 只跑 solve；simulate（WASM 有導出）尚未接 UI，故無 cmd dispatch
+  // gen＝這次求解的身分，原樣回傳讓主執行緒丟棄過期結果（app-solve.js 的世代守衛；
+  // 沒有它的話換配方後晚回的舊結果會渲染在新配方標題下）。只跑 solve；simulate（WASM 有導出）尚未接 UI。
+  const { input, gen } = e.data || {};
 
   try {
     await ready;
-    self.postMessage({ ok: true, result: solve(input) });
+    self.postMessage({ ok: true, gen, result: solve(input) });
   } catch (err) {
-    self.postMessage({ ok: false, error: String((err && err.message) || err) });
+    self.postMessage({ ok: false, gen, error: String((err && err.message) || err) });
   }
 };

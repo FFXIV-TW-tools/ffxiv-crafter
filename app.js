@@ -123,6 +123,9 @@ function selectRecipe(id, fromList) {
   if (!recipe) return false;
   const rlv = RLV[String(recipe.rlv)];
   if (!rlv) { toast('此配方缺 recipe level 資料', 'error'); return false; }   // 回傳成功與否 → 呼叫端（goSolve）失敗時不強制切頁
+  // 換配方 → 作廢飛行中的求解（世代守衛已擋住舊結果渲染，這裡是收 UI 狀態＋釋放 CPU）。
+  // 放在兩個 return false 之後：選配方失敗時不該波及正在跑的求解。
+  globalThis.CraftSolve?.invalidateInFlight?.();
   selected = { recipe, rlv };
   openedFromList = !!fromList;   // 從製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入為 false
   // 收合配方表；返回控件＝右上「← 返回配方列表」鈕（唯一可點）。此處只放誠實的「當前位置」狀態，不做「配方瀏覽›」假 nav 麵包屑（死 span 誤導可點）。

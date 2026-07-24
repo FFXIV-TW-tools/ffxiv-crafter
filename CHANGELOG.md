@@ -2,6 +2,25 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-25 — 求解世代守衛：換配方後不再顯示舊配方的結果（cycle 2026-07-25-健檢HIGH）
+
+**為什麼**：`doSolve` 只 `postMessage({ input: settings })`，訊息**不帶任何身分**；`onWorkerMsg` 收到就 `CraftRender.render`。而換配方 / 改設定**都不會取消飛行中的求解**：
+- `selectRecipe` 只把 `#results` 藏起來、重寫 placeholder，沒有 cancel
+- `invalidateResults` 開頭是 `if (results.hidden) return`——**求解中 `results` 正好就是 hidden**，所以改食藥/技能選項也不會作廢 in-flight job
+- `#change-recipe` 在 `setSolving` 期間仍可點
+
+結果：選配方 A 求解（expert 配方可跑數十秒）→ 中途換配方 B → A 的結果回來，`render` 照畫，但標題/詳情走 `getSelected()` 取的是 B。玩家看到的是「B 的名字 + A 的手法」，**複製出去就是錯綁的巨集**。
+
+### Fixed
+- `app-solve.js` 新增模組級 `solveGen`：`doSolve` 遞增並隨 `postMessage({ input, gen })` 送出；`worker.js` 原樣回傳 `gen`；`onWorkerMsg` 對 `gen !== solveGen` **整幀丟棄**（不渲染、不 toast、不動 UI 狀態——此刻可能已有另一次求解在跑，動 UI 會把「求解中」錯誤收掉）。
+- `cancelSolve` 一併遞增世代：`terminate()` 與訊息投遞有 race，世代號是第二道保險。
+- 新增 `CraftSolve.invalidateInFlight()`，`selectRecipe` 在成功切換配方時呼叫：世代守衛已擋住錯誤渲染，這裡負責收 UI 狀態（否則 `cancel-btn` 會亮在新配方頁面）＋釋放還在燒 CPU 的舊求解。放在兩個 `return false` 之後——選配方失敗時不該波及正在跑的求解。
+
+### Testing
+- `tools/test-formulas.mjs` **68 → 75**：T13 在 vm sandbox 裡用可控 Worker mock 跑**真行為測試**（不是 source ratchet）——訊息帶 gen／世代遞增／過期結果不渲染／當前結果正常渲染／已取消的結果不渲染／過期錯誤幀不 toast，外加 `worker.js` 必須回傳 gen 的契約斷言（守衛的另一半在 worker 側，漏了就整套失效）。
+
+> 來源：monorepo `docs/health-reviews/external/2026-07-25-12repo-grok外審橫掃-health-review.md`（grok 零-context 外審 HIGH）。
+
 ## 2026-07-19 — 對抗審修復 + 製造清單雙卡片重整（C1/C2/C4 + Owner UI）
 
 P0 交棒兩 commit（送端 crafter `4290059`、收端 marketboard `75c3828`）的 codex+grok 對抗審後修復 + Owner UI 回饋。本 repo 送端 `260e310`；收端修復在 marketboard `8b7c9ea`（原子 addMany/補償 rollback/gen 路由守衛/種件文案/mbChoice focus，M1–M6，247 綠）。

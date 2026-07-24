@@ -348,5 +348,88 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T11 markListState 無 CraftList → 守衛早退不拋錯', !threwMLS);
 }
 
+// ===== T13：飛行中求解的世代守衛（2026-07-25 健檢 HIGH）=====
+// doSolve 原本只 postMessage(settings)、不帶任何身分；onWorkerMsg 收到就 render。
+// 換配方 / 改設定不會取消飛行中的 job（selectRecipe 不 cancelSolve；invalidateResults 在
+// results.hidden 時 early return，而求解中正是 hidden）→ 舊配方的結果會蓋在新配方的標題下，
+// 玩家可能複製到「配方 A 的手法 + 配方 B 的標題」錯綁巨集。
+{
+  const SOLVE_SRC = fs.readFileSync(path.join(ROOT, 'app-solve.js'), 'utf8');
+  const sent = [];            // worker 收到的訊息
+  let onmsg = null;           // app-solve 掛上的 onmessage
+  const rendered = [];        // CraftRender.render 的呼叫
+
+  const sbDom = {};
+  const sbEl = (id) => sbDom[id] || (sbDom[id] = makeEl());
+  const sb = {
+    console,
+    document: { getElementById: sbEl, createElement() { return makeEl(); } },
+    setTimeout, clearTimeout, setInterval, clearInterval,
+    Worker: function () {
+      this.postMessage = (m) => sent.push(m);
+      this.terminate = () => {};
+      Object.defineProperty(this, 'onmessage', { set(fn) { onmsg = fn; }, get() { return onmsg; } });
+      Object.defineProperty(this, 'onerror', { set() {}, get() { return null; } });
+    },
+  };
+  sb.globalThis = sb;
+  sb.CraftRender = { render: (r) => rendered.push(r) };
+  vm.createContext(sb);
+  vm.runInContext(SOLVE_SRC, sb, { filename: 'app-solve.js' });
+
+  sb.CraftSolve.init({
+    $: sbEl,
+    toast: () => {},
+    PH_HTML: '',
+    getSelected: () => ({ recipe: { job: '木工' }, rlv: 700 }),
+    gearFor: () => ({ craftsmanship: 4000, control: 4000, cp: 600 }),
+    computeSettings: () => ({ base_progress: 100, base_quality: 100 }),
+    switchTab: () => {},
+  });
+
+  sb.CraftSolve.doSolve();
+  const gen1 = sent.at(-1) && sent.at(-1).gen;
+  check('T13 doSolve 送出的訊息帶世代號（身分依據）', gen1 !== undefined, `got=${JSON.stringify(sent.at(-1))}`);
+
+  sb.CraftSolve.doSolve();          // 使用者換配方後重新求解
+  const gen2 = sent.at(-1) && sent.at(-1).gen;
+  check('T13 第二次求解的世代號遞增（新舊可區分）', gen2 !== undefined && gen2 !== gen1, `gen1=${gen1} gen2=${gen2}`);
+
+  // 舊世代（配方 A）的結果晚回 → 必須丟棄
+  onmsg({ data: { ok: true, gen: gen1, result: { steps: ['舊配方結果'] } } });
+  eq('T13 過期世代的結果不得渲染（否則舊手法配新標題）', rendered.length, 0);
+
+  // 當前世代正常渲染
+  onmsg({ data: { ok: true, gen: gen2, result: { steps: ['當前結果'] } } });
+  eq('T13 當前世代的結果正常渲染', rendered.length, 1);
+
+  // 取消後，該次求解的結果回來也不得渲染
+  sb.CraftSolve.doSolve();
+  const gen3 = sent.at(-1).gen;
+  sb.CraftSolve.cancelSolve();
+  onmsg({ data: { ok: true, gen: gen3, result: { steps: ['已取消的結果'] } } });
+  eq('T13 已取消的求解結果不得渲染', rendered.length, 1);
+
+  // 錯誤幀同樣要判世代（舊配方的 NoSolution 不該汙染新配方的 UI）
+  let toasted = 0;
+  sb.CraftSolve.init({
+    $: sbEl, toast: () => { toasted++; }, PH_HTML: '',
+    getSelected: () => ({ recipe: { job: '木工' }, rlv: 700 }),
+    gearFor: () => ({}), computeSettings: () => ({ base_progress: 100, base_quality: 100 }),
+    switchTab: () => {},
+  });
+  sb.CraftSolve.doSolve();
+  const gen4 = sent.at(-1).gen;
+  sb.CraftSolve.doSolve();
+  onmsg({ data: { ok: false, gen: gen4, error: 'NoSolution' } });
+  eq('T13 過期世代的錯誤幀不得 toast（不汙染新求解的 UI）', toasted, 0);
+
+  // worker.js 契約：必須把 gen 原樣回傳，否則主執行緒無從比對
+  const WORKER_SRC = fs.readFileSync(path.join(ROOT, 'worker.js'), 'utf8');
+  check('T13 worker.js 回傳訊息帶回 gen（世代守衛的另一半）',
+    /gen/.test(WORKER_SRC) && /postMessage\(\s*\{[^}]*gen/.test(WORKER_SRC),
+    'worker.js 未回傳 gen → 主執行緒收到的訊息無身分，守衛失效');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
