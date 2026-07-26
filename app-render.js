@@ -92,7 +92,7 @@
       <div class="sum-row">
         ${completeBadge}
         <span class="codex-badge ${hq ? 'codex-badge--gold' : ''}">品質 ${pct(r.final_quality, r.max_quality)}%${hq ? ' · 滿' : ''}</span>
-        ${hqp != null ? `<span class="codex-badge codex-badge--gold" title="成品高品質(HQ)機率">HQ ${hqp}%</span>` : ''}
+        ${hqp != null ? `<span class="codex-badge codex-badge--gold codex-badge--code" title="成品高品質(HQ)機率">HQ ${hqp}%</span>` : ''}
         <span class="sum-meta">${r.step_count} 步 · ${r.total_time} 秒</span>
       </div>
       ${expertWarn}
