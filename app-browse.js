@@ -83,7 +83,7 @@
       if (!line) return;
       let badge = line.querySelector('.rt-inlist');
       if (inList) {
-        if (!badge) { badge = document.createElement('span'); badge.className = 'codex-badge codex-badge--success codex-badge--text rt-inlist'; line.appendChild(badge); }
+        if (!badge) { badge = document.createElement('span'); badge.className = 'codex-badge codex-badge--success rt-inlist'; line.appendChild(badge); }
         badge.textContent = n > 1 ? `已加入 ×${n}` : '已加入';
       } else if (badge) { badge.remove(); }
     });

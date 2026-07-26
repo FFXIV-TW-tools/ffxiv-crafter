@@ -2,6 +2,13 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-26 — 清掉「已加入」徽章上已失效的 `codex-badge--text`（B-016 收尾）
+
+**為什麼**：portal 的 B-016 Wave 3 把 `.codex-badge` base 翻成中文友好排版後，`--text`（原本的中文 opt-in）就退成 no-op 相容 alias。這裡的內容是「已加入 / 已加入 ×N」＝中文，base 本來就對，留著只會讓後人以為「中文一定要加 `--text`」而複製這個過時寫法。**零像素差**（alias 與 base 同值）。
+
+- 同批的 `app-render.js` 反向處理：`HQ n%` 是純拉丁/數字短碼，加了 `codex-badge--code` 才保住 mono + 字距（`255381e`）；「品質 NN%」「✓ 可完成」含中文，刻意不加、跟著翻面收緊。
+- 驗證：`node tools/test-formulas.mjs` 75 passed／`check-actions.py` 35＝35／design-lint exit 0。
+
 ## 2026-07-25 — 求解世代守衛：換配方後不再顯示舊配方的結果（cycle 2026-07-25-健檢HIGH）
 
 **為什麼**：`doSolve` 只 `postMessage({ input: settings })`，訊息**不帶任何身分**；`onWorkerMsg` 收到就 `CraftRender.render`。而換配方 / 改設定**都不會取消飛行中的求解**：
