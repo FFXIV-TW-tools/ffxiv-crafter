@@ -109,12 +109,12 @@
       // 成品產量放進左邊資訊列（不進動作群）→ 動作群 [前往求解][行情][次數][✕] 各列等寬、右側按鈕垂直對齊
       const yields = (r.item_amount || 1) > 1 ? ` · 成品 ×${e.qty * r.item_amount}` : '';
       // 配方成品 → marketboard #/craft（BOM 樹/利潤）；只在有 item_id 時出（防壞連結）
-      const mb = r.item_id ? `<a class="cl-mb codex-btn codex-btn--ghost" href="${deps.mbCraft(r.item_id)}" target="ffxiv-marketboard" title="到市場板看材料樹 / 各材料價 / 利潤（共用同一分頁）">💰 行情</a>` : '';
+      const mb = r.item_id ? `<a class="cl-mb codex-btn codex-btn--ghost" href="${deps.mbCraft(r.item_id)}" target="ffxiv-marketboard" data-help="到市場板看材料樹｜各材料價｜利潤試算。共用同一分頁。">💰 行情</a>` : '';
       return `<div class="cl-row" data-id="${r.id}">
         ${ico}
         <div class="cl-info"><span class="cl-name">${esc(r.item_name)}</span><span class="cl-sub codex-small">${esc(r.job)} · rlv ${r.rlv}${yields}</span></div>
         <div class="cl-actions">
-          <button class="cl-go codex-btn codex-btn--ghost" type="button" title="選定此配方並切到求解分頁">前往求解 →</button>
+          <button class="cl-go codex-btn codex-btn--ghost" type="button" data-help="選定此配方並切到求解分頁">前往求解 →</button>
           ${mb}
           <span class="cl-qty codex-small">次數 <input class="cl-qty-in codex-input" type="number" min="${QTY_MIN}" max="${QTY_MAX}" inputmode="numeric" value="${e.qty}" aria-label="「${esc(r.item_name)}」製作次數"></span>
           <button class="cl-del codex-btn codex-btn--ghost codex-btn--icon" type="button" aria-label="從清單移除「${esc(r.item_name)}」">✕</button>
@@ -130,16 +130,16 @@
     const matRows = ordered.map((m) => {
       const ico = m.icon ? `<img class="cl-mat-ico" src="${iconUrl(m.icon)}" alt="" loading="lazy">` : '<span class="cl-mat-ico" aria-hidden="true"></span>';
       // 素材名 → marketboard #/item（查價/來源）；晶體/水晶/晶簇亦可上市場板交易，故一律連（m.crystal 僅用於排序殿後）
-      const nameHtml = `<a class="cl-mat-name cl-mat-name--link" href="${deps.mbItem(m.iid)}" target="ffxiv-marketboard" title="到市場板查「${esc(m.name)}」價格與來源（共用同一分頁）">${esc(m.name)}</a>`;
+      const nameHtml = `<a class="cl-mat-name cl-mat-name--link" href="${deps.mbItem(m.iid)}" target="ffxiv-marketboard" data-help="到市場板查「${esc(m.name)}」的價格與來源。共用同一分頁。">${esc(m.name)}</a>`;
       return `<div class="cl-mat">${ico}${nameHtml}<span class="cl-mat-amt">×${m.total}</span></div>`;
     }).join('');
     const matText = ordered.map((m) => `${m.name} ×${m.total}`).join('\n');   // 純文字採買清單（每行「名稱 ×數量」，貼遊戲/記事本）
     const copyBtn = ordered.length
-      ? `<button class="cl-copy-mats codex-btn codex-btn--ghost" type="button" title="複製素材總需求為純文字（每行「名稱 ×數量」，可貼進遊戲或記事本）">📋 複製清單</button>`
+      ? `<button class="cl-copy-mats codex-btn codex-btn--ghost" type="button" data-help="複製素材總需求為純文字。每行「名稱 ×數量」，可貼進遊戲或記事本。">📋 複製清單</button>`
       : '';
     const shoplist = buildShoplistCsv(list, byId);
     const shopBtn = shoplist.count
-      ? `<button class="cl-shoplist codex-btn codex-btn--ghost" type="button" title="把成品數量交棒到市場板採購清單">🛒 在市場板開採購清單</button>`
+      ? `<button class="cl-shoplist codex-btn codex-btn--ghost" type="button" data-help="把成品數量交棒到市場板採購清單">🛒 在市場板開採購清單</button>`
       : '';
     // 上下兩張獨立卡片：配方清單卡 / 素材總需求卡（Owner：兩者不要混在一起、上下分開）
     box.innerHTML = `

@@ -33,7 +33,15 @@ const JOB_ICON = {
   '鍊金': '/i/062000/062114.png', '烹調': '/i/062000/062115.png',
 };
 const GEAR_KEY = 'ffxiv-crafter-gearsets-v1';
-const PH_HTML = '設定完成後按「求解最佳手法」，<br>巨集與手法序列即會顯示在結果區。';
+// 結果欄空狀態（.codex-empty 內容）：說清楚「這裡會出現什麼」＋附一顆可直接按下去的 CTA
+// （設計系統 §功能頁引導標準 驗收線 1；主 CTA 仍是設定欄那顆 --primary，此處用 ghost 不搶主 CTA 唯一性）。
+const PH_HTML =
+  '<div class="codex-empty__icon" aria-hidden="true">⚒</div>' +
+  '<div><b>求解後這裡會出現</b>' +
+  '<ul class="crafter-ph__list codex-small">' +
+  '<li>🎮 可直接貼進遊戲的巨集</li><li>📜 手法序列（每一步用什麼技能）</li><li>🔍 逐步走查（進展／品質／耐久／CP）</li>' +
+  '</ul>' +
+  '<button type="button" id="ph-solve" class="codex-btn codex-btn--ghost">求解最佳手法</button></div>';
 const NAME_COLLATOR = new Intl.Collator('zh-Hant'); // 預建 collator，避免每次比較重建（快於逐次 localeCompare(...,'zh-Hant')）
 
 let RECIPES = [], RLV = {}, ACTIONS = {}, RINDEX = [], ITEMS = {}, INGREDIENTS = {};
@@ -108,6 +116,7 @@ function onGearInput(e) {
   saveGear(); updateHint();
   if (selected) refreshSelectedGear();
   invalidateResults(); // 改角色數值 → 舊巨集過期
+  globalThis.CraftFlow?.update?.(); // 填完數值 → ② 由「無法進行」轉「進行中」（invalidateResults 無結果時會早退，故此處明呼）
 }
 
 // ---------- 職業 chips + 配方表（已抽到 app-browse.js：globalThis.CraftBrowse；jobFilter 為該層私有狀態）----------
@@ -138,15 +147,18 @@ function selectRecipe(id, fromList) {
   $('results-placeholder').hidden = false;
   $('results-placeholder').innerHTML = PH_HTML;
   refreshSelectedGear();
+  globalThis.CraftFlow?.update?.();   // 流程軸推進到 ②（含 pick-panel 收合成摘要條）
   $('work').scrollIntoView({ behavior: 'smooth', block: 'start' });
   return true;
 }
 function showPicker() {
   openedFromList = false;   // 返回瀏覽即結束「從清單進入」情境 → 下次選配方不殘留「← 回製造清單」
+  // selected 刻意保留（返回列表仍要標示原選中列 is-sel + 還焦）；流程位置改看 picker 是否展開
   $('picker').hidden = false;
   $('change-recipe').hidden = true;
   $('selected-bar').hidden = true;
   $('work').hidden = true;
+  globalThis.CraftFlow?.update?.();
   renderTable();  // 篩選/搜尋值保留在 input 上、不清（返回不重置瀏覽狀態）
   $('pick-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   const back = $('recipe-table').querySelector('.rt-row.is-sel') || $('recipe-search'); // 還焦：優先原選中列、否則搜尋框（a11y 返回焦點不遺失）
@@ -164,40 +176,45 @@ function refreshSelectedGear() {
   const { recipe, rlv } = selected;
   const { max_progress: maxP, max_quality: maxQ, max_durability: maxD } = recipeMaxes(recipe, rlv);
   const g = gearFor(recipe.job);
+  // 套用狀況＝共用 .codex-tint-panel--bar（左緣色條資訊盒）：綠＝已套用、金＝缺數值並附補救入口
   const note = g
-    ? `<span class="gear-ok">套用「${esc(g._src)}」：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${Number(g.level) || 100}${g.level ? '' : '（假設，未填等級）'}</span>`
-    : `<span class="gear-warn">⚠ 尚未設定「${esc(recipe.job)}」數值 — <a href="#" id="goto-stats">去填角色數值 →</a></span>`;
+    ? `✅ 套用「${esc(g._src)}」數值：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${Number(g.level) || 100}${g.level ? '' : '（假設，未填等級）'}`
+    : `⚠ 尚未設定「${esc(recipe.job)}」數值 — <a href="#" id="goto-stats">去填角色數值 →</a>`;
+  const noteTone = g ? 'codex-tint-panel--success' : 'codex-tint-panel--warn';
   const icon = (ITEMS[String(recipe.item_id)] || {}).icon;
   const jico = JOB_ICON[recipe.job] ? `<img class="ri-jico" src="${iconUrl(JOB_ICON[recipe.job])}" alt="">` : '';
   // 動作列：統一 ghost 按鈕群（設計系統，取代自寫 link-button）。marketboard 連結只在有 item_id 時出（防壞連結）。
   const mbLink = recipe.item_id
-    ? `<a class="codex-btn codex-btn--ghost" href="${mbCraft(recipe.item_id)}" target="ffxiv-marketboard" title="到市場板看材料多層樹 / 各材料即時價 / 成本 / 利潤（共用同一分頁）">💰 材料樹與利潤</a>`
+    ? `<a class="codex-btn codex-btn--ghost" href="${mbCraft(recipe.item_id)}" target="ffxiv-marketboard" data-help="到市場板看材料多層樹｜各材料即時價｜成本與利潤試算。共用同一分頁。">💰 材料樹與利潤</a>`
     : '';
   const backToList = openedFromList
-    ? `<button id="back-to-list" class="codex-btn codex-btn--ghost" type="button" title="回到製造清單分頁">← 回製造清單</button>`
+    ? `<button id="back-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="回到製造清單分頁">← 回製造清單</button>`
     : '';
   $('recipe-info').innerHTML = `
     ${icon ? `<img class="ri-icon" src="${iconUrl(icon)}" alt="">` : ''}
     <div class="ri-main">
       <div class="ri-name">${esc(recipe.item_name)}${recipe.is_expert ? ' <span class="codex-small">高難度</span>' : ''}</div>
-      <div class="ri-stats"><span class="ri-stat ri-jobstat">${jico}${esc(recipe.job)}</span><span class="ri-stat">難度 <b>${maxP}</b></span><span class="ri-stat">品質 <b>${maxQ}</b></span><span class="ri-stat">耐久 <b>${maxD}</b></span></div>
-      <div class="ri-actions">
-        <button id="add-to-list" class="codex-btn codex-btn--ghost" type="button" title="加進「製造清單」分頁，彙總素材總需求">📋 加入製造清單</button>
-        ${mbLink}
-        ${backToList}
-      </div>
+      <div class="ri-stats"><span class="ri-stat ri-jobstat">${jico}${esc(recipe.job)}</span><span class="ri-stat">難度<b>${maxP}</b></span><span class="ri-stat">品質<b>${maxQ}</b></span><span class="ri-stat">耐久<b>${maxD}</b></span></div>
     </div>
-    <div class="ri-gear">${note}</div>`;
+    <div class="ri-actions">
+      <button id="add-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="加進「製造清單」分頁，彙總所有成品的素材總需求">📋 加入製造清單</button>
+      ${mbLink}
+      ${backToList}
+    </div>
+    <div class="ri-gear codex-tint-panel codex-tint-panel--bar ${noteTone}">${note}</div>`;
   const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats', true); };
   const ab = $('add-to-list'); if (ab) ab.onclick = () => { if (typeof globalThis.CraftList?.add === 'function') globalThis.CraftList.add(recipe.id); };
   // 回清單：switchTab('list') 已集中清 openedFromList + 收返回鈕（見 switchTab），此處只需切頁+移焦
   const bl = $('back-to-list'); if (bl) bl.onclick = () => switchTab('list', true);
   $('opt-target').value = ''; $('opt-target').max = maxQ; $('opt-target').placeholder = '滿(' + maxQ + ')';
-  $('opt-target').disabled = $('solve-mode').value === 'nq'; // NQ 模式目標品質欄停用（與 solve-mode 監聽一致）
+  globalThis.CraftFlow.setTargetMode();         // NQ 模式目標品質欄停用 + 寫出原因（引導層）
   renderIngredients(recipe, maxQ);
   updateEff();
-  $('solve-btn').disabled = !g;
+  // 缺角色數值時**不用 disabled**（真 disabled 不可聚焦 → 螢幕閱讀器讀不到原因、鍵盤也走不到）：
+  // 改 aria-disabled 暗掉但可按，按下由 doSolve 導去「角色數值」分頁（驗收線 3：控制不隱藏＋寫出原因＋給補救入口）
+  $('solve-btn').setAttribute('aria-disabled', g ? 'false' : 'true');
   $('opt-adversarial').disabled = recipe.is_expert; // 高難度配方引擎不支援防球
+  $('adv-why').hidden = !recipe.is_expert;
   if (recipe.is_expert) $('opt-adversarial').checked = false;
 }
 
@@ -215,10 +232,10 @@ function renderIngredients(recipe, maxQ) {
     const name = it.name || ('#' + iid);
     const ico = it.icon ? `<img class="ing-ico" src="${iconUrl(it.icon)}" alt="" loading="lazy">` : '';
     // 素材名掛 marketboard 查價/來源深連結（DRY mbItem）；晶體/水晶/晶簇亦可上市場板交易，故一律連（isCrystal 僅用於排序殿後）
-    const nameHtml = `<a class="ing-name ing-name--link" href="${mbItem(iid)}" target="ffxiv-marketboard" title="到市場板查「${esc(name)}」價格與來源（共用同一分頁）">${esc(name)}</a>`;
+    const nameHtml = `<a class="ing-name ing-name--link" href="${mbItem(iid)}" target="ffxiv-marketboard" data-help="到市場板查「${esc(name)}」的價格與來源。共用同一分頁。">${esc(name)}</a>`;
     const ctl = hqable(iid)
-      ? `<span class="ing-hqctl">HQ <input class="ing-hq-in codex-input" data-iid="${iid}" data-amt="${amount}" type="number" min="0" max="${amount}" value="0" inputmode="numeric">/${amount}</span>`
-      : '<span class="ing-na codex-small">不可 HQ</span>';
+      ? `<span class="ing-hqctl"><span class="ing-hqctl__tag codex-xs">HQ</span><input class="ing-hq-in codex-input" data-iid="${iid}" data-amt="${amount}" type="number" min="0" max="${amount}" value="0" inputmode="numeric" aria-label="「${esc(name)}」使用的 HQ 數量">/ ${amount}</span>`
+      : '<span class="ing-na codex-small" data-help="此素材沒有 HQ 版本，無法用來提高起始品質" aria-label="不可 HQ">—</span>';
     return `<div class="ing${hqable(iid) ? ' ing--hq' : ''}">${ico}${nameHtml}<span class="ing-amt">×${amount}</span>${ctl}</div>`;
   }).join('');
   $('ingredients').innerHTML = `
@@ -284,9 +301,11 @@ function updateInitial(recipe, maxQ) {
   computedInitial = (mf > 0 && totalIlvl > 0) ? Math.floor(maxQ * mf * providedIlvl / totalIlvl / 100) : 0;
   const initMax = mf > 0 ? Math.floor(maxQ * mf / 100) : 0;
   const el = $('ing-initial');
+  const pct = (maxQ > 0) ? Math.min(100, Math.floor(computedInitial / maxQ * 100)) : 0;
   if (el) el.innerHTML = mf > 0
-    ? `<div class="qline">初始品質（HQ 素材自動帶入）：<b>${computedInitial}</b> / ${maxQ}</div>` +
-      `<div class="qline codex-small">最高可帶入品質：${initMax}</div>`
+    ? `<div class="ing-initial__head"><span>初始品質 <span class="codex-small">（HQ 素材自動帶入）</span></span><b>${computedInitial} / ${maxQ}</b></div>` +
+      `<div class="codex-progress"><div class="codex-progress__bar" style="width:${pct}%"></div></div>` +
+      `<div class="ing-initial__foot codex-small">此配方最高可帶入 <b>${initMax}</b>（＝把所有可 HQ 素材都換成 HQ）</div>`
     : '<span class="codex-small">此配方無法用 HQ 素材提升初始品質</span>';
 }
 
@@ -326,8 +345,10 @@ function invalidateResults() {
   if (!$('results') || $('results').hidden) return; // 尚無結果就不動
   $('results').hidden = true;
   $('results-placeholder').hidden = false;
-  $('results-placeholder').innerHTML = '⚠ 設定已變更，請重新求解';
+  // 保留空狀態本體（含「會出現什麼」與 CTA）、只在前面加一行失效警語 → 失效後仍有一鍵重算入口
+  $('results-placeholder').innerHTML = '<div class="crafter-ph__warn">⚠ 設定已變更，請重新求解</div>' + PH_HTML;
   $('solve-status').innerHTML = '';
+  globalThis.CraftFlow?.update?.();   // ③ 退回待辦（上游變更使下游失效）
 }
 
 // ---------- 呈現（已抽到 app-render.js：globalThis.CraftRender；init 注入 getter 取 live 狀態）----------
@@ -401,6 +422,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   loadGear();
   // 配方瀏覽層（app-browse.js classic script）：注入依賴後才能 render（getter 取 live RINDEX/selected——loadData 會重賦值綁定）
   if (!globalThis.CraftBrowse) throw new Error('app-browse.js 未載入（部署不完整）'); // 明確早報 → 落 catch 顯錯誤橫幅，非等 render 才 undefined.X 白屏（對抗審 grok F3）
+  if (!globalThis.CraftFlow) throw new Error('app-flow.js 未載入（部署不完整）');     // 同上：setTargetMode/摘要為必經路徑，缺檔要早報而非中途 TypeError
   globalThis.CraftBrowse.init({ $, esc, iconUrl, DOH, JOB_ICON, NAME_COLLATOR,
     getRINDEX: () => RINDEX, getSelected: () => selected, selectRecipe, toast });
   renderChips();
@@ -416,7 +438,8 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   else if (dlRecipe || dlItem) toast('找不到深連結指定的配方，請用搜尋手動選擇', 'warn'); // 從 marketboard 點過來但該物品無配方 → 給提示不迷路（ux-3）
   fillConsumableSelect('food', FOOD);
   fillConsumableSelect('potion', POTION);
-  ['food', 'potion', 'food-hq', 'potion-hq', 'specialist'].forEach(id => $(id).addEventListener('change', () => { updateEff(); invalidateResults(); }));
+  globalThis.CraftFlow.updateConsumableSummary();
+  ['food', 'potion', 'food-hq', 'potion-hq', 'specialist'].forEach(id => $(id).addEventListener('change', () => { updateEff(); globalThis.CraftFlow.updateConsumableSummary(); invalidateResults(); }));
   // 任一求解輸入變更 → 舊結果過期（gate：集中失效，涵蓋程式化改值與 gear 傳播）
   ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-adversarial'].forEach(id => $(id).addEventListener('change', invalidateResults));
   $('opt-target').addEventListener('input', () => {
@@ -424,13 +447,17 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     if (max && +el.value > max) el.value = max; // 超配方品質上限即時回填 maxQ（求解本就 clamp，先讓 UI 誠實一致，ux-5）
     invalidateResults();
   });
-  $('solve-mode').addEventListener('change', (e) => { $('opt-target').disabled = e.target.value === 'nq'; invalidateResults(); }); // NQ 模式不吃目標品質 → 停用該欄
+  $('solve-mode').addEventListener('change', () => { globalThis.CraftFlow.setTargetMode(); invalidateResults(); }); // NQ 模式不吃目標品質 → 停用該欄並寫出原因
   const debouncedRender = debounce(renderTable, 180); // 搜尋/rlv 逐字輸入不必每鍵重繪 11803 筆
   $('recipe-search').addEventListener('input', debouncedRender);
   $('level-filter').addEventListener('change', renderTable);
   $('rlv-filter').addEventListener('input', debouncedRender);
   $('solve-btn').addEventListener('click', () => globalThis.CraftSolve.doSolve());
   $('cancel-btn').addEventListener('click', () => globalThis.CraftSolve.cancelSolve());
+  // 結果欄空狀態內的 CTA：PH_HTML 每次重設都會換新節點 → 事件委派綁在持久容器上（不重綁、不漏綁）
+  $('results-placeholder').addEventListener('click', (e) => {
+    if (e.target.closest('#ph-solve')) globalThis.CraftSolve.doSolve();
+  });
   $('change-recipe').addEventListener('click', showPicker);
   const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats', true);
   document.querySelectorAll('#main-tabs .codex-tab').forEach(t => {
@@ -447,6 +474,16 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
       goSolve: (id) => { if (selectRecipe(id, true)) switchTab('solve', true); } }); // 前往求解：selectRecipe 失敗（缺 rlv）就不切頁；成功才切+移焦，詳情顯示「← 回製造清單」
     markListState(); // 初載：清單已 load，回填首屏配方表的「已加入」標示（renderTable 早於 init 執行時清單尚空）
   }
+  // 流程引導（app-flow.js classic script）：三步軸 + 下一步 + pick-panel 收合 + CTA 就緒提示
+  if (globalThis.CraftFlow) {
+    globalThis.CraftFlow.init({ esc, getSelected: () => selected,
+      isPicking: () => !$('picker').hidden,
+      gearOkFor: (job) => !!gearFor(job),
+      hasResult: () => !!$('results') && !$('results').hidden,
+      isSolving: () => !$('cancel-btn').hidden });
+    globalThis.CraftFlow.update();
+  }
+  window.FFXIVHelp?.setup?.();   // [data-help] 即現說明卡（設計系統鐵則：禁原生 title；opt-in、冪等）
   } catch (e) {
     console.error('[crafter] 初始化失敗:', e);
     $('recipe-table').innerHTML = ''; // 清掉首載「載入中…」佔位，避免與失敗橫幅並存殘留轉圈

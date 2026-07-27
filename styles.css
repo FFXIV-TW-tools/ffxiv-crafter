@@ -32,9 +32,62 @@ body {
 .run-hint[hidden] { display: none; }   /* display:flex 蓋 UA [hidden] → 補守衛（updateHint 靠 hidden 收合）*/
 .run-hint > span { flex: 1; min-width: 0; }
 
+/* ---- 流程軸（app-flow.js 驅動）----
+   設計系統 §功能頁引導標準：三步狀態（完成／進行中／待辦）＋固定位置的「下一步」。
+   狀態靠 [data-state] 語意屬性驅動樣式（元件狀態 API），不用純視覺 class。 */
+.crafter-flow-wrap { margin-bottom: var(--space-4, 16px); }
+.crafter-flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2, 8px);
+  list-style: none; margin: 0; padding: 0; }
+@media (max-width: 760px) { .crafter-flow { grid-template-columns: 1fr; } }
+.crafter-flow__step { display: flex; align-items: flex-start; gap: var(--space-2, 8px); min-width: 0;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px); border-left-width: 3px; }
+/* 序號徽章固定寬 → 三步文字左緣對齊（圖示+文字並排鐵則#1）*/
+.crafter-flow__n { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: var(--radius-pill, 999px);
+  background: var(--color-bg-deep, #03060c); border: 1px solid var(--color-border);
+  font-size: var(--fs-small); font-weight: var(--fw-bold, 700); }
+.crafter-flow__body { display: flex; flex-direction: column; min-width: 0; }
+.crafter-flow__t { font-weight: var(--fw-semibold, 600); line-height: var(--lh-tight, 1.15); }
+.crafter-flow__note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 待辦＝低調但不失可讀（灰字鐵則：不與最小字級疊 muted → 只降底色不降文字對比）*/
+.crafter-flow__step[data-state="todo"] { opacity: .75; }
+.crafter-flow__step[data-state="done"] { border-left-color: var(--color-success, #7dd87d); }
+.crafter-flow__step[data-state="done"] .crafter-flow__n { color: var(--color-success, #7dd87d); border-color: var(--color-success, #7dd87d); }
+/* 進行中＝唯一高亮步驟（Owner：可操作處要看得出來）*/
+.crafter-flow__step[data-state="current"] { border-color: var(--accent); border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--color-surface)); }
+.crafter-flow__step[data-state="current"] .crafter-flow__n { color: var(--accent); border-color: var(--accent); }
+.crafter-flow__step[data-state="current"] .crafter-flow__t { color: var(--accent); }
+.crafter-flow__step[data-state="blocked"] { border-color: var(--color-warn); border-left-color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 10%, var(--color-surface)); }
+.crafter-flow__step[data-state="blocked"] .crafter-flow__n,
+.crafter-flow__step[data-state="blocked"] .crafter-flow__t { color: var(--color-warn); }
+.crafter-flow__next { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2, 8px);
+  margin: var(--space-2, 8px) 0 0; font-size: var(--fs-body); }
+.crafter-flow__next-label { flex: 0 0 auto; padding: 1px var(--space-2, 8px); border-radius: var(--radius-xs, 4px);
+  background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent);
+  font-size: var(--fs-small); font-weight: var(--fw-semibold, 600); }
+/* 螢幕閱讀器專用文字（步驟狀態）：視覺上不佔位，但 SR 讀得到「已完成／進行中」*/
+.crafter-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 /* ---- 選配方 ---- */
-.pick-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3, 12px); }
+.pick-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3, 12px);
+  flex-wrap: wrap; margin-bottom: var(--space-3, 12px); }
 .pick-head .codex-h2 { margin: 0; }
+.crafter-pick-title { min-width: 0; }
+.crafter-pick-hint { margin: var(--space-1, 4px) 0 0; }
+/* 選定配方後：整張 codex-tablet 卡（JS 卸下 tablet class）收合成一行摘要 —— 驗收線 4「版面還給主內容」。
+   HUD 角標僅屬 tablet 外觀，收合態一併隱藏（contextual override，非覆寫 .codex-hud 根 selector）。 */
+.crafter-picked { display: flex; align-items: center; gap: var(--space-3, 12px); flex-wrap: wrap;
+  padding: var(--space-2, 8px) var(--space-3, 12px); margin-bottom: var(--space-4, 16px);
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-success, #7dd87d); border-radius: var(--radius-md, 8px); }
+.crafter-picked .codex-hud { display: none; }
+.crafter-picked .pick-head { margin-bottom: 0; flex: 1; min-width: 0; }
+.crafter-picked .crafter-pick-title { display: none; }
 /* 篩選子面板：職業 + 搜尋/等級 整組成 raised 灰框卡（bg 亮一階、gray border）→ 與下方結果列表（recessed cyan-bordered well）硬分兩區（Owner：界線更硬）。組內間距靠 padding，job-chips 底 margin 收掉避免雙重間距 */
 .filter-group { background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: var(--radius-md, 8px); padding: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); }
 .filter-group .job-chips { margin-bottom: var(--space-2, 8px); }
@@ -50,20 +103,28 @@ body {
 /* 結果列表與上方搜尋/篩選控件視覺分模塊（shawn：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
 .recipe-table { max-height: 60vh; overflow-y: auto; overflow-x: auto; background: var(--color-bg); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
 .recipe-loading { padding: var(--space-6, 32px); text-align: center; color: var(--color-text-muted); }  /* 首載配方資料佔位 */
-/* 名稱欄吸收剩餘寬撐滿面板（不留空塊）；職業/Lv/配方等級給舒適固定寬 + 置中 → 不再擠在最右 */
-.rt { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+/* table-layout:fixed + 百分比欄寬（📊 表格佈局穩定鐵則）：篩選/搜尋換內容時欄寬不重算＝欄位不跳動；
+   同時把原本「名稱欄吃掉全部剩餘寬」造成的中段大片空白攤回各欄。 */
+.rt { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-small); }
 /* 表頭加亮（原 --color-surface 與 panel 同色會融）＋下緣 accent 分隔線 → 明確界定列表頂、與篩選區分開 */
-.rt thead th { position: sticky; top: 0; background: var(--color-surface-hover); color: var(--accent); text-align: left;
+.rt thead th { position: sticky; top: 0; z-index: var(--z-sticky, 500); background: var(--color-surface-hover); color: var(--accent); text-align: left;
   padding: var(--space-2, 8px); border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, var(--color-border)); font-weight: var(--fw-semibold, 600); }
-.rt td { padding: var(--space-1, 4px) var(--space-2, 8px); border-bottom: 1px solid var(--color-border); }
-/* 名稱欄吸收剩餘寬；職業/Lv/配方等級給舒適固定寬 + 置中 → 不再擠右、版面均衡 */
+/* 固定列高 + 淡化分隔線：每列都畫實線＝密集網格感，掃視改交給斑馬紋 */
+.rt td { padding: var(--space-1, 4px) var(--space-2, 8px); height: 46px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
 .rt th:not(:first-child), .rt td:not(.rt-name) { white-space: nowrap; text-align: center; }
-.rt th:nth-child(2), .rt td:nth-child(2) { width: 150px; }   /* 職業（含 icon）*/
-.rt th:nth-child(3), .rt td:nth-child(3) { width: 110px; }   /* Lv */
-.rt th:nth-child(4), .rt td:nth-child(4) { width: 130px; }   /* 配方等級 */
-.rt th:nth-child(5), .rt td:nth-child(5) { width: 68px; text-align: center; }   /* 加入清單操作欄 */
+.rt th:nth-child(1) { width: 44%; }   /* 名稱（含種類副行）*/
+.rt th:nth-child(2) { width: 16%; }   /* 職業（含 icon）*/
+.rt th:nth-child(3) { width: 10%; }   /* Lv */
+.rt th:nth-child(4) { width: 16%; }   /* 配方等級 */
+.rt th:nth-child(5) { width: 14%; }   /* 加入清單操作欄 */
+.rt td:nth-child(3), .rt td:nth-child(4) { font-variant-numeric: tabular-nums; }  /* 位數不同不左右晃 */
 .rt-act { text-align: center; white-space: nowrap; }
 .rt-actcol { text-align: center; }
+/* 密集列裡 38px 主控件過重 → 收成 28px 方鈕（帶組合子的 contextual override，不動 .codex-btn 根 selector）*/
+.rt-act .codex-btn { height: 28px; min-width: 28px; padding: 0 var(--space-1, 4px); }
+/* 斑馬紋＝掃視主力；:not() 讓「已加入綠底」與「選中」兩個語意態一定贏過純裝飾的斑馬 */
+.rt tbody tr:nth-child(even):not(.rt-in):not(.is-sel) { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }
 .rt-row { cursor: pointer; }
 .rt-row:hover { background: var(--color-surface-hover); }
 .rt-row.is-sel { background: var(--color-surface-hover); outline: 1px solid var(--accent); }
@@ -81,14 +142,15 @@ body {
 .rt-ico { width: 24px; height: 24px; flex: none; }
 /* 名稱兩行：第一行「成品名 + 已加入徽章」、第二行道具種類（繁中）補充說明。flex 放內層 wrapper，不動 td 的 table-cell 語意（名稱/職業分隔線對齊鐵則）*/
 .rt-nmwrap { display: flex; flex-direction: column; min-width: 0; line-height: var(--lh-tight, 1.2); }
-.rt-nmline { display: flex; align-items: center; gap: var(--space-2, 8px); min-width: 0; }  /* 名稱與「已加入 ×N」徽章同行並排（badge 由 markListState 插入） */
+/* min-height 預留徽章高度 → 有/無「已加入」徽章的列**等高**（原本插了徽章那幾列會比其他列高一截）*/
+.rt-nmline { display: flex; align-items: center; gap: var(--space-2, 8px); min-width: 0; min-height: 22px; }
 .rt-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rt-cat { font-weight: var(--fw-regular, 400); }  /* 種類副行：靠字級（codex-small）+ 字重與名稱分層，不降對比（灰字鐵則：不與最小字級疊 muted）*/
 .rt-job { white-space: nowrap; }
 .rt-jico { width: 18px; height: 18px; vertical-align: middle; margin-right: 2px; }
 /* 當前位置狀態列（目前配方：X）；返回控件＝右上「← 返回配方列表」鈕。不做「配方瀏覽›」假 nav 麵包屑（死 span 會誤導可點）。*/
 .selected-bar { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-1, 4px) var(--space-2, 8px);
-  font-size: var(--fs-body); margin-top: var(--space-2, 8px); }
+  font-size: var(--fs-body); flex: 1; min-width: 0; }
 .selected-bar[hidden] { display: none; }   /* display:flex 蓋 UA [hidden] → 補守衛（showPicker 靠 hidden 收合）*/
 .sb-cur { color: var(--accent); font-weight: var(--fw-bold, 700); }
 
@@ -98,27 +160,43 @@ body {
 .work[hidden] { display: none; }  /* grid 會蓋掉 hidden 屬性，須補回 */
 .work .panel { margin-bottom: 0; }
 @media (max-width: 760px) { .work { grid-template-columns: 1fr; } }  /* 窄屏單欄堆疊，等高失效無妨 */
-/* 結果欄：flex 直欄 → 未求解時 placeholder 於等高面板內垂直置中（不再孤懸左上），求解後結果自然頂對齊 */
+/* 尚無結果（is-idle，app-flow 驅動）→ 結果欄不與設定欄等高：否則右半邊是一整片只有兩行字的空面板。
+   有結果／求解中才恢復 stretch 拉齊兩欄。 */
+.work.is-idle #results-col { align-self: start; }
 #results-col { display: flex; flex-direction: column; }
-.results-ph { margin: auto; padding: var(--space-6, 32px) var(--space-3, 12px); text-align: center; color: var(--color-text-muted); line-height: var(--lh-normal, 1.5); }
+/* 兩欄的步驟標題（② 設定條件 / ③ 求解結果）：欄位身分一眼可辨 */
+.crafter-col-title { margin: 0 0 var(--space-3, 12px); }
+/* 空狀態＝.codex-empty（dashed 置中框）。display:flex 蓋過 UA [hidden] → 補守衛（有結果時要真的收起） */
+#results-placeholder[hidden] { display: none; }
+.results-ph { text-align: center; line-height: var(--lh-normal, 1.5); }
+.crafter-ph__list { list-style: none; margin: var(--space-1, 4px) 0 var(--space-3, 12px); padding: 0;
+  display: flex; flex-direction: column; gap: 2px; }
+.crafter-ph__warn { color: var(--color-warn); font-weight: var(--fw-semibold, 600); }
 
-.recipe-info { display: flex; align-items: center; gap: var(--space-3, 12px); margin-bottom: var(--space-3, 12px);
-  flex-wrap: wrap; }
-.ri-icon { width: 40px; height: 40px; border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); flex: none; }
-.ri-main { display: flex; flex-direction: column; gap: var(--space-1, 4px); min-width: 0; }
+/* 配方詳情＝三段式（識別｜數值｜動作），原本是名稱/pill/按鈕/數值行全部平鋪、無層級 */
+.recipe-info { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2, 8px) var(--space-3, 12px);
+  align-items: center; margin-bottom: var(--space-3, 12px); }
+.ri-icon { width: 48px; height: 48px; align-self: start;
+  background: var(--color-bg-deep, #03060c); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--color-border));
+  border-radius: var(--radius-sm, 6px); flex: none; }
+.ri-main { display: flex; flex-direction: column; gap: var(--space-2, 8px); min-width: 0; }
 .ri-name { font-size: var(--fs-h3); color: var(--accent); font-weight: var(--fw-bold, 700); line-height: var(--lh-tight, 1.15); }
 .ri-name .codex-small { color: var(--color-warn); font-weight: var(--fw-regular, 400); }
-.ri-stats { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); }
-.ri-stat { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px);
-  padding: 2px var(--space-2, 8px); font-size: var(--fs-small); }
-.ri-stat b { color: var(--accent); }
-.ri-jobstat { display: inline-flex; align-items: center; gap: var(--space-1, 4px); }
-.ri-jico { width: 16px; height: 16px; }
-/* 詳情動作列：統一 ghost 按鈕群（加入清單 / 材料樹與利潤 / 回製造清單）*/
-.ri-actions { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); margin-top: var(--space-1, 4px); }
-.ri-gear { width: 100%; }
-.gear-ok { color: var(--color-success); font-weight: var(--fw-semibold, 600); }
-.gear-warn { color: var(--color-warn); font-weight: var(--fw-semibold, 600); }
+/* 數值三連（難度/品質/耐久）＝label 上、值下的等寬 stat 格；職業另作身分 pill，不與數值混排 */
+.ri-stats { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); align-items: stretch; }
+.ri-stat { display: flex; flex-direction: column; gap: 1px; min-width: 74px;
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px);
+  padding: var(--space-1, 4px) var(--space-2, 8px); font-size: var(--fs-xs); line-height: var(--lh-tight, 1.15); }
+.ri-stat b { color: var(--accent); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.ri-jobstat { flex-direction: row; align-items: center; justify-content: center; gap: var(--space-1, 4px);
+  min-width: 0; font-size: var(--fs-small); font-weight: var(--fw-semibold, 600);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--color-border)); }
+.ri-jico { width: 18px; height: 18px; }
+/* 動作列與上方資訊以細線分隔 → 「看的」與「按的」分兩區 */
+.ri-actions { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px);
+  grid-column: 1 / -1; padding-top: var(--space-2, 8px); border-top: 1px solid var(--color-border); }
+/* 角色數值套用狀況＝共用 .codex-tint-panel--bar 左緣色條資訊盒（原本是浮在版面中間的一行彩色字）*/
+.ri-gear { grid-column: 1 / -1; font-size: var(--fs-small); }
 .ri-gear a { color: var(--accent); }
 
 /* ---- 原料 + HQ ---- */
@@ -127,42 +205,59 @@ body {
 .ing-group-title { font-size: var(--fs-small); color: var(--color-text-muted); font-weight: var(--fw-semibold, 600);
   margin: var(--space-2, 8px) 0 var(--space-1, 4px); }
 .ing-list { display: flex; flex-direction: column; gap: var(--space-1, 4px); margin-bottom: var(--space-2, 8px); }
-.ing { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 34px; padding: 0 var(--space-2, 8px);
+.ing { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 36px; padding: 0 var(--space-2, 8px);
   background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); font-size: var(--fs-small); }
-.ing--hq { border-color: var(--color-gold, var(--accent)); }
-.ing-ico { width: 22px; height: 22px; flex: 0 0 auto; }
+/* 可 HQ ＝左緣金條（原本整框金色，一排下來比 accent 還搶眼）*/
+.ing--hq { border-left: 3px solid var(--color-gold, var(--accent)); }
+.ing-ico { width: 24px; height: 24px; flex: 0 0 auto; }
 .ing-name { font-weight: var(--fw-semibold, 600); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ing-name--link { color: inherit; text-decoration: none; }   /* 素材名連 marketboard 查價；平時同內文色、hover 才亮 accent（不喧賓奪主）*/
 .ing-name--link:hover { color: var(--accent); text-decoration: underline; }
-.ing-amt { color: var(--color-text); flex: 0 0 auto; }
-.ing-hqctl { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-1, 4px); white-space: nowrap; }
-.ing-hq-in { width: 42px; height: 26px; padding: 2px 4px; text-align: center; }
+.ing-amt { color: var(--color-text); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+/* HQ 控制固定寬 → 各列輸入框左緣對齊成一直行（原本隨名稱長度浮動）*/
+.ing-hqctl { margin-left: auto; display: inline-flex; align-items: center; justify-content: flex-end;
+  gap: var(--space-1, 4px); white-space: nowrap; flex: 0 0 auto; min-width: 106px; }
+.ing-hqctl__tag { color: var(--color-gold, var(--accent)); font-weight: var(--fw-semibold, 600); }
+.ing-hq-in { width: 44px; height: 26px; padding: 2px 4px; text-align: center; }
 @media (pointer: coarse) { .ing-hq-in { min-height: 40px; width: 48px; } }  /* a11y：行動觸控目標放大至 ≥40px（桌機維持精簡）*/
-.ing-na { margin-left: auto; color: var(--color-text-muted); }
-.ing-initial { padding: var(--space-2, 8px); background: var(--color-surface); border: 1px solid var(--accent); border-radius: var(--radius-sm, 6px); }
-.ing-initial b { color: var(--accent); }
-.ing-initial .qline { margin: 2px 0; }
+/* 不可 HQ ＝短破折號佔位（原本每列都印「不可 HQ」四字＝一排重複噪音，說明改掛 data-help）*/
+.ing-na { margin-left: auto; flex: 0 0 auto; min-width: 106px; text-align: right; color: var(--color-text-muted); cursor: help; }
+/* 初始品質改「數值 + 進度條」卡：一眼看出離「最高可帶入」還差多少 */
+.ing-initial { padding: var(--space-2, 8px) var(--space-3, 12px); background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
+.ing-initial b { color: var(--accent); font-variant-numeric: tabular-nums; }
+.ing-initial__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2, 8px);
+  margin-bottom: var(--space-1, 4px); }
+.ing-initial__foot { margin-top: var(--space-1, 4px); }
 
-/* 求解模式 */
-.solve-config { margin: var(--space-3, 12px) 0 var(--space-2, 8px); display: flex; flex-direction: column; gap: var(--space-2, 8px); }
 .cfg-line { display: flex; align-items: center; gap: var(--space-2, 8px); }
 .cfg-line .codex-select { width: auto; flex: 1; max-width: 240px; }
+.cfg-line__label { flex: 0 0 3.5em; }   /* 食物/藥水 標籤定寬 → 兩列下拉起點對齊 */
 
 /* config 子分組卡 — 安靜 inset（非 codex-card 互動卡：表單分組滑過不該跳動發光） */
 .cfg-card { background: var(--color-bg-deep, #03060c); border: 1px solid var(--color-border);
   border-radius: var(--radius-md, 8px); padding: var(--space-3, 12px) var(--space-4, 16px) var(--space-4, 16px);
   margin-top: var(--space-4, 16px); }
-.cfg-card__title { margin: 0 0 var(--space-2, 8px); }
+.cfg-card__title { margin: 0 0 var(--space-1, 4px); }
+/* 每張設定卡一行「這張卡在決定什麼」——不靠使用者自己摸索欄位用途（Owner 引導性要求）*/
+.cfg-card__desc { margin: 0 0 var(--space-3, 12px); }
 .cfg-card .consumable-block { border-top: none; margin-top: 0; }  /* 卡內首元素免上分隔線 */
+/* 求解模式 / 目標品質：兩欄表單網格（label 走 .codex-field__label，禁 placeholder 當 label）*/
+.crafter-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); }
 
 /* 消耗品與專家 */
 .consumable-block { border-top: 1px solid var(--color-border); margin: var(--space-2, 8px) 0; }
-.consumable-block > summary { cursor: pointer; list-style: none; padding: var(--space-2, 8px) 0; }
+.consumable-block > summary { cursor: pointer; list-style: none; padding: var(--space-2, 8px) 0;
+  display: flex; align-items: baseline; gap: var(--space-2, 8px); }
 .consumable-block > summary::-webkit-details-marker { display: none; }
 .consumable-block > summary::before { content: '▸'; color: var(--accent); margin-right: var(--space-1, 4px); display: inline-block; transition: transform var(--transition-fast, .15s); }
 .consumable-block[open] > summary::before { transform: rotate(90deg); }
 .consumables { display: flex; flex-direction: column; gap: var(--space-2, 8px); padding-bottom: var(--space-2, 8px); }
 .consumables .cfg-line .codex-select { width: auto; flex: 1; max-width: 220px; }
+/* 摺疊起來時也看得到現值（Owner：不要塞一個欄位在那邊等人發現）—— 未展開就知道有沒有吃食藥 */
+.crafter-sum { margin-left: auto; color: var(--accent); font-weight: var(--fw-semibold, 600);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .eff-stats { color: var(--color-text); }
 .eff-stats b { color: var(--accent); }
 
@@ -174,22 +269,54 @@ body {
 .opt-group + .opt-group { margin-top: var(--space-1, 4px); padding-top: var(--space-3, 12px); border-top: 1px solid var(--color-border); }
 .opt-group__label { font-weight: var(--fw-semibold, 600); margin-bottom: var(--space-2, 8px); }
 .opt-group__hint { margin-left: var(--space-1, 4px); }
-.opt-group .solve-opts { margin-bottom: 0; }
-.solve-opts { display: flex; flex-wrap: wrap; gap: var(--space-3, 12px); margin-bottom: var(--space-2, 8px); }
 .opt { display: inline-flex; align-items: center; gap: var(--space-1, 4px); cursor: pointer; }
 .opt input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
-.opt-num input { width: 110px; }
-.target-line { margin-bottom: var(--space-3, 12px); }
-.solve-row { display: flex; gap: var(--space-2, 8px); align-items: center; }
+/* 求解選項＝每項常駐一行說明（設計系統：開關逐項要有說明；hover 才出的 title 觸控無效、且要停頓 1 秒）。
+   選中態換底色 → 「哪些會被求解器動用」掃一眼就看得出來。 */
+.crafter-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-2, 8px); }
+.crafter-opt { display: flex; align-items: flex-start; gap: var(--space-2, 8px); cursor: pointer;
+  padding: var(--space-2, 8px); background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px); }
+.crafter-opt:hover { background: var(--color-surface-hover); }
+.crafter-opt:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--color-surface)); }
+.crafter-opt:has(input:disabled) { opacity: .6; cursor: not-allowed; }   /* 停用＝暗掉不隱藏（驗收線 3），原因寫在 .crafter-why */
+.crafter-opt input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; flex: 0 0 auto; margin-top: 2px; }
+.crafter-opt__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.crafter-opt__name { font-weight: var(--fw-semibold, 600); }
+.crafter-opt__desc { line-height: var(--lh-snug, 1.3); }
+/* 「為什麼現在不能用」——控制停用時必寫原因，不隱藏控制 */
+.crafter-why { color: var(--color-warn); font-weight: var(--fw-semibold, 600); }
+.crafter-why[hidden] { display: none; }
+/* 主 CTA 常駐列：sticky 貼設定欄底部 → 捲到素材清單中段也按得到，不必找回底部 */
+/* 不用負 margin 貼齊面板邊：.codex-tablet 有切角 clip-path，貼邊會被裁角 → 改浮動圓角條 */
+.crafter-actionbar { position: sticky; bottom: var(--space-2, 8px); z-index: var(--z-base, 0);
+  margin-top: var(--space-4, 16px); padding: var(--space-3, 12px);
+  background: var(--color-bg-mid, #070b12);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border));
+  border-radius: var(--radius-md, 8px); }
+.crafter-actionbar__row { display: flex; gap: var(--space-2, 8px); align-items: center; flex-wrap: wrap; }
+/* 缺角色數值＝暗掉但仍可按（按下導去「角色數值」分頁）；不用 :disabled 以保鍵盤/SR 可達 */
+#solve-btn[aria-disabled="true"], #ph-solve[aria-disabled="true"] { opacity: .55; }
+.crafter-actionbar__hint { min-width: 0; }
+.crafter-actionbar__hint--warn { color: var(--color-warn); font-weight: var(--fw-semibold, 600); }
 .solve-status { margin-top: var(--space-2, 8px); min-height: 1.4em; display: flex; align-items: center; gap: var(--space-2, 8px); }
+.solve-status:empty { display: none; margin-top: 0; min-height: 0; }
 
 /* ---- 結果 + 摺疊 ---- */
-.result-summary { margin-bottom: var(--space-3, 12px); }
-.sum-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-2, 8px); }
-.sum-meta { margin-left: auto; }
-.bar-row { display: grid; grid-template-columns: 3em 1fr auto; align-items: center; gap: var(--space-2, 8px); margin: var(--space-1, 4px) 0; }
+/* 結果摘要＝獨立的 inset 面板（徽章 + 步數/秒數 metric + 兩條進度條），與下方摺疊區塊分開 */
+.result-summary { padding: var(--space-3, 12px); margin-bottom: var(--space-3, 12px);
+  background: var(--color-bg-deep, #03060c); border: 1px solid var(--color-border); border-radius: var(--radius-md, 8px); }
+.sum-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
+.sum-meta { margin-left: auto; display: inline-flex; gap: var(--space-2, 8px); flex: 0 0 auto; }
+/* 步數 / 秒數：值大、單位小，與左側徽章群拉開重量差（原本是一行同字級小字）*/
+.sum-metric { display: inline-flex; align-items: baseline; gap: 2px; }
+.sum-metric b { color: var(--accent); font-size: var(--fs-h3); font-weight: var(--fw-bold, 700);
+  line-height: 1; font-variant-numeric: tabular-nums; }
+/* 數字欄定寬 + tabular → 兩條長條的右側數字對齊成一直行 */
+.bar-row { display: grid; grid-template-columns: 3em minmax(0, 1fr) 8.5em; align-items: center;
+  gap: var(--space-2, 8px); margin: var(--space-1, 4px) 0; }
 .bar-label { font-weight: var(--fw-semibold, 600); }
-.bar-num { white-space: nowrap; }
+.bar-num { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
 
 .res-block { border-top: 1px solid var(--color-border); padding: var(--space-1, 4px) 0; }
 .res-block > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: var(--space-2, 8px); padding: var(--space-2, 8px) 0; }
@@ -198,40 +325,61 @@ body {
 .res-block[open] > summary::before { transform: rotate(90deg); }
 .res-block > summary .codex-h3 { margin: 0; }
 
-.rotation { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); padding-bottom: var(--space-2, 8px); }
+/* CSS counter 給每張手法卡編號 → 與下方「逐步走查」的 # 欄一一對應（純 CSS，不動 render） */
+/* gap 12px（非 8px）：序號角標外移 6px，8px 間距會讓角標壓到左鄰卡片邊緣 */
+.rotation { display: flex; flex-wrap: wrap; gap: var(--space-3, 12px); padding-bottom: var(--space-2, 8px); counter-reset: rotstep; }
 /* 圖示卡放可變長技能名：fit-content 撐到名寬、名 nowrap 不切（§圖示+文字並排鐵則#2）*/
-.chip { display: flex; flex-direction: column; align-items: center; gap: 2px; width: fit-content; min-width: 52px; max-width: 120px;
+.chip { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; width: fit-content; min-width: 56px; max-width: 120px;
   padding: var(--space-1, 4px); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+.chip::before { counter-increment: rotstep; content: counter(rotstep);
+  position: absolute; top: -6px; left: -6px; min-width: 16px; height: 16px; padding: 0 3px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-bg-deep, #03060c); border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--color-border));
+  border-radius: var(--radius-pill, 999px); color: var(--accent);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold, 700); line-height: 1; }
 .chip img { width: 34px; height: 34px; flex: 0 0 auto; }
 .chip-name { max-width: 100%; text-align: center; line-height: var(--lh-tight, 1.15); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .walkthrough { overflow-x: auto; padding-bottom: var(--space-2, 8px); }
 .wt-table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
-.wt-table th, .wt-table td { padding: var(--space-1, 4px) var(--space-2, 8px); text-align: right; border-bottom: 1px solid var(--color-border); }
+.wt-table th, .wt-table td { padding: var(--space-1, 4px) var(--space-2, 8px); text-align: right;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
 .wt-table th:nth-child(2), .wt-table td:nth-child(2) { text-align: left; }
-.wt-table th { color: var(--accent); font-weight: var(--fw-semibold, 600); }
+.wt-table th { background: var(--color-surface-hover); color: var(--accent); font-weight: var(--fw-semibold, 600); }
+.wt-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }
+.wt-table td { font-variant-numeric: tabular-nums; }   /* 進展/品質/耐久/CP 逐步遞減時位數對齊 */
 .wt-act { display: flex; align-items: center; gap: var(--space-1, 4px); }
 .act-ico { width: 20px; height: 20px; }
 
 .macro { padding-bottom: var(--space-2, 8px); }
 .macro-block { margin-bottom: var(--space-3, 12px); }
-.macro-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-1, 4px); }
-.macro-text { width: 100%; resize: vertical; font-family: var(--font-mono); }
+.macro-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-1, 4px); }
+/* 巨集框＝要被複製的「產出物」：accent 淡框 + 深底，與周邊表單控件區隔 */
+.macro-text { width: 100%; resize: vertical; font-family: var(--font-mono); line-height: var(--lh-snug, 1.3);
+  background: var(--color-bg-deep, #03060c); border-color: color-mix(in srgb, var(--accent) 32%, var(--color-border)); }
 
 /* ---- 角色數值表 ---- */
 /* 三分頁 panel 一律吃滿 .codex-container（切頁不跳寬，痛點5）；此表於面板內以內容寬水平置中，左右留白對稱 */
 .hint { margin-bottom: var(--space-4, 16px); }
 .gearsets { overflow-x: auto; }  /* 窄螢幕表格內部橫捲，不撐破頁面 */
-.gear-table { width: auto; border-collapse: collapse; margin-inline: auto; }  /* 內容寬度 + 面板內置中 */
-.gear-table th, .gear-table td { padding: var(--space-2, 8px) var(--space-3, 12px); border-bottom: 1px solid var(--color-border); }
+/* 撐滿面板（原本 width:auto + margin auto 置中 → 寬螢幕下左右各留一大片空白、表格孤懸中間）*/
+.gear-table { width: 100%; table-layout: fixed; border-collapse: collapse; min-width: 560px; }
+.gear-table th, .gear-table td { padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
+.gear-table td { text-align: center; }   /* 輸入框在欄內置中 → 與置中表頭同一垂直軸 */
+.gear-table th:first-child { width: 24%; }
 .gear-table thead th { color: var(--accent); text-align: center; font-weight: var(--fw-semibold, 600); }  /* 數值欄表頭置中 */
 .gear-table thead th:first-child { text-align: left; }  /* 職業欄表頭靠左（對齊職名）*/
 .gear-table tbody tr:hover { background: var(--color-surface-hover); }
 .gear-table .gj { text-align: left; font-weight: var(--fw-semibold, 600); white-space: nowrap; }
+/* 「預設」是所有未填職業的 fallback ≠ 一般職業列 → 淡 accent 底 + 下緣加重線與 8 職分開 */
 .gear-table .gj-default { color: var(--accent); }
+.gear-table tbody tr:first-child { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.gear-table tbody tr:first-child td, .gear-table tbody tr:first-child th {
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 35%, var(--color-border)); }
 .gj-ico { display: inline-block; width: 22px; height: 22px; vertical-align: middle; margin-right: var(--space-2, 8px); }
 .gj-ico--empty { visibility: hidden; }  /* 預設列佔位、不顯圖但保留寬度 */
-.gear-in { width: 96px; text-align: center; }  /* 數字欄固定窄寬 + 置中（對齊置中表頭）*/
+.gear-in { width: 100%; max-width: 160px; text-align: center; font-variant-numeric: tabular-nums; }  /* 隨欄寬伸縮 + 置中（對齊置中表頭）*/
 
 .attribution { margin-top: var(--space-5, 24px); opacity: .85; }
 .attribution a { color: var(--accent); }

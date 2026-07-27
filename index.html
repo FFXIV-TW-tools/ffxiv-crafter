@@ -71,12 +71,22 @@
         <button id="goto-stats-hint" class="codex-btn codex-btn--ghost" type="button">前往角色數值 →</button>
       </div>
 
-      <!-- 選配方（可收合） -->
+      <!-- 流程軸（設計系統 §功能頁引導標準）：三步狀態 + 固定位置的「下一步」。內容由 app-flow.js 依 live 狀態重繪 -->
+      <nav class="crafter-flow-wrap" aria-label="製作求解流程">
+        <ol id="flow-steps" class="crafter-flow"></ol>
+        <p id="flow-next" class="crafter-flow__next"></p>
+      </nav>
+
+      <!-- ① 選配方（選定後整張卡收合成一行摘要，版面還給主內容）-->
       <section class="codex-tablet codex-tablet--cyan panel" id="pick-panel">
         <span class="codex-hud"></span>
         <div class="pick-head">
-          <h2 class="codex-h2">選配方</h2>
-          <button id="change-recipe" class="codex-btn codex-btn--ghost" type="button" hidden>← 返回配方列表</button>
+          <div class="crafter-pick-title">
+            <h2 class="codex-h2" id="pick-title">① 選配方</h2>
+            <p class="crafter-pick-hint codex-small">先選製作職業，再用等級或名稱縮小範圍；點列即進入設定。</p>
+          </div>
+          <div id="selected-bar" class="selected-bar" hidden></div>
+          <button id="change-recipe" class="codex-btn codex-btn--ghost" type="button" hidden>← 換一個配方</button>
         </div>
         <div id="picker">
           <!-- 篩選子面板：職業 + 搜尋/等級 組成獨立卡，與下方結果列表硬分兩區（Owner：界線更硬）-->
@@ -98,24 +108,28 @@
           <div id="recipe-count" class="recipe-count codex-small"></div>
           <div id="recipe-table" class="recipe-table"><div class="recipe-loading codex-small">📦 載入配方資料中…（首次載入資料量較大，請稍候）</div></div>
         </div>
-        <div id="selected-bar" class="selected-bar" hidden></div>
       </section>
 
-      <!-- 設定（左）＋ 結果（右） -->
+      <!-- ② 設定條件（左）＋ ③ 求解結果（右） -->
       <div id="work" class="work" hidden>
         <section class="codex-tablet codex-tablet--cyan panel" id="config-panel">
           <span class="codex-hud"></span>
+          <h2 class="codex-h2 crafter-col-title">② 設定條件</h2>
           <div id="recipe-info" class="recipe-info"></div>
 
           <div class="cfg-card">
           <h3 class="codex-h3 cfg-card__title">素材與加成</h3>
-          <details class="consumable-block">
-            <summary><span class="codex-small">🍖 消耗品與專家（食物 / 藥水 / 專家之證）</span></summary>
+          <p class="cfg-card__desc codex-small">HQ 素材、食物與藥水會提高起始品質與數值 — 不確定就保持預設。</p>
+          <details class="consumable-block" id="consumable-block">
+            <summary>
+              <span class="codex-small">🍖 食物 / 藥水 / 專家之證</span>
+              <span id="consumable-sum" class="crafter-sum codex-small">未使用</span>
+            </summary>
             <div class="consumables">
-              <div class="cfg-line">食物
+              <div class="cfg-line"><label class="codex-field__label cfg-line__label" for="food">食物</label>
                 <select id="food" class="codex-select"><option value="">無</option></select>
                 <label class="opt"><input type="checkbox" id="food-hq" checked> HQ</label></div>
-              <div class="cfg-line">藥水
+              <div class="cfg-line"><label class="codex-field__label cfg-line__label" for="potion">藥水</label>
                 <select id="potion" class="codex-select"><option value="">無</option></select>
                 <label class="opt"><input type="checkbox" id="potion-hq" checked> HQ</label></div>
               <label class="opt"><input type="checkbox" id="specialist"> 專家之證（作業 +20・加工 +20・CP +15）</label>
@@ -127,45 +141,66 @@
 
           <div class="cfg-card">
           <h3 class="codex-h3 cfg-card__title">求解設定</h3>
-          <label class="opt opt-num target-line">目標品質 <input id="opt-target" class="codex-input" type="number" min="0" placeholder="滿品質"></label>
+          <p class="cfg-card__desc codex-small">預設值適用多數配方；要壓縮步數或指定品質再調整。</p>
 
-          <div id="auto-controls">
-            <div class="solve-config">
-              <label class="cfg-line">求解模式
-                <select id="solve-mode" class="codex-select">
-                  <option value="quality">品質最大化</option>
-                  <option value="nq">只求完成（NQ・最快）</option>
-                </select>
-              </label>
-              <div class="opt-group">
-                <div class="opt-group__label">可用技能 <span class="codex-small opt-group__hint">勾選＝允許求解動用，滑鼠移上看說明</span></div>
-                <div class="solve-opts">
-                  <label class="opt" title="掌握：施放後 8 步內每步回復 5 點耐久（Lv 65 習得）。耗 CP，CP 吃緊時可關掉。"><input type="checkbox" id="opt-manip" checked> 掌握</label>
-                  <label class="opt" title="專心致志：整場一次，無視製作狀態（球色）強制讓下一個技能生效（需專家之證）。"><input type="checkbox" id="opt-heart"> 專心致志</label>
-                  <label class="opt" title="快速改革：整場一次，免 CP 直接獲得一層「改革」效果（需專家之證）。"><input type="checkbox" id="opt-qi"> 快速改革</label>
-                </div>
-              </div>
-              <div class="opt-group">
-                <div class="opt-group__label">求解風格</div>
-                <div class="solve-opts">
-                  <label class="opt" title="後置進展：先全力衝品質、最後一刻才補完進展，通常能擠出更高品質。"><input type="checkbox" id="opt-backload"> 後置進展</label>
-                  <label class="opt" title="確保品質可靠：無論製作狀態（球色）隨機到多差都保證達標；求解明顯較慢、品質可能略低，高難度配方不支援。"><input type="checkbox" id="opt-adversarial"> 確保品質可靠</label>
-                </div>
-              </div>
+          <div class="crafter-fields">
+            <div class="codex-field">
+              <label class="codex-field__label" for="solve-mode">求解模式</label>
+              <select id="solve-mode" class="codex-select">
+                <option value="quality">品質最大化</option>
+                <option value="nq">只求完成（NQ・最快）</option>
+              </select>
             </div>
-            <div class="solve-row">
-              <button id="solve-btn" class="codex-btn codex-btn--primary">求解最佳手法</button>
-              <button id="cancel-btn" class="codex-btn codex-btn--ghost" hidden>取消</button>
+            <div class="codex-field">
+              <label class="codex-field__label" for="opt-target">目標品質</label>
+              <input id="opt-target" class="codex-input" type="number" min="0" placeholder="滿品質">
+              <span id="target-why" class="crafter-why codex-small" hidden>「只求完成」模式不衝品質，故此欄停用。</span>
             </div>
           </div>
 
-          <div id="solve-status" class="solve-status" role="status" aria-live="polite"></div>
+          <div class="opt-group">
+            <div class="opt-group__label">可用技能 <span class="codex-small opt-group__hint">勾選＝允許求解器動用</span></div>
+            <div class="crafter-opts">
+              <label class="crafter-opt"><input type="checkbox" id="opt-manip" checked>
+                <span class="crafter-opt__body"><span class="crafter-opt__name">掌握</span>
+                <span class="crafter-opt__desc codex-small">施放後 8 步內每步回復 5 點耐久（Lv 65 習得）。耗 CP，CP 吃緊時可關掉。</span></span></label>
+              <label class="crafter-opt"><input type="checkbox" id="opt-heart">
+                <span class="crafter-opt__body"><span class="crafter-opt__name">專心致志</span>
+                <span class="crafter-opt__desc codex-small">整場一次，無視製作狀態（球色）強制讓下一個技能生效。需專家之證。</span></span></label>
+              <label class="crafter-opt"><input type="checkbox" id="opt-qi">
+                <span class="crafter-opt__body"><span class="crafter-opt__name">快速改革</span>
+                <span class="crafter-opt__desc codex-small">整場一次，免 CP 直接獲得一層「改革」效果。需專家之證。</span></span></label>
+            </div>
+          </div>
+          <div class="opt-group">
+            <div class="opt-group__label">求解風格</div>
+            <div class="crafter-opts">
+              <label class="crafter-opt"><input type="checkbox" id="opt-backload">
+                <span class="crafter-opt__body"><span class="crafter-opt__name">後置進展</span>
+                <span class="crafter-opt__desc codex-small">先全力衝品質、最後一刻才補完進展，通常能擠出更高品質。</span></span></label>
+              <label class="crafter-opt"><input type="checkbox" id="opt-adversarial">
+                <span class="crafter-opt__body"><span class="crafter-opt__name">確保品質可靠</span>
+                <span class="crafter-opt__desc codex-small">無論製作狀態（球色）隨機到多差都保證達標；求解明顯較慢、品質可能略低。</span>
+                <span id="adv-why" class="crafter-why codex-small" hidden>高難度（expert）配方的引擎不支援此選項，故停用。</span></span></label>
+            </div>
+          </div>
+          </div>
+
+          <!-- 主 CTA 常駐可見（sticky）：捲到設定哪一段都按得到，不必找回底部 -->
+          <div class="crafter-actionbar">
+            <div class="crafter-actionbar__row">
+              <button id="solve-btn" class="codex-btn codex-btn--primary">求解最佳手法</button>
+              <button id="cancel-btn" class="codex-btn codex-btn--ghost" hidden>取消</button>
+              <span id="solve-hint" class="crafter-actionbar__hint codex-small"></span>
+            </div>
+            <div id="solve-status" class="solve-status" role="status" aria-live="polite"></div>
           </div>
         </section>
 
         <section class="codex-tablet panel" id="results-col">
           <span class="codex-hud"></span>
-          <div id="results-placeholder" class="results-ph codex-small">設定完成後按「求解最佳手法」，<br>巨集與手法序列即會顯示在結果區。</div>
+          <h2 class="codex-h2 crafter-col-title">③ 求解結果</h2>
+          <div id="results-placeholder" class="codex-empty results-ph"></div>
           <div id="results" tabindex="-1" hidden>
             <div id="result-summary" class="result-summary"></div>
             <details class="res-block" id="macro-block" open>
@@ -211,6 +246,7 @@
   </main>
 
   <script src="crafting-list.js"></script>
+  <script src="app-flow.js"></script>
   <script src="app-render.js"></script>
   <script src="app-solve.js"></script>
   <script src="app-browse.js"></script>

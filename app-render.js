@@ -35,7 +35,7 @@
   function actImg(v) { const a = deps.getActions()[v]; return (a && a.icon) ? `<img class="act-ico" src="${deps.iconUrl(a.icon)}" alt="" loading="lazy">` : ''; }
   function actionChip(s) {
     const { esc } = deps;
-    return `<div class="chip" title="${esc(actionName(s.action))}">${actImg(s.action)}<span class="chip-name codex-xs">${esc(actionName(s.action))}</span></div>`;
+    return `<div class="chip" data-help="${esc(actionName(s.action))}">${actImg(s.action)}<span class="chip-name codex-xs">${esc(actionName(s.action))}</span></div>`;
   }
   function renderMacro(steps) {
     const { $, esc, b64urlEncode, copyText, MACRO_BUILDER_BASE, getSelected } = deps;
@@ -58,7 +58,7 @@
     })));
     const importUrl = `${MACRO_BUILDER_BASE}?import=${payload}`;
     const saveLink = importUrl.length <= 8192   // 超過 URL 安全線不出鈕（防呆；實務 1–3.5KB 遠低於線）
-      ? `<div class="macro-tools"><a class="codex-btn codex-btn--ghost" href="${importUrl}" target="ffxiv-macro-builder" title="帶到巨集產生器，確認後存進巨集庫（共用同一分頁；不會自動寫入）">📥 存進巨集庫 ↗</a></div>`
+      ? `<div class="macro-tools"><a class="codex-btn codex-btn--ghost" href="${importUrl}" target="ffxiv-macro-builder" data-help="帶到巨集產生器，確認後存進巨集庫。共用同一分頁；不會自動寫入。">📥 存進巨集庫 ↗</a></div>`
       : '';
     $('macro').innerHTML = saveLink + macros.map((m, i) =>
       `<div class="macro-block">
@@ -83,7 +83,7 @@
     const isExpert = !!(selected && selected.recipe.is_expert);
     const completeBadge = r.complete
       ? (isExpert
-          ? '<span class="codex-badge" title="高難度配方為隨機製作狀態，靜態試算不代表遊戲內必成">試算完成 ⚠</span>'
+          ? '<span class="codex-badge" data-help="高難度配方為隨機製作狀態，靜態試算不代表遊戲內必成">試算完成 ⚠</span>'
           : '<span class="codex-badge codex-badge--success">✓ 可完成</span>')
       : '<span class="codex-badge codex-badge--danger">✗ 未完成</span>';
     const expertWarn = isExpert ? '<div class="sum-err codex-small">⚠ 高難度配方在遊戲內為隨機製作狀態，此靜態巨集僅供參考、無法保證能在遊戲內完成</div>' : '';
@@ -92,8 +92,8 @@
       <div class="sum-row">
         ${completeBadge}
         <span class="codex-badge ${hq ? 'codex-badge--gold' : ''}">品質 ${pct(r.final_quality, r.max_quality)}%${hq ? ' · 滿' : ''}</span>
-        ${hqp != null ? `<span class="codex-badge codex-badge--gold codex-badge--code" title="成品高品質(HQ)機率">HQ ${hqp}%</span>` : ''}
-        <span class="sum-meta">${r.step_count} 步 · ${r.total_time} 秒</span>
+        ${hqp != null ? `<span class="codex-badge codex-badge--gold codex-badge--code" data-help="成品為高品質（HQ）的機率">HQ ${hqp}%</span>` : ''}
+        <span class="sum-meta"><span class="sum-metric"><b>${r.step_count}</b><span class="codex-small">步</span></span><span class="sum-metric"><b>${r.total_time}</b><span class="codex-small">秒</span></span></span>
       </div>
       ${expertWarn}
       ${errLine}
@@ -108,6 +108,7 @@
       </table>`;
     renderMacro(r.steps);
     $('solve-status').innerHTML = `<span class="codex-small">✓ 求解完成：品質 ${pct(r.final_quality, r.max_quality)}%、共 ${r.step_count} 步，巨集已產生</span>`; // aria-live 向螢幕閱讀器播報完成
+    globalThis.CraftFlow?.update?.();            // 步驟軸 ③ 標完成（結果已在畫面上才推進，非求解一結束就推）
     $('results').focus({ preventScroll: true }); // 顯式移焦到結果區（tabindex=-1）→ 鍵盤下一 Tab 直達複製鈕
     if (scroll) $('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }

@@ -431,5 +431,55 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     'worker.js 未回傳 gen → 主執行緒收到的訊息無身分，守衛失效');
 }
 
+// ===== T14：app-flow.js 流程引導狀態機（設計系統 §功能頁引導標準的可測落點）=====
+// 「現在該做什麼」是純函式決定的 → 這裡鎖住四條驗收線裡機械可驗的兩條：
+//   ② 多步流程要有當前步驟指示（完成／進行中／待辦三態齊全、且同時只有一步 current）
+//   ② 上游變更必須使下游失效（有結果 → invalidateResults 後 hasResult=false → ③ 退回待辦）
+{
+  const FLOW_SRC = fs.readFileSync(path.join(ROOT, 'app-flow.js'), 'utf8');
+  const fl = { console };
+  fl.globalThis = fl;
+  vm.createContext(fl);
+  vm.runInContext(FLOW_SRC, fl, { filename: 'app-flow.js' });
+  const flowState = fl.CraftFlow.flowState;
+  const states = (ctx) => flowState(ctx).steps.map(s => s.state).join(',');
+  const curCount = (ctx) => flowState(ctx).steps.filter(s => s.state === 'current' || s.state === 'blocked').length;
+
+  eq('T14 冷啟動（未選配方）→ ① 進行中、②③ 待辦', states({}), 'current,todo,todo');
+  check('T14 冷啟動的下一步指向選配方', /①/.test(flowState({}).next));
+
+  const picked = { hasRecipe: true, recipeName: '2級耐力之寶水', job: '鍊金' };
+  eq('T14 選了配方但缺角色數值 → ② 無法進行（不是待辦，要看得出卡住）',
+    states({ ...picked, gearOk: false }), 'done,blocked,todo');
+  check('T14 缺數值時下一步寫出「哪個職業要填什麼」',
+    /鍊金/.test(flowState({ ...picked, gearOk: false }).next) && /角色數值/.test(flowState({ ...picked, gearOk: false }).next));
+
+  eq('T14 配方+數值齊備、尚未求解 → ② 進行中', states({ ...picked, gearOk: true }), 'done,current,todo');
+  eq('T14 求解中 → ③ 進行中', states({ ...picked, gearOk: true, solving: true }), 'done,done,current');
+  eq('T14 有結果 → 三步皆完成', states({ ...picked, gearOk: true, hasResult: true }), 'done,done,done');
+
+  // 上游變更使下游失效：同一組輸入只把 hasResult 拿掉（＝invalidateResults 後）→ ③ 必須退回待辦
+  eq('T14 設定變更使結果失效 → ③ 退回待辦（不得停在完成）',
+    states({ ...picked, gearOk: true, hasResult: false }), 'done,current,todo');
+  // 換配方（回列表 → hasRecipe false）→ 整條流程回到 ①
+  eq('T14 回配方列表 → 流程回到 ①', states({ hasRecipe: false, hasResult: false }), 'current,todo,todo');
+
+  // 「同時只有一個進行中」——兩處高亮＝使用者不知道該看哪
+  check('T14 任一情境同時只有一步進行中', [
+    {}, { ...picked, gearOk: false }, { ...picked, gearOk: true },
+    { ...picked, gearOk: true, solving: true }, { ...picked, gearOk: true, hasResult: true },
+  ].every(c => curCount(c) <= 1));
+
+  // 每步都要有非空文案（步驟軸不得出現空白格）
+  check('T14 每步都有標題與說明、且必有「下一步」文案', [
+    {}, { ...picked, gearOk: false }, { ...picked, gearOk: true, hasResult: true },
+  ].every(c => { const st = flowState(c); return st.next && st.steps.every(s => s.title && s.note); }));
+
+  // init 缺依賴早炸（同 CraftBrowse 注入契約）
+  let flowMiss = false;
+  try { fl.CraftFlow.init({ $: () => ({}) }); } catch (e) { flowMiss = /缺依賴/.test(e.message); }
+  check('T14 CraftFlow.init 缺依賴 → 早炸（注入契約不變量）', flowMiss);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -99,6 +99,7 @@
       $('results-placeholder').innerHTML = PH_HTML; // 取消/錯誤結束 → 還原提示（成功時 render 會隱藏）
     }
     $('solve-status').innerHTML = on ? '<span class="codex-spinner"></span> 求解中…（高難度配方可能數十秒）' : '';
+    globalThis.CraftFlow?.update?.();   // 步驟軸 ③ 進行中/退回（選擇性呼叫：測試 sandbox 無本層時不炸）
   }
 
   // 供外部（換配方 / 返回配方列表）在「求解中」時作廢當前求解：
