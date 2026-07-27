@@ -70,6 +70,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 
 ## 🛠 開發注意（踩坑 / 教訓）
 
+- **技能 icon 取列策略勿改回 `ORDER BY id LIMIT 1`**（2026-07-27）：CraftAction sheet 同一技能有 8 個職業版本，**外加一批 `ClassJobLevel=1` 的未使用佔位列，Icon 一律是 `000786`（灰底紅斜線「無圖示」圖）且 id 最小**。取最小 id ＝ 7 個技能拿到佔位圖、看起來像「已停用技能」且不會報錯。正解＝排除 `000786` → `class_job_level` DESC → id ASC；`check-actions.py` 已加不變量機械守。只改技能對照時用 `py -3.11 tools/build-data.py --actions-only`（免重刷 3.5MB 配方資料）。**職業專屬 icon 目前固定木工版**（做金工配方也顯示木工工具）＝已知取捨，改法見 BACKLOG B-008。
 - **icon 一律走 xivapi v2 asset CDN**（2026-07-16）：v1 `xivapi.com/i/...` 圖庫停更、7.5 新 icon 404 → `app.js` `iconUrl()` 把 data 層 v1 路徑轉 v2 URL（權威寫法＝marketboard `modules/icon.js`）；新增 icon 出口勿再直拼 v1 網域，`_headers` CSP img-src 已鎖 `v2.xivapi.com`。
 - **配方資料源＝tnze zh-CN（7.5 跟版）＋item_lookup 繁中化**（2026-07-16）：zh-TW 源停更 7.1 勿換回；重建流程＝best-craft `scripts/build-static-data.py`（刪 static-data 快取強制重爬）→ 本 repo `tools/build-data.py`。舊逐色染劑配方 200 筆是遊戲 7.5 改版移除（通用染劑 38254–38261 取代），勿當缺漏回補。
 - **expert（高難度）配方靜態巨集僅供參考**：104 個 expert 配方在遊戲內為隨機製作狀態，靜態 Normal 巨集無法保證完成 → render 已加中性「試算完成 ⚠」+ 警語（**勿移除、勿改回無條件「✓ 可完成」金徽**）。

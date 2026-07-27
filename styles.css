@@ -173,30 +173,33 @@ body {
   display: flex; flex-direction: column; gap: 2px; }
 .crafter-ph__warn { color: var(--color-warn); font-weight: var(--fw-semibold, 600); }
 
-/* 配方詳情＝三段式（識別｜數值｜動作），原本是名稱/pill/按鈕/數值行全部平鋪、無層級 */
-.recipe-info { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2, 8px) var(--space-3, 12px);
-  align-items: center; margin-bottom: var(--space-3, 12px); }
-.ri-icon { width: 48px; height: 48px; align-self: start;
+/* 配方詳情：識別（icon+名稱+一行數值）在左、動作鈕在右上、套用狀況橫跨底部。
+   原本四個等寬 stat 格佔掉整整一行又留白，按鈕再獨佔一整行 → 垂直空間被吃掉、重心不明。 */
+.recipe-info { display: flex; flex-direction: column; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
+.ri-head { display: flex; align-items: flex-start; gap: var(--space-3, 12px); flex-wrap: wrap; }
+.ri-icon { width: 52px; height: 52px; flex: 0 0 auto;
   background: var(--color-bg-deep, #03060c); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--color-border));
-  border-radius: var(--radius-sm, 6px); flex: none; }
-.ri-main { display: flex; flex-direction: column; gap: var(--space-2, 8px); min-width: 0; }
+  border-radius: var(--radius-sm, 6px); }
+.ri-main { display: flex; flex-direction: column; gap: var(--space-1, 4px); min-width: 0; flex: 1; }
 .ri-name { font-size: var(--fs-h3); color: var(--accent); font-weight: var(--fw-bold, 700); line-height: var(--lh-tight, 1.15); }
 .ri-name .codex-small { color: var(--color-warn); font-weight: var(--fw-regular, 400); }
-/* 數值三連（難度/品質/耐久）＝label 上、值下的等寬 stat 格；職業另作身分 pill，不與數值混排 */
-.ri-stats { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); align-items: stretch; }
-.ri-stat { display: flex; flex-direction: column; gap: 1px; min-width: 74px;
-  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px);
-  padding: var(--space-1, 4px) var(--space-2, 8px); font-size: var(--fs-xs); line-height: var(--lh-tight, 1.15); }
-.ri-stat b { color: var(--accent); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
-.ri-jobstat { flex-direction: row; align-items: center; justify-content: center; gap: var(--space-1, 4px);
-  min-width: 0; font-size: var(--fs-small); font-weight: var(--fw-semibold, 600);
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--color-border)); }
+/* 難度/品質/耐久 收成同一行的 label+值（格子化只是把三個小數字撐成三個大方塊）*/
+.ri-stats { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1, 4px) var(--space-3, 12px);
+  font-size: var(--fs-small); }
+.ri-stat { display: inline-flex; align-items: baseline; gap: var(--space-1, 4px); }
+.ri-stat b { color: var(--accent); font-weight: var(--fw-bold, 700); font-variant-numeric: tabular-nums; }
+/* 職業＝身分標籤（chip 風），與三個數值語意不同故不同形 */
+.ri-job { display: inline-flex; align-items: center; gap: var(--space-1, 4px); flex: 0 0 auto;
+  padding: 1px var(--space-2, 8px); border-radius: var(--radius-xs, 4px);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--color-border));
+  color: var(--accent); font-weight: var(--fw-semibold, 600); }
 .ri-jico { width: 18px; height: 18px; }
-/* 動作列與上方資訊以細線分隔 → 「看的」與「按的」分兩區 */
-.ri-actions { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px);
-  grid-column: 1 / -1; padding-top: var(--space-2, 8px); border-top: 1px solid var(--color-border); }
+/* 動作鈕自成一列並**靠右**：設定欄只有半版寬，硬塞到名稱同行會把長配方名擠成兩行、
+   連數值都跟著折行；靠右對齊後與左側資訊不競爭，且形成「資訊 → 動作 → 狀態」的縱向節奏。 */
+.ri-actions { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); flex: 1 0 100%; justify-content: flex-end; }
 /* 角色數值套用狀況＝共用 .codex-tint-panel--bar 左緣色條資訊盒（原本是浮在版面中間的一行彩色字）*/
-.ri-gear { grid-column: 1 / -1; font-size: var(--fs-small); }
+.ri-gear { font-size: var(--fs-small); }
 .ri-gear a { color: var(--accent); }
 
 /* ---- 原料 + HQ ---- */
@@ -253,8 +256,13 @@ body {
 .consumable-block > summary::-webkit-details-marker { display: none; }
 .consumable-block > summary::before { content: '▸'; color: var(--accent); margin-right: var(--space-1, 4px); display: inline-block; transition: transform var(--transition-fast, .15s); }
 .consumable-block[open] > summary::before { transform: rotate(90deg); }
-.consumables { display: flex; flex-direction: column; gap: var(--space-2, 8px); padding-bottom: var(--space-2, 8px); }
+/* 展開後是一組有功能的表單 → 給它自己的卡片底（原本裸貼在卡片背景上，欄位像散落的） */
+.consumables { display: flex; flex-direction: column; gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px); margin-bottom: var(--space-2, 8px);
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
 .consumables .cfg-line .codex-select { width: auto; flex: 1; max-width: 220px; }
+/* 專家之證是「角色狀態」不是消耗品 → 上緣分隔線與食物/藥水兩列分開 */
+.consumables > .opt { padding-top: var(--space-2, 8px); border-top: 1px solid var(--color-border); }
 /* 摺疊起來時也看得到現值（Owner：不要塞一個欄位在那邊等人發現）—— 未展開就知道有沒有吃食藥 */
 .crafter-sum { margin-left: auto; color: var(--accent); font-weight: var(--fw-semibold, 600);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -337,7 +345,10 @@ body {
   background: var(--color-bg-deep, #03060c); border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--color-border));
   border-radius: var(--radius-pill, 999px); color: var(--accent);
   font-size: var(--fs-xs); font-weight: var(--fw-bold, 700); line-height: 1; }
-.chip img { width: 34px; height: 34px; flex: 0 0 auto; }
+/* 統一 icon 框：技能 icon 素材留白差異大（跨職通用是滿版魔法陣、職業專屬是帶留白的工具圖），
+   套同尺寸深底圓角框後每格視覺重量一致 */
+.chip img { width: 36px; height: 36px; flex: 0 0 auto;
+  background: var(--color-bg-deep, #03060c); border-radius: var(--radius-xs, 4px); }
 .chip-name { max-width: 100%; text-align: center; line-height: var(--lh-tight, 1.15); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .walkthrough { overflow-x: auto; padding-bottom: var(--space-2, 8px); }

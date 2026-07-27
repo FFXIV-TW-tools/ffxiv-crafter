@@ -33,16 +33,41 @@ def lib_variants():
     return set(re.findall(r"Action::(\w+)\s*=>", body))
 
 
+# CraftAction sheet 的未使用佔位列（ClassJobLevel=1）Icon 一律是這張灰底紅斜線圖。
+# 選到它 → 手法序列上看起來像「已刪除技能」，但不會報錯 → 需機械守（2026-07-27 實際踩到 7 個技能）。
+PLACEHOLDER_ICON = "000786.png"
+
+
+def check_icons(data):
+    """icon 健全性：不得為空、不得是 game_ref 的「無圖示」佔位圖。"""
+    bad_null = sorted(k for k, v in data.items() if not (v or {}).get("icon"))
+    bad_ph = sorted(k for k, v in data.items() if PLACEHOLDER_ICON in ((v or {}).get("icon") or ""))
+    ok = True
+    if bad_null:
+        print("✗ %d 個變體無 icon（UI 會缺圖）：%s" % (len(bad_null), bad_null), file=sys.stderr)
+        ok = False
+    if bad_ph:
+        print("✗ %d 個變體取到佔位圖 %s（看起來像已刪除技能）：%s"
+              % (len(bad_ph), PLACEHOLDER_ICON, bad_ph), file=sys.stderr)
+        print("→ build-data.py 的 lookup() 應排除佔位 icon 並取 class_job_level 最大的列", file=sys.stderr)
+        ok = False
+    return ok
+
+
 def main():
     lib = lib_variants()
     if not lib:
         print("✗ 無法從 lib.rs 解析 Action 變體（action_name 格式可能已改）", file=sys.stderr)
         return 1
-    keys = set(json.load(open(ACTIONS_JSON, encoding="utf-8")).keys())
+    data = json.load(open(ACTIONS_JSON, encoding="utf-8"))
+    keys = set(data.keys())
+    icons_ok = check_icons(data)
     missing = lib - keys   # solver 能吐但 craft-actions 沒有 → 巨集該行會失效
     extra = keys - lib     # craft-actions 多的（無害，但代表 drift）
     if not missing and not extra:
-        print("✓ action-set 一致：%d 個 Action 變體 == craft-actions.json 鍵" % len(lib))
+        if not icons_ok:
+            return 1
+        print("✓ action-set 一致：%d 個 Action 變體 == craft-actions.json 鍵（icon 全數有效）" % len(lib))
         return 0
     if missing:
         print("✗ craft-actions.json 缺 %d 個 solver 能吐的變體（巨集會失效）：%s"

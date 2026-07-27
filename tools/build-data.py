@@ -42,12 +42,24 @@ VARIANT_EN = {
 FALLBACK_TC = {"StellarSteadyHand": "群星穩定"}
 
 
+# CraftAction sheet 對同一技能有多列（8 個 DoH 職業各一份），另有一批 ClassJobLevel=1 的**未使用佔位列**，
+# 其 Icon 一律是 000786（灰底紅斜線的「無圖示」佔位圖）。原本 `ORDER BY id LIMIT 1` 取 id 最小 → 這 7 個技能
+# （秘訣/比爾格的祝福/堅信/模範製作/上級加工/高速製作/倉促）會拿到佔位圖，在手法序列上看起來像「已刪除技能」。
+PLACEHOLDER_ICON = "000786.png"
+
+
 def lookup(con, name_en):
-    """先 craft_actions（DoH 製作技能），再 actions（跨職 buff 如崇敬/改革）。回 (name_tc, icon, id, level)。"""
+    """先 craft_actions（DoH 製作技能），再 actions（跨職 buff 如崇敬/改革）。回 (name_tc, icon, id, level)。
+
+    選列策略：排除佔位 icon → 取 class_job_level 最大的那批（＝真正習得的技能列，佔位列 level 恆為 1）
+    → 同批內取 id 最小（＝固定同一職業版本，避免不同技能各拿不同職業的 icon 而風格不一）。
+    """
     for tbl in ("craft_actions", "actions"):
         r = con.execute(
-            f"SELECT name_tc, icon_path, id, class_job_level FROM {tbl} WHERE name_en=? AND name_tc!='' ORDER BY id LIMIT 1",
-            (name_en,)).fetchone()
+            f"SELECT name_tc, icon_path, id, class_job_level FROM {tbl} "
+            "WHERE name_en=? AND name_tc!='' AND (icon_path IS NULL OR icon_path NOT LIKE ?) "
+            "ORDER BY class_job_level DESC, id ASC LIMIT 1",
+            (name_en, "%/" + PLACEHOLDER_ICON)).fetchone()
         if r:
             return r
     return None
@@ -78,6 +90,11 @@ def main():
     print("✓ craft-actions.json：%d/%d 對到 game_ref%s" % (
         len(VARIANT_EN) - len(miss), len(VARIANT_EN),
         ("（fallback/缺：%s）" % miss) if miss else ""))
+
+    # 只修技能對照時不必重刷 3.5MB 配方資料（那批來源是 best-craft 凍結的 static-data，另有自己的重建節奏）
+    if "--actions-only" in sys.argv:
+        print("（--actions-only：略過 recipes / items 重建）")
+        return
 
     # 複製 recipes / recipe_levels / ingredients / meals / medicine（best-craft 凍結）
     for fn in ("recipes.json", "recipe_levels.json", "ingredients.json", "meals.json", "medicine.json"):

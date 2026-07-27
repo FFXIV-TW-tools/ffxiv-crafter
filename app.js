@@ -191,15 +191,17 @@ function refreshSelectedGear() {
     ? `<button id="back-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="回到製造清單分頁">← 回製造清單</button>`
     : '';
   $('recipe-info').innerHTML = `
-    ${icon ? `<img class="ri-icon" src="${iconUrl(icon)}" alt="">` : ''}
-    <div class="ri-main">
-      <div class="ri-name">${esc(recipe.item_name)}${recipe.is_expert ? ' <span class="codex-small">高難度</span>' : ''}</div>
-      <div class="ri-stats"><span class="ri-stat ri-jobstat">${jico}${esc(recipe.job)}</span><span class="ri-stat">難度<b>${maxP}</b></span><span class="ri-stat">品質<b>${maxQ}</b></span><span class="ri-stat">耐久<b>${maxD}</b></span></div>
-    </div>
-    <div class="ri-actions">
-      <button id="add-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="加進「製造清單」分頁，彙總所有成品的素材總需求">📋 加入製造清單</button>
-      ${mbLink}
-      ${backToList}
+    <div class="ri-head">
+      ${icon ? `<img class="ri-icon" src="${iconUrl(icon)}" alt="">` : ''}
+      <div class="ri-main">
+        <div class="ri-name">${esc(recipe.item_name)}${recipe.is_expert ? ' <span class="codex-small">高難度</span>' : ''}</div>
+        <div class="ri-stats"><span class="ri-job">${jico}${esc(recipe.job)}</span><span class="ri-stat">難度<b>${maxP}</b></span><span class="ri-stat">品質<b>${maxQ}</b></span><span class="ri-stat">耐久<b>${maxD}</b></span></div>
+      </div>
+      <div class="ri-actions">
+        <button id="add-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="加進「製造清單」分頁，彙總所有成品的素材總需求">📋 加入製造清單</button>
+        ${mbLink}
+        ${backToList}
+      </div>
     </div>
     <div class="ri-gear codex-tint-panel codex-tint-panel--bar ${noteTone}">${note}</div>`;
   const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats', true); };
