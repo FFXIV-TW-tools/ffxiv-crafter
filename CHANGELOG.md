@@ -21,7 +21,19 @@
 - 瀏覽器實測：13874 筆 → 232 頁、翻頁後 count 同步、搜尋後回第 1 頁、點第 13 張手法卡 → `chip[data-step=12]` 與 `tr[data-step=12]` 同時 `.is-linked` 且走查自動展開。
 - **行動版 393×852 CDP device emulation 實測**（`ranking/tools/mobile_viewport_check.mjs`，非 headless `--window-size` 假 viewport）：`pass: true`、`scrollWidth == 393` 無橫向溢出；唯一 offender 是 portal 全站共用的貓小胖 canvas，非本工具元素。**但仍未掛 portal `mobile: true` 牌**——「不破版」不等於「已優化」，掛牌需另走一輪正式優化（badge 誠實性）。
 
-> ⚠️ **外審狀態誠實記錄**：`ef046e1` 送 codex 對抗審回 `status: timeout`（362s 硬砍、送審 102.4KB、0 findings）。依 adversarial-review 鐵則「exit 0 ≠ 審過、timeout 的 0 findings 不算通過」，已降 `ADV_REVIEW_EFFORT=medium` 重跑。
+### 外審（codex/gpt-5.6-sol，`.adversarial-reviews/ef046e1a-codex.md`）
+
+第一次 `effort=high` 回 `status: timeout`（362s 硬砍、0 findings）——依 adversarial-review 鐵則「timeout 的 0 findings 不算通過」，降 `effort=medium` 重跑得 `status: ok`、152s、`bytes_in` 104822、**7 findings**。triage：
+
+| # | 級別 | 判定 | 依據 |
+|---|---|---|---|
+| 1 | 高 | ✅ 採納 | **求解中改設定不會作廢飛行中的求解**——`invalidateResults()` 的 early return 看 `results.hidden`，而求解期間正是 hidden → 舊 worker 回來時 `solveGen` 未變、世代守衛放行 → 用舊設定算的手法渲染在新設定的畫面上。2026-07-25 T13 只修了「換配方」那條路徑，「改食藥／技能／目標品質／角色數值」這條漏掉。已修＋補 5 條回歸測試 |
+| 2 | 中 | ❌ 駁回 | 指 sticky CTA「捲到底前不會出現」。實測否定：`scrollY=0` 時 `barTop=1143 / innerHeight=1215`，五個捲動位置 `inViewport` 全為 true——`position:sticky; bottom` 本就會把尚在下方的元素提前吸到容器可視底部 |
+| 3 | 中 | ✅ 採納（重述後） | 分母與主數值原本是一致的（都 `maxQ`），非 bug；但「全部素材換 HQ 卻只填到一半」確實誤導。改為 bar 與主數值同用**可帶入上限 initMax**，`maxQ` 佔比移到下方註記，兩個尺度分開講 |
+| 4 | 中 | ❌ 駁回（採其防禦建議） | `fillConsumableSelect` 的 option value 就是繁中名，不會顯示機器值。但改讀 `selectedOptions[0].textContent` 零成本且防未來漂移，已採 |
+| 5 | 中 | ✅ 採納 | ＋鈕縮到 28px 未配 coarse-pointer 補償，而本 repo `.ing-hq-in` 早有此慣例；整列本身可點 → 手機誤觸會變成「選配方」。已補 40px |
+| 6 | 低 | ✅ 採納 | 流程狀態變化無可播報 live region。`#flow-next` 加 `role="status"`（只掛這一行，不讓整條步驟軸重複播報） |
+| 7 | 低 | ❌ 駁回，但**反向更正了我自己的紀錄** | 指「自稱四閘全綠卻沒跑 cargo test」。查證：`cargo test` **每次 commit 都由 pre-commit 的 `check-test-baseline` gate 實跑**（`execSync(cmd,{cwd:'wasm'})`，round-trip 2 綠）。反倒是我在上一段 CHANGELOG 誤記「wasm 未改動故未跑」——該句已更正 |
 
 ## 2026-07-27 — 修 7 個技能 icon 取到「無圖示」佔位圖 + 設定區三處版面調整（cycle 2026-07-27-icon佔位圖修正）
 
@@ -71,7 +83,7 @@
 ### Testing
 - `tools/test-formulas.mjs` **75 → 87**：T14 在 vm sandbox 直接載 `app-flow.js` 測 `flowState` 純函式 —— 冷啟動／缺角色數值（blocked 且下一步要寫出是哪個職業）／就緒／求解中／完成五種情境的三步狀態、**上游變更使下游失效**（拿掉 hasResult → ③ 必須退回待辦）、**同時只有一步進行中**、每步文案非空、init 缺依賴早炸。
 - 瀏覽器實測（`serve.py` :8809 + portal :8774）：冷啟動→選配方→求解→改設定失效→返回列表 全程零 console error；`data-help` 卡實測可彈出；缺角色數值情境（清空 localStorage）實測 ② 轉警示色且 CTA 暗掉。headless 1920 / 760 兩寬度無破版無橫向溢出。
-- `check-actions.py` 35＝35；`design-lint --strict` exit 0（新 class 全走 `crafter-` 前綴、z-index 走 `--z-sticky` token）。`wasm/` 未改動故未跑 `cargo test`。
+- `check-actions.py` 35＝35；`design-lint --strict` exit 0（新 class 全走 `crafter-` 前綴、z-index 走 `--z-sticky` token）；`cargo test` round-trip 2 綠 — **由 pre-commit 的 `check-test-baseline` gate 實跑**（`execSync(cmd, {cwd:'wasm'})`），非略過。本段原先誤記「wasm 未改動故未跑 cargo test」，2026-07-27 外審指出宣稱與 VERIFY 要求矛盾後查證更正：四閘實際上每次 commit 都全跑。
 - 第二輪視覺整理另實測：配方表列高逐列一致、手法卡序號角標與相鄰卡間距 12px 不重疊（量測 `getBoundingClientRect`）、760 / 1920 headless 無破版無橫向溢出、三分頁零 console error。
 
 ## 2026-07-26 — 清掉「已加入」徽章上已失效的 `codex-badge--text`（B-016 收尾）

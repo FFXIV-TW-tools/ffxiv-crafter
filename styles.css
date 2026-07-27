@@ -131,6 +131,8 @@ body {
 .rt-actcol { text-align: center; }
 /* 密集列裡 38px 主控件過重 → 收成 28px 方鈕（帶組合子的 contextual override，不動 .codex-btn 根 selector）*/
 .rt-act .codex-btn { height: 28px; min-width: 28px; padding: 0 var(--space-1, 4px); }
+/* 觸控補償（同 .ing-hq-in 既有慣例）：28px 在手機上太小，且整列本身可點＝誤觸會變成「選配方」 */
+@media (pointer: coarse) { .rt-act .codex-btn { height: 40px; min-width: 40px; } }
 /* 斑馬紋＝掃視主力；:not() 讓「已加入綠底」與「選中」兩個語意態一定贏過純裝飾的斑馬 */
 .rt tbody tr:nth-child(even):not(.rt-in):not(.is-sel) { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }
 .rt-row { cursor: pointer; }

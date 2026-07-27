@@ -303,11 +303,17 @@ function updateInitial(recipe, maxQ) {
   computedInitial = (mf > 0 && totalIlvl > 0) ? Math.floor(maxQ * mf * providedIlvl / totalIlvl / 100) : 0;
   const initMax = mf > 0 ? Math.floor(maxQ * mf / 100) : 0;
   const el = $('ing-initial');
-  const pct = (maxQ > 0) ? Math.min(100, Math.floor(computedInitial / maxQ * 100)) : 0;
+  // 進度條分母＝**可帶入上限 initMax**，不是配方滿品質 maxQ：素材能影響的範圍只到 initMax，
+  // 用 maxQ 當分母會讓「全部素材都換 HQ」也只填到一半，讀起來像還沒做滿（外審 2026-07-27 指出的誤導）。
+  // maxQ 的參考值改放在下方註記，兩個尺度分開講、不混用。
+  const pct = (initMax > 0) ? Math.min(100, Math.floor(computedInitial / initMax * 100)) : 0;
+  const atCap = initMax > 0 && computedInitial >= initMax;
   if (el) el.innerHTML = mf > 0
-    ? `<div class="ing-initial__head"><span>初始品質 <span class="codex-small">（HQ 素材自動帶入）</span></span><b>${computedInitial} / ${maxQ}</b></div>` +
+    ? `<div class="ing-initial__head"><span>初始品質 <span class="codex-small">（HQ 素材帶入）</span></span><b>${computedInitial} / ${initMax}</b></div>` +
       `<div class="codex-progress"><div class="codex-progress__bar" style="width:${pct}%"></div></div>` +
-      `<div class="ing-initial__foot codex-small">此配方最高可帶入 <b>${initMax}</b>（＝把所有可 HQ 素材都換成 HQ）</div>`
+      `<div class="ing-initial__foot codex-small">${atCap
+        ? `已用滿此配方的素材可帶入上限，相當於滿品質 ${maxQ} 的 <b>${Math.floor(initMax / maxQ * 100)}%</b>`
+        : `上限 <b>${initMax}</b>（＝所有可 HQ 素材都換 HQ），相當於滿品質 ${maxQ} 的 ${Math.floor(initMax / maxQ * 100)}%`}</div>`
     : '<span class="codex-small">此配方無法用 HQ 素材提升初始品質</span>';
 }
 
@@ -344,6 +350,15 @@ function computeSettings(recipe, rlv, gear) {
 // invalidateResults 留此：被 gear/原料/求解輸入等多處外部呼叫，且求解編排層內部不呼叫它。
 // 已顯示的求解結果在任一求解輸入變更後即過期 → 隱藏舊結果避免複製到與當前設定不符的巨集（白做一爐）
 function invalidateResults() {
+  // 【求解中改設定】必須先作廢飛行中的求解，且**必須放在下面的 early return 之前**：
+  // 求解期間 results 正是 hidden，靠 early return 就整條漏掉 → 舊 worker 回來時 solveGen 未變、
+  // 世代守衛放行、用「舊設定」算出的手法渲染在「新設定」的畫面上 → 玩家複製到錯綁巨集。
+  // （2026-07-25 T13 只修了「換配方」那條路徑；「改食藥/技能/目標品質/角色數值」這條 2026-07-27 外審才抓到）
+  if (globalThis.CraftSolve?.invalidateInFlight?.()) {
+    $('results-placeholder').innerHTML = '<div class="crafter-ph__warn">⚠ 設定已變更，先前的求解已停止 — 請重新求解</div>' + PH_HTML;
+    globalThis.CraftFlow?.update?.();
+    return;
+  }
   if (!$('results') || $('results').hidden) return; // 尚無結果就不動
   $('results').hidden = true;
   $('results-placeholder').hidden = false;

@@ -74,7 +74,9 @@
       <!-- 流程軸（設計系統 §功能頁引導標準）：三步狀態 + 固定位置的「下一步」。內容由 app-flow.js 依 live 狀態重繪 -->
       <nav class="crafter-flow-wrap" aria-label="製作求解流程">
         <ol id="flow-steps" class="crafter-flow"></ol>
-        <p id="flow-next" class="crafter-flow__next"></p>
+        <!-- role="status"（隱含 aria-live=polite）只掛「下一步」這一行：步驟推進/退回會被播報，
+             但不會像整條步驟軸那樣一次唸三個 li（外審 a11y 建議） -->
+        <p id="flow-next" class="crafter-flow__next" role="status"></p>
       </nav>
 
       <!-- ① 選配方（選定後整張卡收合成一行摘要，版面還給主內容）-->

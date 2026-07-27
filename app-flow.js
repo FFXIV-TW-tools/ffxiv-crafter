@@ -66,9 +66,13 @@
   }
   // 消耗品摺疊起來時也看得到現值（Owner：不要塞一個欄位在那邊等人發現）
   function updateConsumableSummary() {
+    // 取 selectedOptions 的 textContent 而非 .value：目前兩者同值（option value 就是繁中名），
+    // 但若日後 fillConsumableSelect 改用 id 當 value，摘要會變成「食物 12345」——顯示用途一律讀顯示文字（外審防禦建議）
+    const label = (id) => { const s = $(id); return s.value ? ((s.selectedOptions && s.selectedOptions[0] && s.selectedOptions[0].textContent) || s.value) : ''; };
     const parts = [];
-    if ($('food').value) parts.push('食物 ' + $('food').value + ($('food-hq').checked ? '（HQ）' : ''));
-    if ($('potion').value) parts.push('藥水 ' + $('potion').value + ($('potion-hq').checked ? '（HQ）' : ''));
+    const food = label('food'), potion = label('potion');
+    if (food) parts.push('食物 ' + food + ($('food-hq').checked ? '（HQ）' : ''));
+    if (potion) parts.push('藥水 ' + potion + ($('potion-hq').checked ? '（HQ）' : ''));
     if ($('specialist').checked) parts.push('專家之證');
     $('consumable-sum').textContent = parts.length ? parts.join('・') : '未使用';
   }

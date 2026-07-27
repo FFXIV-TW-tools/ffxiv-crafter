@@ -446,6 +446,32 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   onmsg({ data: { ok: false, gen: gen4, error: 'NoSolution' } });
   eq('T13 過期世代的錯誤幀不得 toast（不汙染新求解的 UI）', toasted, 0);
 
+  // 【求解中改設定】invalidateInFlight 必須作廢當前世代（2026-07-27 外審【高】）：
+  // invalidateResults 的 early return 看的是 results.hidden，而求解期間正是 hidden →
+  // 若不在那之前先作廢，舊 worker 回來時 gen 未變、守衛放行 → 舊設定算的手法配新設定的畫面。
+  {
+    let toasted2 = 0, focused = 0;
+    const btn = sbEl('solve-btn'); btn.focus = () => { focused++; };
+    sb.CraftSolve.init({
+      $: sbEl, toast: () => { toasted2++; }, PH_HTML: '',
+      getSelected: () => ({ recipe: { job: '木工' }, rlv: 700 }),
+      gearFor: () => ({}), computeSettings: () => ({ base_progress: 100, base_quality: 100 }),
+      switchTab: () => {},
+    });
+    const before = rendered.length;
+    sb.CraftSolve.doSolve();
+    const genA = sent.at(-1).gen;
+    sbEl('cancel-btn').hidden = false;                    // setSolving(true) 的效果（stub 不自動連動）
+    eq('T13 求解中 invalidateInFlight → 回報真的取消了', sb.CraftSolve.invalidateInFlight(), true);
+    onmsg({ data: { ok: true, gen: genA, result: { steps: ['改設定前算的舊結果'] } } });
+    eq('T13 改設定作廢後，舊世代結果不得渲染', rendered.length, before);
+    // 自動作廢**不得**搶焦點：使用者可能正在打字改目標品質
+    eq('T13 自動作廢不移焦到求解鈕（不打斷輸入）', focused, 0);
+    eq('T13 自動作廢不跳「已取消求解」toast（非使用者主動取消）', toasted2, 0);
+    sbEl('cancel-btn').hidden = true;
+    eq('T13 未求解時 invalidateInFlight → false（不做事）', sb.CraftSolve.invalidateInFlight(), false);
+  }
+
   // worker.js 契約：必須把 gen 原樣回傳，否則主執行緒無從比對
   const WORKER_SRC = fs.readFileSync(path.join(ROOT, 'worker.js'), 'utf8');
   check('T13 worker.js 回傳訊息帶回 gen（世代守衛的另一半）',

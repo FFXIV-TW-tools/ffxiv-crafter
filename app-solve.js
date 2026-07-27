@@ -84,9 +84,15 @@
       $('results-placeholder').innerHTML = PH_HTML;
     }
   }
-  // 取消：遞增世代讓 in-flight 結果失效（terminate 之外的第二道保險——terminate 與訊息投遞有 race），
-  // 再換新 worker 釋放 CPU。取消後移焦回求解鈕（鍵盤流暢）。
-  function cancelSolve() { solveGen++; stopSolveClock(); newWorker(); setSolving(false); deps.toast('已取消求解', 'warn'); deps.$('solve-btn').focus(); }
+  // 中止飛行中的求解：遞增世代讓 in-flight 結果失效（terminate 之外的第二道保險——terminate 與訊息投遞有 race），
+  // 再換新 worker 釋放 CPU。
+  // reason='user'（按取消鈕）才 toast + 移焦回求解鈕；reason='invalidated'（換配方／改設定自動作廢）
+  // **刻意不移焦**——使用者可能正在打字改目標品質，搶焦點會直接打斷輸入。
+  function abortSolve(reason) {
+    solveGen++; stopSolveClock(); newWorker(); setSolving(false);
+    if (reason === 'user') { deps.toast('已取消求解', 'warn'); deps.$('solve-btn').focus(); }
+  }
+  function cancelSolve() { abortSolve('user'); }
   function setSolving(on) {
     const { $, PH_HTML } = deps;
     $('solve-btn').hidden = on;
@@ -107,7 +113,7 @@
   // 且舊求解還在燒 CPU。回傳是否真的取消了（沒在求解時不做事、也不 toast）。
   function invalidateInFlight() {
     if (!deps || deps.$('cancel-btn').hidden) return false;
-    cancelSolve();
+    abortSolve('invalidated');
     return true;
   }
 
