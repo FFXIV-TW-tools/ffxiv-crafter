@@ -335,12 +335,34 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   $('recipe-search').value = ''; $('rlv-filter').value = '999'; CB.renderTable();
   eq('T11 僅 rlv 篩選 0 命中 → 「無符合配方」', $('recipe-count').textContent, '無符合配方');
 
-  // CAP=120（130 筆 → 顯示前 120）
+  // 分頁（PER_PAGE=60，取代舊的 CAP 120 硬截斷）：130 筆 → 3 頁
   $('rlv-filter').value = '';
   rindex = Array.from({ length: 130 }, (_, i) => ({ id: i + 1, name: '物' + i, job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬' }));
   CB.renderTable();
-  eq('T11 130 筆 → CAP 顯示 120 列', rowCount(), 120);
-  eq('T11 超 CAP → recipe-count 提示「顯示前 120」', /顯示前 120/.test($('recipe-count').textContent), true);
+  eq('T11 130 筆 → 第 1 頁 60 列', rowCount(), 60);
+  eq('T11 recipe-count 顯示總數與頁碼', $('recipe-count').textContent, '130 個配方（第 1 / 3 頁）');
+  check('T11 翻頁器渲染上/下一頁 + 頁數資訊',
+    /data-pg="prev"/.test($('recipe-pager').innerHTML) && /data-pg="next"/.test($('recipe-pager').innerHTML)
+    && /共 130 個配方/.test($('recipe-pager').innerHTML));
+  check('T11 第 1 頁「上一頁」停用（不得可按）', /data-pg="prev" disabled/.test($('recipe-pager').innerHTML));
+
+  // 翻到最後一頁：130 = 60+60+10
+  const nextBtn = { dataset: { pg: 'next' }, disabled: false, closest: () => nextBtn };
+  const fire = () => $('recipe-pager').onclick({ target: nextBtn });
+  fire(); eq('T11 翻到第 2 頁 → 仍 60 列', rowCount(), 60);
+  fire(); eq('T11 翻到第 3 頁（末頁）→ 餘 10 列', rowCount(), 10);
+  check('T11 末頁「下一頁」停用', /data-pg="next" disabled/.test($('recipe-pager').innerHTML));
+
+  // 篩選變更必須回第 1 頁（否則使用者搜完停在不存在的第 3 頁 → 空白表）
+  $('recipe-search').value = '物1'; CB.renderTable();
+  check('T11 篩選變更 → 回第 1 頁', /第 1 \//.test($('recipe-count').textContent) || !/頁/.test($('recipe-count').textContent));
+  $('recipe-search').value = ''; CB.renderTable();
+  eq('T11 清空篩選 → 回第 1 頁 60 列', rowCount(), 60);
+
+  // 單頁時翻頁器收起（不留空條、不誤導還有別頁）
+  rindex = rindex.slice(0, 10); CB.renderTable();
+  eq('T11 只有一頁 → 翻頁器清空', $('recipe-pager').innerHTML, '');
+  eq('T11 只有一頁 → recipe-count 不顯示頁碼', $('recipe-count').textContent, '10 個配方');
 
   // markListState 無 CraftList → 守衛不拋錯（grok F4/F2）
   let threwMLS = false;

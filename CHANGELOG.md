@@ -2,6 +2,27 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-27 — 配方表分頁 + 手法/走查連動 + 收斂最後一處 codex 覆寫（cycle 2026-07-27-收官提案批次）
+
+**為什麼**：收官提案經 Owner 挑選後執行（B-005 關閉、翻頁、連動、lint 收斂）。
+
+### Added
+- **配方表翻頁器**（取代舊的 `CAP = 120` 硬截斷）：13874 筆原本只給前 120 筆、其餘要靠篩選才看得到——想「瀏覽金工 90–100 有哪些」的使用者會直接漏看。改每頁 60 筆 + 上/下一頁 + 「第 N / M 頁 · 共 X 個配方」。**頁碼重置靠 `filterKey()` 篩選指紋比對，不靠呼叫端傳參**：`renderTable` 有 5 個外部呼叫點（搜尋/等級/rlv/職業 chip/showPicker），用參數就會有人漏傳而靜默停在不存在的頁；指紋法讓「篩選變了就回第 1 頁、翻頁本身保留頁碼」自動成立，且返回配方列表時頁碼不被重置（延續既有「返回不重置瀏覽狀態」承諾）。翻頁後 `recipe-table.scrollTop = 0` 並把焦點留在同一顆按鈕（連續翻頁不掉焦點）。
+- **手法序列 ↔ 逐步走查雙向連動**：上一輪加的序號角標建立了對應關係，但點下去沒反應。手法卡改 `<button data-step>`（原為 `div`，順帶取得鍵盤可達性），點任一側高亮兩側同序號項並捲進視野；走查若為收合狀態會自動展開（否則使用者以為「沒反應」）。純檢視輔助，不動任何求解狀態。
+
+### Changed
+- `.codex-tabs { margin-bottom }` → `#main-tabs { margin-bottom }`：這是本 repo **最後一處** design-lint R5 grandfather 覆寫。外距是本頁版面需求、不是元件屬性，掛在工具自己的 ID 上才對。**`check-design-drift --strict` 現為零警告**（原本每次都印一行）。
+
+### Removed
+- ~~B-005（首載 4.8MB JSON parse 優化）~~ **實測推翻前提後關閉**：4.8MB 是解壓後大小，CF Pages 已上 brotli → **實際傳輸總計 536 KB**；`JSON.parse` 七檔合計 **~10 ms**。worker parse／資料分片都在解不存在的瓶頸。詳見 `docs/BACKLOG.md` B-005 的否決註記。
+
+### Testing
+- `tools/test-formulas.mjs` **87 → 96**：T11 擴充分頁契約（第 1 頁 60 列／頁碼文案／翻到末頁餘 10 列／首末頁按鈕停用／**篩選變更回第 1 頁**／單頁時翻頁器清空且不顯示頁碼）。
+- 瀏覽器實測：13874 筆 → 232 頁、翻頁後 count 同步、搜尋後回第 1 頁、點第 13 張手法卡 → `chip[data-step=12]` 與 `tr[data-step=12]` 同時 `.is-linked` 且走查自動展開。
+- **行動版 393×852 CDP device emulation 實測**（`ranking/tools/mobile_viewport_check.mjs`，非 headless `--window-size` 假 viewport）：`pass: true`、`scrollWidth == 393` 無橫向溢出；唯一 offender 是 portal 全站共用的貓小胖 canvas，非本工具元素。**但仍未掛 portal `mobile: true` 牌**——「不破版」不等於「已優化」，掛牌需另走一輪正式優化（badge 誠實性）。
+
+> ⚠️ **外審狀態誠實記錄**：`ef046e1` 送 codex 對抗審回 `status: timeout`（362s 硬砍、送審 102.4KB、0 findings）。依 adversarial-review 鐵則「exit 0 ≠ 審過、timeout 的 0 findings 不算通過」，已降 `ADV_REVIEW_EFFORT=medium` 重跑。
+
 ## 2026-07-27 — 修 7 個技能 icon 取到「無圖示」佔位圖 + 設定區三處版面調整（cycle 2026-07-27-icon佔位圖修正）
 
 **為什麼**：Owner 在手法序列上看到多個技能顯示灰底紅斜線圖，問「為什麼會有刪除號的 icon，明明遊戲中還存在」。

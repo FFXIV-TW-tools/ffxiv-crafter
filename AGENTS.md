@@ -28,9 +28,9 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 | `index.html` | 靜態骨架 + `document.write` 注入 portal CDN bootstrap（tokens/header/settings）+ SEO/JSON-LD |
 | `app.js` | 前端控制器（module 入口）：資料載入 / gear(localStorage) / 公式 computeSettings / 選配方 selectRecipe / 配方詳情 refreshSelectedGear / 消耗品 / 分頁 / init 接線（**490 行**（wc -l，pre-commit gate 同法），B-002＋B-007＋引導改造拆分後；渲染/求解編排/配方瀏覽表/流程引導已抽出，同名 proxy 委派 CraftBrowse） |
 | `app-flow.js` | 流程引導層（classic script `globalThis.CraftFlow`）：`flowState()` 純函式（①選配方 →②設定條件 →③求解取巨集 三步狀態＋「下一步」文案，唯一真相）／`update()` 重繪步驟軸＋pick-panel 收合＋CTA 就緒提示＋`work.is-idle`／`setTargetMode`·`updateConsumableSummary`（停用原因與現值顯示，不需 init）。自帶 `$`（deep-link 路徑會早於 init 呼叫） |
-| `app-render.js` | 結果渲染層（classic script `globalThis.CraftRender`）：hqPercent(純) / render / 手法序列 chips / 走查表 / 巨集。app.js init 注入 getter 取 live 狀態（loadData 會重賦值 ITEMS/ACTIONS 綁定） |
+| `app-render.js` | 結果渲染層（classic script `globalThis.CraftRender`）：hqPercent(純) / render / 手法序列 chips（**`<button data-step>`，點擊經 `linkStep()` 與走查表同序號列雙向高亮＋自動展開走查**）/ 走查表（`tr[data-step]`）/ 巨集。app.js init 注入 getter 取 live 狀態（loadData 會重賦值 ITEMS/ACTIONS 綁定） |
 | `app-solve.js` | 求解編排層（classic script `globalThis.CraftSolve`）：worker 生命週期 / doSolve / 求解計時 / 結果回傳分派 / 取消 / setSolving。worker·solveClock 為該層私有；渲染委派 CraftRender、公式/gear 由 app.js 注入 |
-| `app-browse.js` | 配方瀏覽層（classic script `globalThis.CraftBrowse`，B-007 拆分）：職業篩選 chips renderChips / 配方表 renderTable / 已加入清單標示 markListState。私有狀態 `jobFilter`；app.js init 注入依賴（getter 取 live RINDEX/selected＋selectRecipe/toast）。app.js 以同名 proxy 沿用既有呼叫點 |
+| `app-browse.js` | 配方瀏覽層（classic script `globalThis.CraftBrowse`，B-007 拆分）：職業篩選 chips renderChips / 配方表 renderTable（**每頁 60 筆分頁**，`renderPager`；頁碼重置靠 `filterKey()` 指紋比對，**不靠呼叫端傳參**——renderTable 有 5 個外部呼叫點，漏傳就是靜默 bug）/ 已加入清單標示 markListState。私有狀態 `jobFilter`／`page`／`lastKey`；app.js init 注入依賴（getter 取 live RINDEX/selected＋selectRecipe/toast）。app.js 以同名 proxy 沿用既有呼叫點 |
 | `crafting-list.js` | 製造清單分頁：清單狀態(localStorage) / 素材彙總 `aggregateMats`（純函式，T7 golden 守）/ 分頁 render。classic script 發佈 `globalThis.CraftList`，app.js init 注入依賴（免 module 化破壞 test-formulas vm 載入） |
 | `worker.js` | web worker：載 raphael WASM 跑 `solve`（只跑 solve，simulate 尚未接 UI，故無 cmd dispatch） |
 | `styles.css` | 工具樣式，token 全來自 portal CDN（tokens.css / header.css） |
@@ -47,16 +47,16 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 
 ## ✅ VERIFY（改動後跑，未過不算完成）
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="87" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="96" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="2" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠**（只准升不准降；2026-07-11 R2 加 test-formulas.mjs → 29 passed；2026-07-16 加 T7 製造清單彙總 → 34 passed；2026-07-19 加 T8 marketboard URL 契約 + T9 selectRecipe 回傳 → 40 passed；2026-07-19 加 T10 清單 add/has/count + 上限誠實 → 50 passed；2026-07-19 加 T11 app-browse 瀏覽層 init/chips/table/篩選/CAP/空狀態/守衛 → 60 passed；2026-07-19 加 T12 buildShoplistCsv 送端 CSV 契約（成品 yield/合併/三上限/invalidCount/多 item 升冪排序）→ 68 passed；2026-07-25 加 T13 求解世代守衛（過期結果/錯誤幀丟棄＋worker gen 回傳契約）→ 75 passed；2026-07-27 加 T14 流程引導狀態機（三態齊全／同時只一步進行中／上游變更使下游失效）→ 87 passed）。
+> 機械閘基線 **4 項全綠**（只准升不准降；2026-07-11 R2 加 test-formulas.mjs → 29 passed；2026-07-16 加 T7 製造清單彙總 → 34 passed；2026-07-19 加 T8 marketboard URL 契約 + T9 selectRecipe 回傳 → 40 passed；2026-07-19 加 T10 清單 add/has/count + 上限誠實 → 50 passed；2026-07-19 加 T11 app-browse 瀏覽層 init/chips/table/篩選/CAP/空狀態/守衛 → 60 passed；2026-07-19 加 T12 buildShoplistCsv 送端 CSV 契約（成品 yield/合併/三上限/invalidCount/多 item 升冪排序）→ 68 passed；2026-07-25 加 T13 求解世代守衛（過期結果/錯誤幀丟棄＋worker gen 回傳契約）→ 75 passed；2026-07-27 加 T14 流程引導狀態機（三態齊全／同時只一步進行中／上游變更使下游失效）→ 87 passed；2026-07-27 T11 擴充配方表分頁（每頁 60／頁碼／末頁餘數／篩選變更回第 1 頁／單頁收翻頁器）→ 96 passed）。
 
 ```bash
 node --check app.js app-flow.js app-render.js app-solve.js app-browse.js crafting-list.js worker.js   # JS 語法
-node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機（87 passed）
+node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機（96 passed）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一（2 passed）
 ```

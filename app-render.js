@@ -33,9 +33,12 @@
   }
   function actionName(v) { const A = deps.getActions(); return (A[v] && A[v].nameTc) || v; }
   function actImg(v) { const a = deps.getActions()[v]; return (a && a.icon) ? `<img class="act-ico" src="${deps.iconUrl(a.icon)}" alt="" loading="lazy">` : ''; }
-  function actionChip(s) {
+  // 手法卡＝可點的 <button>（非 div）：點了會高亮「逐步走查」對應列並捲進視野 →
+  // 序號角標建立的對應關係變成可操作的，鍵盤也走得到（原本 div 不可聚焦）。
+  function actionChip(s, i) {
     const { esc } = deps;
-    return `<div class="chip" data-help="${esc(actionName(s.action))}">${actImg(s.action)}<span class="chip-name codex-xs">${esc(actionName(s.action))}</span></div>`;
+    return `<button type="button" class="chip" data-step="${i}" data-help="${esc(actionName(s.action))}">` +
+      `${actImg(s.action)}<span class="chip-name codex-xs">${esc(actionName(s.action))}</span></button>`;
   }
   function renderMacro(steps) {
     const { $, esc, b64urlEncode, copyText, MACRO_BUILDER_BASE, getSelected } = deps;
@@ -104,7 +107,7 @@
       <table class="wt-table">
         <thead><tr><th>#</th><th>手法</th><th>進展</th><th>品質</th><th>耐久</th><th>CP</th></tr></thead>
         <tbody>${r.steps.map((s, i) =>
-          `<tr><td>${i + 1}</td><td class="wt-act">${actImg(s.action)}${esc(actionName(s.action))}</td><td>${s.progress}</td><td>${s.quality}</td><td>${s.durability}</td><td>${s.cp}</td></tr>`).join('')}</tbody>
+          `<tr data-step="${i}"><td>${i + 1}</td><td class="wt-act">${actImg(s.action)}${esc(actionName(s.action))}</td><td>${s.progress}</td><td>${s.quality}</td><td>${s.durability}</td><td>${s.cp}</td></tr>`).join('')}</tbody>
       </table>`;
     renderMacro(r.steps);
     $('solve-status').innerHTML = `<span class="codex-small">✓ 求解完成：品質 ${pct(r.final_quality, r.max_quality)}%、共 ${r.step_count} 步，巨集已產生</span>`; // aria-live 向螢幕閱讀器播報完成
@@ -113,8 +116,37 @@
     if (scroll) $('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  // 手法卡 ↔ 逐步走查 雙向連動。事件委派綁在兩個持久容器上（render 換 innerHTML 不掉線、不重綁）。
+  // 只標記＋捲動，不改任何求解狀態 → 純檢視輔助。
+  function linkStep(step) {
+    const { $ } = deps;
+    const chips = $('rotation'), wt = $('walkthrough');
+    if (!chips || !wt) return;
+    for (const el of [...chips.querySelectorAll('.is-linked'), ...wt.querySelectorAll('.is-linked')]) el.classList.remove('is-linked');
+    if (step == null) return;
+    const chip = chips.querySelector(`.chip[data-step="${step}"]`);
+    const row = wt.querySelector(`tr[data-step="${step}"]`);
+    if (chip) chip.classList.add('is-linked');
+    if (row) {
+      row.classList.add('is-linked');
+      const block = $('wt-block');
+      if (block && !block.open) block.open = true;   // 走查預設收合 → 點手法卡時自動展開，否則「沒反應」
+      row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+  function bindStepLink() {
+    const { $ } = deps;
+    for (const [host, sel] of [['rotation', '.chip'], ['walkthrough', 'tr[data-step]']]) {
+      const el = $(host);
+      if (el) el.addEventListener('click', (e) => {
+        const hit = e.target.closest(sel);
+        if (hit) linkStep(hit.dataset.step);
+      });
+    }
+  }
+
   globalThis.CraftRender = {
-    init(d) { deps = d; },
+    init(d) { deps = d; bindStepLink(); },
     render,
     hqPercent, // 純函式，golden 測試面（test-formulas 載本檔取用）
   };

@@ -23,8 +23,10 @@ body {
 .panel { padding: var(--space-4, 16px); margin-bottom: var(--space-4, 16px); }
 .panel > .codex-h2 { margin-top: 0; }
 
-/* ---- 分頁（.codex-tabs/.codex-tab 共用元件；此處僅補外距）---- */
-.codex-tabs { margin-bottom: var(--space-4, 16px); }
+/* ---- 分頁（.codex-tabs/.codex-tab 共用元件；此處僅補外距）----
+   掛在本工具的 #main-tabs 而非 .codex-tabs 根 selector：外距是本頁版面需求、不是元件屬性，
+   寫成根 selector 會被 design-lint R5 判為覆寫共用元件（本 repo 最後一處 grandfather，2026-07-27 收斂）。 */
+#main-tabs { margin-bottom: var(--space-4, 16px); }
 
 .run-hint { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3, 12px);
   padding: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); background: var(--color-surface);
@@ -103,6 +105,12 @@ body {
 /* 結果列表與上方搜尋/篩選控件視覺分模塊（shawn：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
 .recipe-table { max-height: 60vh; overflow-y: auto; overflow-x: auto; background: var(--color-bg); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
 .recipe-loading { padding: var(--space-6, 32px); text-align: center; color: var(--color-text-muted); }  /* 首載配方資料佔位 */
+/* 翻頁器（取代舊 CAP 120 硬截斷）；只有一頁時 renderPager 清空內容 → :empty 收掉整條不留空隙 */
+.crafter-pager { display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: var(--space-3, 12px); margin-top: var(--space-3, 12px); }
+.crafter-pager:empty { display: none; }
+.crafter-pager__info { font-variant-numeric: tabular-nums; }
+.crafter-pager__info b { color: var(--accent); }
 /* table-layout:fixed + 百分比欄寬（📊 表格佈局穩定鐵則）：篩選/搜尋換內容時欄寬不重算＝欄位不跳動；
    同時把原本「名稱欄吃掉全部剩餘寬」造成的中段大片空白攤回各欄。 */
 .rt { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-small); }
@@ -337,8 +345,14 @@ body {
 /* gap 12px（非 8px）：序號角標外移 6px，8px 間距會讓角標壓到左鄰卡片邊緣 */
 .rotation { display: flex; flex-wrap: wrap; gap: var(--space-3, 12px); padding-bottom: var(--space-2, 8px); counter-reset: rotstep; }
 /* 圖示卡放可變長技能名：fit-content 撐到名寬、名 nowrap 不切（§圖示+文字並排鐵則#2）*/
+/* <button> 而非 div（可點連動走查、鍵盤可達）→ 需自行歸零瀏覽器按鈕預設外觀 */
 .chip { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; width: fit-content; min-width: 56px; max-width: 120px;
-  padding: var(--space-1, 4px); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+  padding: var(--space-1, 4px); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px);
+  color: inherit; font: inherit; cursor: pointer; }
+.chip:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--color-border)); }
+/* 連動選取態：手法卡與走查列同時亮 accent → 兩邊對得起來 */
+.chip.is-linked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--color-surface)); }
+.wt-table tr.is-linked > td { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 .chip::before { counter-increment: rotstep; content: counter(rotstep);
   position: absolute; top: -6px; left: -6px; min-width: 16px; height: 16px; padding: 0 3px;
   display: flex; align-items: center; justify-content: center;
