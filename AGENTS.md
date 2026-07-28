@@ -63,7 +63,7 @@ py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == 
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一（2 passed）
 ```
 
-- **改 `wasm/src/lib.rs`** → 跑 `cargo test`（host target 可跑，見上）；**重建 WASM 產物**才需 nightly + wasm-pack + wasm32 target（`cd wasm && wasm-pack build --release --target web --out-dir ../pkg`），`pkg/` 要一起 commit。
+- **改 `wasm/src/lib.rs`** → 跑 `cargo test`（host target 可跑，見上）；**重建 WASM 產物**一律走 `powershell tools\build-wasm.ps1`（需 nightly + wasm-pack + wasm32 target），`pkg/` 要一起 commit。**別直接跑裸 `wasm-pack`**：Rust 把 panic 的原始碼路徑編進二進位，crate 住在 `%USERPROFILE%\.cargo\` → 產物會帶建置者的 Windows 帳號名，而 `pkg/*.wasm` 是公開可下載的（瀏覽器必須抓它才能跑）。腳本用 `--remap-path-prefix` 把家目錄改寫成 `~`，並在編完驗收「產物不含建置者路徑」。
 - **改 `.js` / `.css`** → **無 cachebust 步驟**（不像 ranking；index.html 靜態引用無 `?v=`，`_headers` 的 `must-revalidate` 負責重驗）。
 - **手動 smoke**（改 UI / render / 求解路徑後）：`py -3.11 tools/serve.py`（no-cache dev server，預設 :8809；勿用裸 `python -m http.server`——缺 no-cache 會拿到瀏覽器快取舊版）於 repo 根 → 需 **portal svc :8774** 提供 codex CDN（`svc start portal`）→ 開 `http://localhost:8809/` → 選配方 → 填角色數值 → 求解 → 複製巨集。零 console error。
 - **純文件 / 規則檔改動**：pre-commit gate 過 + 目視 diff 即足。

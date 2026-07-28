@@ -26,7 +26,7 @@ py -3.11 tools/build-data.py
 
 ```bash
 cd wasm
-wasm-pack build --release --target web --out-dir ../pkg
+powershell -ExecutionPolicy Bypass -File tools/build-wasm.ps1   # 內含 --remap-path-prefix，勿跑裸 wasm-pack
 ```
 需 nightly + wasm-pack + wasm32 target。`pkg/` 要 commit（CF Pages 不編 Rust）。
 

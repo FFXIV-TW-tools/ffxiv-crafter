@@ -2,6 +2,20 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-28 — 重編 WASM：產物不再外洩建置者路徑（cycle 2026-07-28-wasm-remap）
+
+**為什麼**：查授權合規時掃 `pkg/crafter_wasm_bg.wasm`，發現 39 條含 `C:\Users\shawn_lin\.cargo\...` 的字串——Rust 把每個 panic 的原始碼路徑編進二進位，而這個檔案**公開可下載**（線上實測 `https://ffxiv-crafter.pages.dev/pkg/crafter_wasm_bg.wasm` → 200 / application/wasm / 285557 bytes；瀏覽器本來就得抓它才能執行）。等於站上一直公開著建置者的 Windows 帳號名。
+
+### Added
+- `tools/build-wasm.ps1`：重建 `pkg/` 的唯一入口。設 `RUSTFLAGS=--remap-path-prefix=%USERPROFILE%=~` 後跑 wasm-pack，**編完驗收產物不含建置者路徑**（不是「編過就算」）。不用 `.cargo/config.toml` 是因為 rustflags 不做環境變數展開，寫死絕對路徑換機即失效。
+
+### Changed
+- `pkg/` 重編（285557 → 284900 bytes）：帳號名外洩 **39 → 0** 條；raphael 的路徑字串保留 24 條（`~\.cargo\git\checkouts\raphael-rs-...`），那反而與署名一致。
+- AGENTS.md／README 的重建指令改指腳本，並寫明**不要跑裸 `wasm-pack`**。
+
+### Testing
+- 重編後瀏覽器實測同一配方（軟銀錠 rlv640，含食藥＋專家之證）：`✓ 求解完成：品質 100%、共 7 步`，巨集與重編前逐行相同 → 引擎行為未變。
+
 ## 2026-07-28 — 補齊 WASM 散布的第三方授權義務（cycle 2026-07-28-授權合規）
 
 **為什麼**：Owner 問「頁尾只寫『求解引擎來源 raphael-rs（Apache-2.0）』夠不夠」。不夠——我們散布的 `pkg/crafter_wasm_bg.wasm` 是把 raphael-rs 與約 40 個 crate **編譯進去**的二進位，CF Pages 的訪客就是收受者，屬 Apache-2.0 §4 的 Object form 再散布：§4(a) 要求交付 License **副本**（頁面上寫授權名稱不算），MIT 授權的 crate 也要求隨副本附著作權宣告與授權文字。
