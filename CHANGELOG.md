@@ -2,6 +2,19 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-28 — 補齊 WASM 散布的第三方授權義務（cycle 2026-07-28-授權合規）
+
+**為什麼**：Owner 問「頁尾只寫『求解引擎來源 raphael-rs（Apache-2.0）』夠不夠」。不夠——我們散布的 `pkg/crafter_wasm_bg.wasm` 是把 raphael-rs 與約 40 個 crate **編譯進去**的二進位，CF Pages 的訪客就是收受者，屬 Apache-2.0 §4 的 Object form 再散布：§4(a) 要求交付 License **副本**（頁面上寫授權名稱不算），MIT 授權的 crate 也要求隨副本附著作權宣告與授權文字。
+
+### Added
+- `LICENSE-APACHE-2.0.txt`（自 raphael-rs v0.26.2 原樣複製）、`LICENSE-MIT.txt`（MIT 標準條文）。
+- `THIRD-PARTY-NOTICES.md`：41 個套件的版本／授權／著作權人，由新增的 `tools/build-notices.py` **自 `wasm/Cargo.lock` 產生**（不憑印象列；含建置期 proc-macro，寧可多列不漏列）。
+- 頁尾與 README 授權段補：raphael-rs 標明作者 KonaeAkira 與「未修改」、連到第三方授權聲明、SQUARE ENIX 版權聲明。
+
+### Notes
+- raphael-rs 上游**無 NOTICE 檔**（已查 v0.26.2 的 cargo git checkout）→ Apache §4(d) 不觸發；我們未改其原始碼 → §4(b) 修改標示不適用。若日後 fork 改引擎，這兩條都會啟動。
+- 本工具自製碼仍為 MIT；MIT 與 Apache-2.0 相容，無需改自製碼授權。
+
 ## 2026-07-28 — 食物/藥水下拉重做（icon＋品級＋功效）＋這一區設定本地保存（cycle 2026-07-28-食藥選單）
 
 **為什麼**：Owner 指出食物/藥水那一區三個問題——① 預設收合，等人自己去發現 ② 下拉只有名字，看不出是哪個東西、哪個版本、加成多少，等於要另開 wiki 才選得下去 ③ 選好了重整就沒了，每次進來都要重選。

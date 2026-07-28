@@ -39,4 +39,14 @@ py -3.11 tools/serve.py            # no-cache dev server（預設 :8809，正確
 
 ## 授權
 
-本工具自製碼採 MIT（見 LICENSE）。求解引擎 raphael-rs 為 Apache-2.0，已於頁尾署名 KonaeAkira。FFXIV 遊戲資料／圖示版權屬 SQUARE ENIX。
+本工具自製碼採 MIT（見 [`LICENSE`](LICENSE)）。
+
+**散布的 `pkg/*.wasm` 是二進位衍生作品**——raphael-rs（Apache-2.0）與約 40 個 crate 被編譯進去，
+網站訪客即為收受者，故授權全文與著作權宣告一併隨站附上，不只註明授權名稱：
+
+- [`LICENSE-APACHE-2.0.txt`](LICENSE-APACHE-2.0.txt) — Apache-2.0 全文（§4(a) 要求交付副本）
+- [`LICENSE-MIT.txt`](LICENSE-MIT.txt) — MIT 全文
+- [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) — 逐套件版本／授權／著作權人，由 `py -3.11 tools/build-notices.py` 自 `wasm/Cargo.lock` 產生（**改 wasm 依賴後重跑並一起 commit**）
+
+raphael-rs v0.26.2 以未修改原始碼編譯（故 Apache §4(b) 的「修改標示」不適用），頁尾署名 KonaeAkira。
+FFXIV 遊戲資料／圖示版權屬 SQUARE ENIX。
