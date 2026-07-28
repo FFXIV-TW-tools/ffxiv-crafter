@@ -65,8 +65,39 @@ def lookup(con, name_en):
     return None
 
 
+def enrich_consumables():
+    """meals/medicine 補 icon + item id（best-craft 凍結資料只有 name/level/加成，無圖示）。
+
+    比對鍵＝繁中名（item_lookup.name_tc）；`level` 欄已驗證 == items.level_item（＝物品品級），故不覆寫。
+    對 OUT 內的檔就地加欄，可重複執行（idempotent）。
+    """
+    con = sqlite3.connect(ITEM_LOOKUP)
+    for fn in ("meals.json", "medicine.json"):
+        p = os.path.join(OUT, fn)
+        if not os.path.exists(p):
+            print("⚠ 缺 " + p + "（先跑完整 build-data.py）", file=sys.stderr); continue
+        rows = json.load(open(p, encoding="utf-8"))
+        miss = 0
+        for e in rows:
+            r = con.execute("SELECT id, icon FROM items WHERE name_tc=?", (e["name"],)).fetchone()
+            if r:
+                e["id"], e["icon"] = r[0], r[1]
+            else:
+                e["id"], e["icon"] = None, None
+                miss += 1
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(rows, f, ensure_ascii=False, separators=(",", ":"))
+        print("✓ %s：%d 筆補 icon（%d 查無）" % (fn, len(rows), miss))
+    con.close()
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
+    # 只補食藥 icon 時不必重刷 3.5MB 配方資料
+    if "--consumables-only" in sys.argv:
+        enrich_consumables()
+        return
+
     if not os.path.exists(GAME_REF):
         print("✗ 找不到 game_ref.sqlite：" + GAME_REF, file=sys.stderr); sys.exit(1)
     con = sqlite3.connect(GAME_REF)
@@ -104,6 +135,8 @@ def main():
             print("✓ 複製 %s (%.1f MB)" % (fn, os.path.getsize(src) / 1024 / 1024))
         else:
             print("⚠ 缺 static-data 來源：" + src + "（先跑 best-craft 的 build-static-data.py）", file=sys.stderr)
+
+    enrich_consumables()
 
     # items.json：自 item_lookup 生成（含 icon，給 UI 顯示物品/原料圖示）
     recipes = json.load(open(os.path.join(OUT, "recipes.json"), encoding="utf-8"))

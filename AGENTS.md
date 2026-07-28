@@ -26,18 +26,19 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 | 檔案 / 目錄 | 職責 |
 |------|------|
 | `index.html` | 靜態骨架 + `document.write` 注入 portal CDN bootstrap（tokens/header/settings）+ SEO/JSON-LD |
-| `app.js` | 前端控制器（module 入口）：資料載入 / gear(localStorage) / 公式 computeSettings / 選配方 selectRecipe / 配方詳情 refreshSelectedGear / 消耗品 / 分頁 / init 接線（**490 行**（wc -l，pre-commit gate 同法），B-002＋B-007＋引導改造拆分後；渲染/求解編排/配方瀏覽表/流程引導已抽出，同名 proxy 委派 CraftBrowse） |
+| `app.js` | 前端控制器（module 入口）：資料載入 / gear(localStorage) / 公式 computeSettings / 選配方 selectRecipe / 配方詳情 refreshSelectedGear / 消耗品公式套用 / 分頁 / init 接線（**500 行**（wc -l，pre-commit gate 同法），B-002＋B-007＋引導改造拆分後；渲染/求解編排/配方瀏覽表/流程引導/食藥選單已抽出，同名 proxy 委派 CraftBrowse） |
 | `app-flow.js` | 流程引導層（classic script `globalThis.CraftFlow`）：`flowState()` 純函式（①選配方 →②設定條件 →③求解取巨集 三步狀態＋「下一步」文案，唯一真相）／`update()` 重繪步驟軸＋pick-panel 收合＋CTA 就緒提示＋`work.is-idle`／`setTargetMode`·`updateConsumableSummary`（停用原因與現值顯示，不需 init）。自帶 `$`（deep-link 路徑會早於 init 呼叫） |
 | `app-render.js` | 結果渲染層（classic script `globalThis.CraftRender`）：hqPercent(純) / render / 手法序列 chips（**`<button data-step>`，點擊經 `linkStep()` 與走查表同序號列雙向高亮＋自動展開走查**）/ 走查表（`tr[data-step]`）/ 巨集。app.js init 注入 getter 取 live 狀態（loadData 會重賦值 ITEMS/ACTIONS 綁定） |
 | `app-solve.js` | 求解編排層（classic script `globalThis.CraftSolve`）：worker 生命週期 / doSolve / 求解計時 / 結果回傳分派 / 取消 / setSolving。worker·solveClock 為該層私有；渲染委派 CraftRender、公式/gear 由 app.js 注入 |
 | `app-browse.js` | 配方瀏覽層（classic script `globalThis.CraftBrowse`，B-007 拆分）：職業篩選 chips renderChips / 配方表 renderTable（**每頁 60 筆分頁**，`renderPager`；頁碼重置靠 `filterKey()` 指紋比對，**不靠呼叫端傳參**——renderTable 有 5 個外部呼叫點，漏傳就是靜默 bug）/ 已加入清單標示 markListState。私有狀態 `jobFilter`／`page`／`lastKey`；app.js init 注入依賴（getter 取 live RINDEX/selected＋selectRecipe/toast）。app.js 以同名 proxy 沿用既有呼叫點 |
+| `app-consumable.js` | 食物/藥水選擇層（classic script `globalThis.CraftConsumable`）：自繪 listbox（原生 `<option>` 放不了 icon／品級／功效）／依**物品品級高→低**排序／HQ 切換即時換算／**本區設定本地保存**（`ffxiv-crafter-consumables-v1`：食物・藥水・兩個 HQ・專家之證・展開狀態）。app.js 只留「選中品項→數值加成」的公式面（`applyConsumables` 走 `CraftConsumable.get()`） |
 | `crafting-list.js` | 製造清單分頁：清單狀態(localStorage) / 素材彙總 `aggregateMats`（純函式，T7 golden 守）/ 分頁 render。classic script 發佈 `globalThis.CraftList`，app.js init 注入依賴（免 module 化破壞 test-formulas vm 載入） |
 | `worker.js` | web worker：載 raphael WASM 跑 `solve`（只跑 solve，simulate 尚未接 UI，故無 cmd dispatch） |
 | `styles.css` | 工具樣式，token 全來自 portal CDN（tokens.css / header.css） |
 | `wasm/` | 自寫 Rust 薄綁定（raphael-rs v0.26.2，Apache-2.0）；`wasm-pack build --target web` → `pkg/`。公式在 JS 端算好、WASM 只跑引擎 |
 | `pkg/` | wasm-pack 輸出 — **必須 commit 進 repo**（CF Pages 不編 Rust） |
 | `data/` | recipes / items / ingredients / recipe_levels / craft-actions / meals / medicine JSON（`tools/build-data.py` 產，來自 monorepo item_dict + game_ref） |
-| `tools/` | `build-data.py`（產 data/）、`check-actions.py`（action-set 不變量閘）、`serve.py`（本地預覽） |
+| `tools/` | `build-data.py`（產 data/；`--actions-only` 只重刷技能對照、`--consumables-only` 只補食藥 icon）、`check-actions.py`（action-set 不變量閘）、`serve.py`（本地預覽） |
 | `_headers` | CF Pages 安全標頭（CSP 完整分域）+ 快取策略（.js/.css/pkg `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
 | `docs/health-reviews/` | 永久健檢檔案庫（`project-health-review` skill 產出，豁免 docs 暫存→歸檔規則） |
 
@@ -47,16 +48,16 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 
 ## ✅ VERIFY（改動後跑，未過不算完成）
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="101" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="113" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="2" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠**（只准升不准降；2026-07-11 R2 加 test-formulas.mjs → 29 passed；2026-07-16 加 T7 製造清單彙總 → 34 passed；2026-07-19 加 T8 marketboard URL 契約 + T9 selectRecipe 回傳 → 40 passed；2026-07-19 加 T10 清單 add/has/count + 上限誠實 → 50 passed；2026-07-19 加 T11 app-browse 瀏覽層 init/chips/table/篩選/CAP/空狀態/守衛 → 60 passed；2026-07-19 加 T12 buildShoplistCsv 送端 CSV 契約（成品 yield/合併/三上限/invalidCount/多 item 升冪排序）→ 68 passed；2026-07-25 加 T13 求解世代守衛（過期結果/錯誤幀丟棄＋worker gen 回傳契約）→ 75 passed；2026-07-27 加 T14 流程引導狀態機（三態齊全／同時只一步進行中／上游變更使下游失效）→ 87 passed；2026-07-27 T11 擴充配方表分頁（每頁 60／頁碼／末頁餘數／篩選變更回第 1 頁／單頁收翻頁器）→ 96 passed；2026-07-27 外審【高】修正 T13 補「求解中改設定必須作廢飛行中求解」＋不搶焦點/不誤 toast → 101 passed）。
+> 機械閘基線 **4 項全綠**（只准升不准降；2026-07-11 R2 加 test-formulas.mjs → 29 passed；2026-07-16 加 T7 製造清單彙總 → 34 passed；2026-07-19 加 T8 marketboard URL 契約 + T9 selectRecipe 回傳 → 40 passed；2026-07-19 加 T10 清單 add/has/count + 上限誠實 → 50 passed；2026-07-19 加 T11 app-browse 瀏覽層 init/chips/table/篩選/CAP/空狀態/守衛 → 60 passed；2026-07-19 加 T12 buildShoplistCsv 送端 CSV 契約（成品 yield/合併/三上限/invalidCount/多 item 升冪排序）→ 68 passed；2026-07-25 加 T13 求解世代守衛（過期結果/錯誤幀丟棄＋worker gen 回傳契約）→ 75 passed；2026-07-27 加 T14 流程引導狀態機（三態齊全／同時只一步進行中／上游變更使下游失效）→ 87 passed；2026-07-27 T11 擴充配方表分頁（每頁 60／頁碼／末頁餘數／篩選變更回第 1 頁／單頁收翻頁器）→ 96 passed；2026-07-27 外審【高】修正 T13 補「求解中改設定必須作廢飛行中求解」＋不搶焦點/不誤 toast → 101 passed；2026-07-28 加 T15 食藥選擇層（無加成品項排除／功效文字含上限／品級排序／保存往返含 HQ・專家之證・展開狀態／HQ 切換取 NQ 或 HQ／保存值失效清除）→ 113 passed）。
 
 ```bash
-node --check app.js app-flow.js app-render.js app-solve.js app-browse.js crafting-list.js worker.js   # JS 語法
-node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機（101 passed）
+node --check app.js app-flow.js app-render.js app-solve.js app-browse.js app-consumable.js crafting-list.js worker.js   # JS 語法
+node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機 + T15 食藥選擇層與保存（113 passed）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一（2 passed）
 ```
@@ -71,6 +72,8 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 ## 🛠 開發注意（踩坑 / 教訓）
 
 - **技能 icon 取列策略勿改回 `ORDER BY id LIMIT 1`**（2026-07-27）：CraftAction sheet 同一技能有 8 個職業版本，**外加一批 `ClassJobLevel=1` 的未使用佔位列，Icon 一律是 `000786`（灰底紅斜線「無圖示」圖）且 id 最小**。取最小 id ＝ 7 個技能拿到佔位圖、看起來像「已停用技能」且不會報錯。正解＝排除 `000786` → `class_job_level` DESC → id ASC；`check-actions.py` 已加不變量機械守。只改技能對照時用 `py -3.11 tools/build-data.py --actions-only`（免重刷 3.5MB 配方資料）。**職業專屬 icon 固定木工版**（做金工配方也顯示木工工具）＝**Owner 2026-07-27 裁示的最終取捨**：技能名稱一致、只是圖示因職業略有差異，不影響使用，不值得為此改資料模型（B-008 已否決，勿再提案）。**紅線只有一條——不得出現佔位「刪除號」圖**（`000786`），已由 `check-actions.py` 不變量機械守。
+- **食物/藥水下拉是自繪 listbox，不是 `<select>`**（2026-07-28）：需求要在選項裡顯示 icon＋物品品級＋功效，`<option>` 只吃純文字 → `app-consumable.js` 自建 `role=listbox`。**按鈕上的 Enter/Space 不要自己處理**——瀏覽器本來就會把它轉成 click，兩邊都做會「開了又關」（實測踩到）；keydown 只接 ↑↓ 開選單。選項的 icon/品級來自 `data/meals.json`・`medicine.json` 的 `icon`／`level` 欄，由 `tools/build-data.py --consumables-only` 以**繁中名對 item_lookup** 補上（124/124 全中；`level` 已驗證 == `items.level_item`＝物品品級，勿另算）。
+- **這一區的設定是本地保存的**（`ffxiv-crafter-consumables-v1`）：食物／藥水／兩個 HQ 勾／專家之證／`<details>` 展開狀態全存。新增這一區的輸入項要一併進 `state` 並在 `init` 套回 DOM，否則會出現「畫面有值但重整就跑掉」的半套狀態。`setData` 會清掉資料改版後已不存在的保存品項（不留幽靈選擇）。
 - **icon 一律走 xivapi v2 asset CDN**（2026-07-16）：v1 `xivapi.com/i/...` 圖庫停更、7.5 新 icon 404 → `app.js` `iconUrl()` 把 data 層 v1 路徑轉 v2 URL（權威寫法＝marketboard `modules/icon.js`）；新增 icon 出口勿再直拼 v1 網域，`_headers` CSP img-src 已鎖 `v2.xivapi.com`。
 - **配方資料源＝tnze zh-CN（7.5 跟版）＋item_lookup 繁中化**（2026-07-16）：zh-TW 源停更 7.1 勿換回；重建流程＝best-craft `scripts/build-static-data.py`（刪 static-data 快取強制重爬）→ 本 repo `tools/build-data.py`。舊逐色染劑配方 200 筆是遊戲 7.5 改版移除（通用染劑 38254–38261 取代），勿當缺漏回補。
 - **expert（高難度）配方靜態巨集僅供參考**：104 個 expert 配方在遊戲內為隨機製作狀態，靜態 Normal 巨集無法保證完成 → render 已加中性「試算完成 ⚠」+ 警語（**勿移除、勿改回無條件「✓ 可完成」金徽**）。

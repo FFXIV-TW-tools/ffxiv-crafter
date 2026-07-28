@@ -2,6 +2,26 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-28 — 食物/藥水下拉重做（icon＋品級＋功效）＋這一區設定本地保存（cycle 2026-07-28-食藥選單）
+
+**為什麼**：Owner 指出食物/藥水那一區三個問題——① 預設收合，等人自己去發現 ② 下拉只有名字，看不出是哪個東西、哪個版本、加成多少，等於要另開 wiki 才選得下去 ③ 選好了重整就沒了，每次進來都要重選。
+
+### Added
+- **`app-consumable.js`（新層 `globalThis.CraftConsumable`）**：食物/藥水改自繪 `role=listbox` 下拉 —— 原生 `<option>` 只吃純文字，放不了 icon。每列＝**物品 icon ＋ 名稱 ＋ 功效（`加工 +5%（≤115）・CP +26%（≤100）`）＋ 品級**，依**物品品級高→低**排序（同品級按名穩定排序）。功效隨 HQ 勾選即時換算（勾 HQ 就看 HQ 數值，不用心算）。鍵盤：↑↓ Home/End 移動、Enter 選取、Esc 收合並還焦、點外部收合。
+- **這一區的設定本地保存**（`ffxiv-crafter-consumables-v1`）：食物／藥水／兩個 HQ 勾／專家之證／`<details>` 展開狀態。資料改版後保存值若已不存在，`setData` 會清掉（不留「選了但算不出加成」的幽靈狀態）。
+- **`data/meals.json`・`medicine.json` 補 `icon`／`id` 欄**：來源是 best-craft 凍結的 static-data，本來只有名稱/等級/加成。`tools/build-data.py` 新增 `--consumables-only`，以**繁中名對 item_lookup** 補圖示（124/124 全中）。`level` 欄實測 == `items.level_item`（＝物品品級），故沿用不另算。
+
+### Changed
+- 食物/藥水區塊**預設展開**（`<details open>`）——但展開狀態同樣進保存，收起來的人不會每次被打開。
+- `app.js` 只留「選中品項 → 數值加成」的公式面：`buildConsumables`／`fillConsumableSelect`／`getConsumable` 移入新層，`applyConsumables` 改走 `CraftConsumable.get()`（選擇性呼叫 → 測試 sandbox 缺該層＝無食藥，公式仍可決定性驗證）。`app-flow.js` 的摘要改問選擇層要顯示名（唯一真相＝該層 state，不是 DOM）。
+
+### Fixed
+- **自繪按鈕上 Enter/Space 的雙啟動**（實測踩到）：keydown 自己處理 Enter/Space 會與瀏覽器隨後轉出的原生 click 疊成「開了又關」。改成 keydown 只接 ↑↓，Enter/Space 交還原生按鈕行為。
+
+### Testing
+- `tools/test-formulas.mjs` **101 → 113**（T15）：無加成品項排除／功效文字含上限且不印空欄位／品級排序／保存往返（食物・HQ 勾・專家之證・展開狀態）／HQ 未勾取 NQ 版本／保存值在新資料中消失即清除／init 缺依賴早炸。
+- 瀏覽器實測（:8809 + portal :8774，軟銀錠 rlv640）：選單 51 列圖文正常、選取後按鈕顯示名＋功效、摘要與「實際數值」同步（作業 4020・加工 3935・CP 742，含食藥上限與專家之證）、**重整後選擇/HQ/專家之證/展開狀態全部回來**、求解 7 步完成、選完新食物 → 舊結果正確失效、真實鍵盤（↓↓ Enter／Esc）走通、零 console error。
+
 ## 2026-07-27 — 配方表分頁 + 手法/走查連動 + 收斂最後一處 codex 覆寫（cycle 2026-07-27-收官提案批次）
 
 **為什麼**：收官提案經 Owner 挑選後執行（B-005 關閉、翻頁、連動、lint 收斂）。

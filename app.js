@@ -45,7 +45,6 @@ const PH_HTML =
 const NAME_COLLATOR = new Intl.Collator('zh-Hant'); // 預建 collator，避免每次比較重建（快於逐次 localeCompare(...,'zh-Hant')）
 
 let RECIPES = [], RLV = {}, ACTIONS = {}, RINDEX = [], ITEMS = {}, INGREDIENTS = {};
-let FOOD = {}, POTION = {};  // name → { nq, hq }
 let gearsets = {};      // { 職業: {level,cms,ctrl,cp} }
 let selected = null;    // { recipe, rlv }
 let openedFromList = false; // 由製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入則不顯示（避免幽靈導覽）
@@ -66,7 +65,7 @@ async function loadData() {
   ]);
   const [meals, medicine] = await Promise.all([fetchOpt('data/meals.json'), fetchOpt('data/medicine.json')]);
   RECIPES = recipes; RLV = rlv; ACTIONS = actions; ITEMS = items; INGREDIENTS = ingredients;
-  FOOD = buildConsumables(meals); POTION = buildConsumables(medicine);
+  globalThis.CraftConsumable?.setData?.(meals, medicine);
   RINDEX = RECIPES.map(r => ({
     id: r.id, name: r.item_name || '', job: r.job || '', rlv: r.rlv,
     level: (RLV[String(r.rlv)] && RLV[String(r.rlv)].class_job_level) || 0,
@@ -250,28 +249,13 @@ function renderIngredients(recipe, maxQ) {
   updateInitial(recipe, maxQ);
 }
 
-// ---------- 食物 / 藥水 ----------
-function buildConsumables(arr) {
-  const m = {};
-  for (const e of arr) {
-    if (!e.cm && !e.ct && !e.cp) continue; // 無作業/加工/CP 加成跳過
-    (m[e.name] = m[e.name] || {})[e.is_hq ? 'hq' : 'nq'] = e;
-  }
-  return m;
-}
-function fillConsumableSelect(selId, map) {
-  const lvl = (o) => ((o.hq || o.nq) || {}).level || 0;
-  const names = Object.keys(map).sort((a, b) => lvl(map[b]) - lvl(map[a])); // 高等級在前
-  $(selId).innerHTML = '<option value="">無</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
-}
-function getConsumable(selId, hqId, map) {
-  const name = $(selId).value;
-  if (!name || !map[name]) return null;
-  return ($(hqId).checked && map[name].hq) ? map[name].hq : (map[name].nq || map[name].hq);
-}
+// ---------- 食物 / 藥水（選擇 UI + 本地保存已抽到 app-consumable.js：globalThis.CraftConsumable）----------
+// 這裡只留「選中品項 → 數值加成」的公式面；選單渲染/鍵盤/保存屬該層。
+// 選擇性呼叫（?.）：測試 sandbox 未載該層時＝無食藥，公式仍可決定性驗證。
 function applyConsumables(baseCms, baseCtrl, baseCp) {
   let cms = baseCms, ctrl = baseCtrl, cp = baseCp;
-  for (const e of [getConsumable('food', 'food-hq', FOOD), getConsumable('potion', 'potion-hq', POTION)]) {
+  const cs = globalThis.CraftConsumable;
+  for (const e of [cs?.get?.('food') || null, cs?.get?.('potion') || null]) {
     if (!e) continue;
     if (e.cm) cms += Math.min(e.cm_max || Infinity, Math.floor(baseCms * e.cm / 100));
     if (e.ct) ctrl += Math.min(e.ct_max || Infinity, Math.floor(baseCtrl * e.ct / 100));
@@ -279,6 +263,8 @@ function applyConsumables(baseCms, baseCtrl, baseCp) {
   }
   return { cms, ctrl, cp };
 }
+// 食藥/專家之證任一變更 → 實際數值、摘要、舊結果失效（三者永遠同步，勿在別處只做其中一項）
+function onConsumableChange() { updateEff(); globalThis.CraftFlow?.updateConsumableSummary?.(); invalidateResults(); }
 function effectiveStats(gear) {
   const spec = $('specialist').checked;
   const sp = spec ? 20 : 0;                    // 專家之證：作業 +20・加工 +20
@@ -435,6 +421,10 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     globalThis.CraftSolve.init({ $, toast, PH_HTML, getSelected: () => selected, gearFor, computeSettings, switchTab });
     globalThis.CraftSolve.newWorker();
   }
+  // 食物/藥水選擇層（app-consumable.js classic script）：**必須早於 loadData**——loadData 尾端會 setData 繪按鈕，
+  // 且本層 init 才會把保存值套回 HQ / 專家之證 checkbox（保存值要先就位，後續公式與摘要才讀得到）
+  if (!globalThis.CraftConsumable) throw new Error('app-consumable.js 未載入（部署不完整）');
+  globalThis.CraftConsumable.init({ $, esc, iconUrl, toast, onChange: onConsumableChange });
   await loadData();
   loadGear();
   // 配方瀏覽層（app-browse.js classic script）：注入依賴後才能 render（getter 取 live RINDEX/selected——loadData 會重賦值綁定）
@@ -453,10 +443,9 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   if (dlRecipe && RECIPES.some(r => r.id === dlRecipe)) selectRecipe(dlRecipe);
   else if (dlByItem) selectRecipe(dlByItem.id);
   else if (dlRecipe || dlItem) toast('找不到深連結指定的配方，請用搜尋手動選擇', 'warn'); // 從 marketboard 點過來但該物品無配方 → 給提示不迷路（ux-3）
-  fillConsumableSelect('food', FOOD);
-  fillConsumableSelect('potion', POTION);
   globalThis.CraftFlow.updateConsumableSummary();
-  ['food', 'potion', 'food-hq', 'potion-hq', 'specialist'].forEach(id => $(id).addEventListener('change', () => { updateEff(); globalThis.CraftFlow.updateConsumableSummary(); invalidateResults(); }));
+  // HQ 勾選 / 專家之證仍是原生 checkbox；食物/藥水本體是 CraftConsumable 的自繪選單（無 change 事件 → 走 onChange 回呼）
+  ['food-hq', 'potion-hq', 'specialist'].forEach(id => $(id).addEventListener('change', onConsumableChange));
   // 任一求解輸入變更 → 舊結果過期（gate：集中失效，涵蓋程式化改值與 gear 傳播）
   ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-adversarial'].forEach(id => $(id).addEventListener('change', invalidateResults));
   $('opt-target').addEventListener('input', () => {

@@ -529,5 +529,72 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T14 CraftFlow.init 缺依賴 → 早炸（注入契約不變量）', flowMiss);
 }
 
+// ===== T15：app-consumable.js 食物/藥水選擇層（自繪 listbox 取代原生 select 後，選擇與保存需真測）=====
+{
+  const CS_SRC = fs.readFileSync(path.join(ROOT, 'app-consumable.js'), 'utf8');
+  const els = {};
+  const csEl = () => ({ checked: false, value: '', innerHTML: '', hidden: true, open: false, dataset: {},
+    classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, getAttribute() { return null; },
+    addEventListener() {}, querySelector() { return null; }, querySelectorAll() { return []; }, focus() {}, scrollIntoView() {} });
+  const $ = (id) => els[id] || (els[id] = csEl());
+  const store = {};
+  const cs = { console, document: { getElementById: $, addEventListener() {} },
+    localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } } };
+  cs.globalThis = cs;
+  vm.createContext(cs);
+  vm.runInContext(CS_SRC, cs, { filename: 'app-consumable.js' });
+  const CS = cs.CraftConsumable;
+  const DEP = { $, esc: (s) => String(s), iconUrl: () => '', toast: () => {}, onChange: () => {} };
+
+  let csMiss = false;
+  try { CS.init({ $ }); } catch (e) { csMiss = /缺依賴/.test(e.message); }
+  check('T15 CraftConsumable.init 缺依賴 → 早炸（注入契約不變量）', csMiss);
+
+  const MEALS = [
+    { name: '低品級料理', level: 640, is_hq: false, cm: 3, cm_max: 90, ct: null, ct_max: null, cp: 10, cp_max: 50, icon: '/i/024000/024001.png' },
+    { name: '低品級料理', level: 640, is_hq: true, cm: 4, cm_max: 100, ct: null, ct_max: null, cp: 12, cp_max: 60, icon: '/i/024000/024001.png' },
+    { name: '高品級料理', level: 750, is_hq: false, cm: null, cm_max: null, ct: 4, ct_max: 92, cp: 21, cp_max: 80, icon: '/i/024000/024107.png' },
+    { name: '高品級料理', level: 750, is_hq: true, cm: null, cm_max: null, ct: 5, ct_max: 115, cp: 26, cp_max: 100, icon: '/i/024000/024107.png' },
+    { name: '無加成點心', level: 700, is_hq: false, cm: null, cm_max: null, ct: null, ct_max: null, cp: null, cp_max: null, icon: null },
+  ];
+  const MEDS = [
+    { name: '強化藥', level: 675, is_hq: false, cm: null, cm_max: null, ct: null, ct_max: null, cp: 5, cp_max: 21, icon: '/i/020000/020001.png' },
+    { name: '強化藥', level: 675, is_hq: true, cm: null, cm_max: null, ct: null, ct_max: null, cp: 6, cp_max: 27, icon: '/i/020000/020001.png' },
+  ];
+
+  check('T15 無作業/加工/CP 加成的品項不進選單（選了也沒用）', !CS.build(MEALS)['無加成點心'] && !!CS.build(MEALS)['高品級料理']);
+  eq('T15 功效文字含百分比與上限（高品級的意義在上限，只印 % 看不出差別）',
+    CS.effText(MEALS[3]), '加工 +5%（≤115）・CP +26%（≤100）');
+  eq('T15 只有部分加成的品項不印空欄位', CS.effText(MEDS[1]), 'CP +6%（≤27）');
+
+  CS.init(DEP);
+  CS.setData(MEALS, MEDS);
+  eq('T15 選單依物品品級高→低排序', JSON.stringify(CS.names('food')), JSON.stringify(['高品級料理', '低品級料理']));
+  eq('T15 未選時 get 回 null、label 為空', JSON.stringify([CS.get('food'), CS.label('food')]), JSON.stringify([null, '']));
+
+  // 保存往返：寫入 → 新 sandbox 重載 → 選擇/HQ/專家之證/展開狀態都要回來（重開瀏覽器不遺失）
+  store['ffxiv-crafter-consumables-v1'] = JSON.stringify({ food: '高品級料理', potion: '強化藥', foodHq: false, potionHq: true, specialist: true, open: false });
+  const cs2 = { console, document: { getElementById: $, addEventListener() {} },
+    localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } } };
+  cs2.globalThis = cs2;
+  vm.createContext(cs2);
+  vm.runInContext(CS_SRC, cs2, { filename: 'app-consumable.js' });
+  const CS2 = cs2.CraftConsumable;
+  CS2.init(DEP);
+  CS2.setData(MEALS, MEDS);
+  eq('T15 重載後回復選擇（食物）', CS2.label('food'), '高品級料理');
+  eq('T15 重載後回復 HQ 勾選狀態（食物 NQ / 藥水 HQ）',
+    JSON.stringify([$('food-hq').checked, $('potion-hq').checked]), JSON.stringify([false, true]));
+  eq('T15 重載後回復專家之證與展開狀態', JSON.stringify([$('specialist').checked, $('consumable-block').open]), JSON.stringify([true, false]));
+  eq('T15 HQ 未勾 → get 回 NQ 版本（加成較低）', CS2.get('food').cp, 21);
+  $('food-hq').checked = true;
+  eq('T15 HQ 勾選 → get 回 HQ 版本', CS2.get('food').cp, 26);
+
+  // 資料改版後保存值可能已不存在 → 必須清掉，不留「選了但算不出加成」的幽靈狀態
+  CS2.setData([MEALS[2], MEALS[3]], []);
+  eq('T15 保存的品項在新資料中消失 → 清除選擇（不留幽靈）',
+    JSON.stringify([CS2.label('potion'), CS2.get('potion')]), JSON.stringify(['', null]));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

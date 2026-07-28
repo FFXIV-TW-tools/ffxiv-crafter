@@ -123,17 +123,23 @@
           <div class="cfg-card">
           <h3 class="codex-h3 cfg-card__title">素材與加成</h3>
           <p class="cfg-card__desc codex-small">HQ 素材、食物與藥水會提高起始品質與數值 — 不確定就保持預設。</p>
-          <details class="consumable-block" id="consumable-block">
+          <details class="consumable-block" id="consumable-block" open>
             <summary>
               <span class="codex-small">🍖 食物 / 藥水 / 專家之證</span>
               <span id="consumable-sum" class="crafter-sum codex-small">未使用</span>
             </summary>
             <div class="consumables">
-              <div class="cfg-line"><label class="codex-field__label cfg-line__label" for="food">食物</label>
-                <select id="food" class="codex-select"><option value="">無</option></select>
+              <div class="cfg-line"><span class="codex-field__label cfg-line__label" id="food-label">食物</span>
+                <div class="crafter-cons">
+                  <button type="button" id="food-btn" class="crafter-cons__btn" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="food-menu"><span class="crafter-cons__btn-name crafter-cons__btn-name--none">無</span></button>
+                  <ul id="food-menu" class="crafter-cons__menu" role="listbox" aria-labelledby="food-label" hidden></ul>
+                </div>
                 <label class="opt"><input type="checkbox" id="food-hq" checked> HQ</label></div>
-              <div class="cfg-line"><label class="codex-field__label cfg-line__label" for="potion">藥水</label>
-                <select id="potion" class="codex-select"><option value="">無</option></select>
+              <div class="cfg-line"><span class="codex-field__label cfg-line__label" id="potion-label">藥水</span>
+                <div class="crafter-cons">
+                  <button type="button" id="potion-btn" class="crafter-cons__btn" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="potion-menu"><span class="crafter-cons__btn-name crafter-cons__btn-name--none">無</span></button>
+                  <ul id="potion-menu" class="crafter-cons__menu" role="listbox" aria-labelledby="potion-label" hidden></ul>
+                </div>
                 <label class="opt"><input type="checkbox" id="potion-hq" checked> HQ</label></div>
               <label class="opt"><input type="checkbox" id="specialist"> 專家之證（作業 +20・加工 +20・CP +15）</label>
               <div id="eff-stats" class="eff-stats codex-small"></div>
@@ -253,6 +259,7 @@
   <script src="app-render.js"></script>
   <script src="app-solve.js"></script>
   <script src="app-browse.js"></script>
+  <script src="app-consumable.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

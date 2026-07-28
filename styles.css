@@ -271,6 +271,35 @@ body {
   padding: var(--space-3, 12px); margin-bottom: var(--space-2, 8px);
   background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
 .consumables .cfg-line .codex-select { width: auto; flex: 1; max-width: 220px; }
+
+/* ---- 食物/藥水自繪下拉（原生 <option> 放不了 icon／品級／功效 → 自建 listbox）---- */
+.crafter-cons { position: relative; flex: 1; min-width: 0; max-width: 320px; }
+/* 外觀對齊 .codex-select（高度 38px 是共用控制項不變量），但不覆寫該 class 本體 */
+.crafter-cons__btn { width: 100%; min-height: 38px; display: flex; align-items: center; gap: var(--space-2, 8px);
+  padding: 0 var(--space-2, 8px); text-align: left; cursor: pointer;
+  background: var(--color-bg-mid); color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+.crafter-cons__btn:hover { border-color: var(--accent); }
+.crafter-cons__btn::after { content: '▾'; margin-left: auto; color: var(--accent); }
+/* 名稱優先完整顯示、功效才是被截的那個（名稱截成「椒麻…」等於認不出選了什麼） */
+.crafter-cons__btn-name { flex: 0 0 auto; max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crafter-cons__btn-name--none { color: var(--color-text-muted); }
+.crafter-cons__btn-eff { flex: 1 1 0; min-width: 0; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crafter-cons__menu { position: absolute; z-index: var(--z-dropdown, 100); top: calc(100% + 4px); left: 0;
+  width: max(100%, 400px); max-height: 320px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px);
+  box-shadow: var(--shadow-card-hover); }
+.crafter-cons__opt { display: flex; align-items: center; gap: var(--space-2, 8px);
+  padding: var(--space-1, 4px) var(--space-2, 8px); border-radius: var(--radius-sm, 6px); cursor: pointer; }
+.crafter-cons__opt:nth-child(even) { background: rgba(255, 255, 255, .02); }   /* 斑馬紋掃視（表格穩定鐵則同精神：不加實線） */
+.crafter-cons__opt:hover, .crafter-cons__opt:focus { background: var(--color-surface-hover); outline: none; }
+.crafter-cons__opt.is-sel { box-shadow: inset 2px 0 0 var(--accent); }
+.crafter-cons__ico { width: 24px; height: 24px; flex: 0 0 24px; border-radius: 4px; }
+.crafter-cons__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.crafter-cons__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 功效不換行：換行會讓每列高度不一，掃視時上下對不齊（表格佈局穩定鐵則同精神） */
+.crafter-cons__eff { color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crafter-cons__ilv { flex: 0 0 auto; color: var(--color-text-muted); font-weight: var(--fw-semibold, 600); }
 /* 專家之證是「角色狀態」不是消耗品 → 上緣分隔線與食物/藥水兩列分開 */
 .consumables > .opt { padding-top: var(--space-2, 8px); border-top: 1px solid var(--color-border); }
 /* 摺疊起來時也看得到現值（Owner：不要塞一個欄位在那邊等人發現）—— 未展開就知道有沒有吃食藥 */
