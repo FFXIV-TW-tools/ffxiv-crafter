@@ -11,6 +11,9 @@
 - `THIRD-PARTY-NOTICES.md`：41 個套件的版本／授權／著作權人，由新增的 `tools/build-notices.py` **自 `wasm/Cargo.lock` 產生**（不憑印象列；含建置期 proc-macro，寧可多列不漏列）。
 - 頁尾與 README 授權段補：raphael-rs 標明作者 KonaeAkira 與「未修改」、連到第三方授權聲明、SQUARE ENIX 版權聲明。
 
+### Changed
+- **授權全文改由本站直接提供**（Owner 裁示，同日修正）：頁尾原本連 GitHub 上的 notices，但本 repo 目前未公開 → 訪客會吃 404，等於沒交付。改連隨站部署的 `/LICENSE-APACHE-2.0.txt`（實測 200、`text/plain`、10173 bytes）。MIT 全文與 `THIRD-PARTY-NOTICES.md` 先只留 repo；**repo 轉公開時再把 notices 連結補回頁尾**。
+
 ### Notes
 - raphael-rs 上游**無 NOTICE 檔**（已查 v0.26.2 的 cargo git checkout）→ Apache §4(d) 不觸發；我們未改其原始碼 → §4(b) 修改標示不適用。若日後 fork 改引擎，這兩條都會啟動。
 - 本工具自製碼仍為 MIT；MIT 與 Apache-2.0 相容，無需改自製碼授權。

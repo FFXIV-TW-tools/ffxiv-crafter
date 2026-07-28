@@ -37,7 +37,7 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 | `styles.css` | 工具樣式，token 全來自 portal CDN（tokens.css / header.css） |
 | `wasm/` | 自寫 Rust 薄綁定（raphael-rs v0.26.2，Apache-2.0）；`wasm-pack build --target web` → `pkg/`。公式在 JS 端算好、WASM 只跑引擎 |
 | `pkg/` | wasm-pack 輸出 — **必須 commit 進 repo**（CF Pages 不編 Rust） |
-| `THIRD-PARTY-NOTICES.md`／`LICENSE-APACHE-2.0.txt`／`LICENSE-MIT.txt` | 散布 `pkg/*.wasm`（二進位衍生作品）的授權義務：Apache-2.0 §4(a) 要交付 License 副本、MIT 要附著作權宣告——頁尾只寫授權名稱不算。notices 由 `tools/build-notices.py` 自 `wasm/Cargo.lock` 產生，**改 wasm 依賴後必須重跑並一起 commit** |
+| `THIRD-PARTY-NOTICES.md`／`LICENSE-APACHE-2.0.txt`／`LICENSE-MIT.txt` | 散布 `pkg/*.wasm`（二進位衍生作品）的授權義務：Apache-2.0 §4(a) 要交付 License 副本、MIT 要附著作權宣告——頁尾只寫授權名稱不算。**`LICENSE-APACHE-2.0.txt` 隨站部署、頁尾直連 `/LICENSE-APACHE-2.0.txt`**（Owner 裁示：repo 未公開前不從頁面連 GitHub，會 404）；MIT 全文與 notices 先只存 repo，**轉公開時頁尾要補 notices 連結**。notices 由 `tools/build-notices.py` 自 `wasm/Cargo.lock` 產生，**改 wasm 依賴後必須重跑並一起 commit** |
 | `data/` | recipes / items / ingredients / recipe_levels / craft-actions / meals / medicine JSON（`tools/build-data.py` 產，來自 monorepo item_dict + game_ref） |
 | `tools/` | `build-data.py`（產 data/；`--actions-only` 只重刷技能對照、`--consumables-only` 只補食藥 icon）、`check-actions.py`（action-set 不變量閘）、`build-notices.py`（第三方授權聲明）、`serve.py`（本地預覽） |
 | `_headers` | CF Pages 安全標頭（CSP 完整分域）+ 快取策略（.js/.css/pkg `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
