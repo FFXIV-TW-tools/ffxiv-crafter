@@ -17,4 +17,4 @@
 /pkg/*
   Cache-Control: public, max-age=0, must-revalidate
 /data/*
-  Cache-Control: public, max-age=600, must-revalidate
+  Cache-Control: public, max-age=0, must-revalidate
