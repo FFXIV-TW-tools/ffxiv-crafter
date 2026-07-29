@@ -45,6 +45,18 @@
     return { steps: [s1, s2, s3], next };
   }
 
+  // 由狀態產出兩塊 HTML（步驟軸 / 下一步）。**index.html 內的靜態初始標記由本函式產生**
+  // （冷啟動態＝flowHtml({})）→ 首屏就有內容、JS 接手時是同字串覆寫＝零版面位移（CLS）。
+  // 兩者一致由 test-formulas T17 機械守（改文案後測試會紅，照測試訊息把新字串貼回 index.html）。
+  function flowHtml(ctx, esc) {
+    const st = flowState(ctx);
+    return {
+      st,
+      steps: st.steps.map(s => stepHtml(s, esc)).join(''),
+      next: `<span class="crafter-flow__next-label">下一步</span><span>${esc(st.next)}</span>`,
+    };
+  }
+
   function stepHtml(s, esc) {
     const cur = s.state === 'current' || s.state === 'blocked';
     return `<li class="crafter-flow__step" data-state="${s.state}"${cur ? ' aria-current="step"' : ''}>` +
@@ -84,16 +96,16 @@
     const hasRecipe = !!sel && !isPicking();
     const solving = isSolving();
     const gearOk = hasRecipe && gearOkFor(sel.recipe.job);
-    const st = flowState({
+    const { st, steps, next } = flowHtml({
       hasRecipe,
       recipeName: hasRecipe && sel.recipe.item_name,
       job: hasRecipe && sel.recipe.job,
       gearOk,
       hasResult: hasResult(),
       solving,
-    });
-    $('flow-steps').innerHTML = st.steps.map(s => stepHtml(s, esc)).join('');
-    $('flow-next').innerHTML = `<span class="crafter-flow__next-label">下一步</span><span>${esc(st.next)}</span>`;
+    }, esc);
+    $('flow-steps').innerHTML = steps;
+    $('flow-next').innerHTML = next;
     // ① 完成 → 整張選配方卡收合成一行摘要（驗收線 4）：卸下 codex-tablet 外觀改掛 crafter-picked slim bar
     const pick = $('pick-panel');
     if (pick) {
@@ -133,5 +145,6 @@
     update,
     setTargetMode, updateConsumableSummary,   // 設定區的「現值／停用原因」顯示（不需 init 即可用）
     flowState, // 純函式，golden 測試面（test-formulas T14 載本檔取用）
+    flowHtml,  // 同上（T17：對照 index.html 的靜態初始標記，防 CLS 預留標記漂移）
   };
 })();

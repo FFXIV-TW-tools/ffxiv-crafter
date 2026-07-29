@@ -12,6 +12,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..');
 const APP_SRC = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
 const RENDER_SRC = fs.readFileSync(path.join(ROOT, 'app-render.js'), 'utf8'); // 結果渲染層（hqPercent 純函式住此）
+const CSS_SRC = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');       // T17 首載空間預留（CLS）規則哨兵
 
 // ---------- 可控 DOM stub ----------
 const dom = {};
@@ -544,6 +545,24 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   let flowMiss = false;
   try { fl.CraftFlow.init({ $: () => ({}) }); } catch (e) { flowMiss = /缺依賴/.test(e.message); }
   check('T14 CraftFlow.init 缺依賴 → 早炸（注入契約不變量）', flowMiss);
+
+  // ===== T17：index.html 的靜態流程軸 == flowHtml({}) 冷啟動輸出（CLS 預留標記防漂移）=====
+  // 流程軸原本是空殼等 JS 填 → 首屏 +73px 位移。改成靜態標記後，兩邊字串一旦不同就會出現
+  // 「先顯示舊文案、JS 一跑換掉」的閃動 → 這裡逐字比對，測試紅了就把新字串貼回 index.html。
+  const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const cold = fl.CraftFlow.flowHtml({}, T.esc);
+  const pick = (re) => (HTML.match(re) || [, null])[1];
+  eq('T17 index.html 靜態步驟軸 == flowHtml({}) 冷啟動輸出',
+    pick(/<ol id="flow-steps" class="crafter-flow">([\s\S]*?)<\/ol>/), cold.steps);
+  eq('T17 index.html 靜態「下一步」== flowHtml({}) 冷啟動輸出',
+    pick(/<p id="flow-next" class="crafter-flow__next" role="status">([\s\S]*?)<\/p>/), cold.next);
+  // 預留高度的 class 必須存在且會被卸下（少了任一邊＝空井或位移復發）
+  check('T17 #picker 靜態帶 is-loading（首載預留 chips／筆數／翻頁器高度）',
+    /<div id="picker" class="is-loading">/.test(HTML));
+  check('T17 app.js 會卸下 is-loading（成功與失敗路徑各一）',
+    (APP_SRC.match(/classList\.remove\('is-loading'\)/g) || []).length >= 2);
+  check('T17 載入佔位撐到與載入後同高（.recipe-loading min-height 60vh == .recipe-table max-height）',
+    /\.recipe-loading\s*\{[^}]*min-height:\s*60vh/.test(CSS_SRC) && /\.recipe-table\s*\{[^}]*max-height:\s*60vh/.test(CSS_SRC));
 }
 
 // ===== T15：app-consumable.js 食物/藥水選擇層（自繪 listbox 取代原生 select 後，選擇與保存需真測）=====

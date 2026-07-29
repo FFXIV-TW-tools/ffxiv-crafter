@@ -427,8 +427,11 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 且本層 init 才會把保存值套回 HQ / 專家之證 checkbox（保存值要先就位，後續公式與摘要才讀得到）
   if (!globalThis.CraftConsumable) throw new Error('app-consumable.js 未載入（部署不完整）');
   globalThis.CraftConsumable.init({ $, esc, iconUrl, toast, onChange: onConsumableChange });
-  await loadData();
+  // gear 只讀 localStorage（同步）→ 刻意早於 await：首次使用提示要在資料回來前就定案，
+  // 否則等 fetch 完才 unhide 會把下方整段推開一次（CLS）
   loadGear();
+  updateHint();
+  await loadData();
   // 配方瀏覽層（app-browse.js classic script）：注入依賴後才能 render（getter 取 live RINDEX/selected——loadData 會重賦值綁定）
   if (!globalThis.CraftBrowse) throw new Error('app-browse.js 未載入（部署不完整）'); // 明確早報 → 落 catch 顯錯誤橫幅，非等 render 才 undefined.X 白屏（對抗審 grok F3）
   if (!globalThis.CraftFlow) throw new Error('app-flow.js 未載入（部署不完整）');     // 同上：setTargetMode/摘要為必經路徑，缺檔要早報而非中途 TypeError
@@ -437,7 +440,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   renderChips();
   renderGearsets();
   renderTable();
-  updateHint();
+  $('picker').classList.remove('is-loading');   // 預留高度交還給真實內容（篩選出少量結果時不留空井）
   // 深連結：?recipe=<id> 或 ?item=<id> → 自動選配方（marketboard「求解手法」鈕用）
   const dlp = new URLSearchParams(location.search);
   const dlRecipe = +dlp.get('recipe') || 0, dlItem = +dlp.get('item') || 0;
@@ -495,6 +498,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   } catch (e) {
     console.error('[crafter] 初始化失敗:', e);
     $('recipe-table').innerHTML = ''; // 清掉首載「載入中…」佔位，避免與失敗橫幅並存殘留轉圈
+    $('picker').classList.remove('is-loading'); // 失敗路徑也要卸下，否則空的篩選區留一整片預留高度
     const main = document.querySelector('main');
     if (main) main.insertAdjacentHTML('afterbegin',
       '<div class="codex-tablet panel" style="margin:16px 0;color:var(--color-warn)">⚠ 資料載入失敗，請重新整理頁面或稍後再試。</div>');

@@ -104,7 +104,28 @@ body {
 .recipe-count { margin: var(--space-2, 8px) 0; }
 /* 結果列表與上方搜尋/篩選控件視覺分模塊（shawn：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
 .recipe-table { max-height: 60vh; overflow-y: auto; overflow-x: auto; background: var(--color-bg); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
-.recipe-loading { padding: var(--space-6, 32px); text-align: center; color: var(--color-text-muted); }  /* 首載配方資料佔位 */
+/* 首載配方資料佔位：撐到與載入後同高（60vh＝.recipe-table 的 max-height，首頁 60 列必吃滿）＝零版面位移 */
+.recipe-loading { display: flex; align-items: center; justify-content: center;
+  min-height: 60vh; padding: var(--space-6, 32px); text-align: center; color: var(--color-text-muted); }
+/* ---- 首載空間預留（CLS）2026-07-29 ----
+   配方表是 fetch 回來才長出來的：空殼 → 實體內容量測為 +588px（field CLS P75 0.225 的主因）。
+   #picker 靜態帶 .is-loading，各容器先撐到「載入後的真實高度」，首次 renderTable 完成即卸下。
+   高度值＝本機實測（job 按鈕 38 / codex-small 一行 17 / 表格吃滿 max-height 60vh / 翻頁鈕 38）；
+   改這些控件尺寸時要一起改（差幾 px 只是殘餘微位移，不會壞功能）。 */
+#picker.is-loading .job-chips { min-height: 38px; }
+#picker.is-loading .recipe-count { min-height: 17px; }
+/* 首載必定多頁（全部配方 >1 頁）→ 先佔位；.crafter-pager:empty 的 display:none 由本規則覆寫。
+   ⚠ 必須寫在下方 @media 之前：同特異度後者勝，寫在後面會把窄屏的預留值蓋掉（實測踩過） */
+#picker.is-loading .crafter-pager { display: flex; min-height: 38px; }
+/* 職業 chips 與翻頁器窄屏會折行 → 分段預留（斷點＝iframe 逐 px 實測的折行寬度，2026-07-29）。
+   純預留：職名長度變了頂多剩幾十 px 殘餘位移，不影響功能。 */
+@media (max-width: 909px) { #picker.is-loading .job-chips { min-height: 84px; } }
+@media (max-width: 509px) { #picker.is-loading .job-chips { min-height: 130px; } }
+@media (max-width: 409px) { #picker.is-loading .crafter-pager { min-height: 88px; } }
+@media (max-width: 343px) { #picker.is-loading .job-chips { min-height: 176px; } }
+/* 配方表不列在這裡：改由 .recipe-loading 佔位塊自己撐到 60vh
+   （載入完成 innerHTML 一換就自動消失，不靠 class 卸下）*/
+
 /* 翻頁器（取代舊 CAP 120 硬截斷）；只有一頁時 renderPager 清空內容 → :empty 收掉整條不留空隙 */
 .crafter-pager { display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
   gap: var(--space-3, 12px); margin-top: var(--space-3, 12px); }

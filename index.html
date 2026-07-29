@@ -73,10 +73,12 @@
 
       <!-- 流程軸（設計系統 §功能頁引導標準）：三步狀態 + 固定位置的「下一步」。內容由 app-flow.js 依 live 狀態重繪 -->
       <nav class="crafter-flow-wrap" aria-label="製作求解流程">
-        <ol id="flow-steps" class="crafter-flow"></ol>
+        <!-- ⚠ 以下兩塊靜態標記＝CraftFlow.flowHtml({}) 的冷啟動輸出，逐字複製（首屏零版面位移／CLS）。
+             改 app-flow.js 文案後 test-formulas T17 會紅 → 用 `node -e` 重印 flowHtml({}) 貼回這裡，勿手改。 -->
+        <ol id="flow-steps" class="crafter-flow"><li class="crafter-flow__step" data-state="current" aria-current="step"><span class="crafter-flow__n" aria-hidden="true">1</span><span class="crafter-flow__body"><span class="crafter-flow__t">選配方<span class="crafter-sr">（進行中）</span></span><span class="crafter-flow__note codex-small">從下方列表挑一個要做的成品</span></span></li><li class="crafter-flow__step" data-state="todo"><span class="crafter-flow__n" aria-hidden="true">2</span><span class="crafter-flow__body"><span class="crafter-flow__t">設定條件<span class="crafter-sr">（待辦）</span></span><span class="crafter-flow__note codex-small">選好配方後在左欄設定</span></span></li><li class="crafter-flow__step" data-state="todo"><span class="crafter-flow__n" aria-hidden="true">3</span><span class="crafter-flow__body"><span class="crafter-flow__t">求解取巨集<span class="crafter-sr">（待辦）</span></span><span class="crafter-flow__note codex-small">產出遊戲巨集與逐步走查</span></span></li></ol>
         <!-- role="status"（隱含 aria-live=polite）只掛「下一步」這一行：步驟推進/退回會被播報，
              但不會像整條步驟軸那樣一次唸三個 li（外審 a11y 建議） -->
-        <p id="flow-next" class="crafter-flow__next" role="status"></p>
+        <p id="flow-next" class="crafter-flow__next" role="status"><span class="crafter-flow__next-label">下一步</span><span>① 從下方列表挑一個配方 — 可用職業、等級或名稱搜尋縮小範圍。</span></p>
       </nav>
 
       <!-- ① 選配方（選定後整張卡收合成一行摘要，版面還給主內容）-->
@@ -90,7 +92,9 @@
           <div id="selected-bar" class="selected-bar" hidden></div>
           <button id="change-recipe" class="codex-btn codex-btn--ghost" type="button" hidden>← 換一個配方</button>
         </div>
-        <div id="picker">
+        <!-- is-loading：資料 fetch 回來前先把 chips／筆數／表格／翻頁器的高度預留起來（CLS）。
+             首次 renderTable 後由 app.js 卸下 → 之後篩選只剩少量結果時不會留一口空井。 -->
+        <div id="picker" class="is-loading">
           <!-- 篩選子面板：職業 + 搜尋/等級 組成獨立卡，與下方結果列表硬分兩區（Owner：界線更硬）-->
           <div class="filter-group">
           <div class="job-chips" id="job-chips"></div>

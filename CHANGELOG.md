@@ -2,6 +2,22 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-29 — 修首屏版面位移 CLS（cycle 2026-07-29-cls-reserve）
+
+**為什麼**：field data 回報首頁 CLS P75 0.225（Google 的 poor 門檻 0.25 在邊上），最大位移元素 `#pick-panel`（378 次取樣）。根因單純：**配方資料是 fetch 回來才長內容的，而首屏沒替它保留高度** — 本機量測空殼→實體內容 `#pick-panel` +588px、流程軸 `.crafter-flow-wrap` +73px，資料一到整頁往下彈 660px。
+
+### Changed
+- **流程軸改成靜態初始標記**：`#flow-steps` / `#flow-next` 原本是空殼等 JS 填。現在 index.html 直接寫入 `CraftFlow.flowHtml({})` 的冷啟動輸出（逐字相同），JS 接手時是同字串覆寫 → 零位移，且首屏就看得到「現在該做什麼」。
+- **首載預留高度**：`#picker` 靜態帶 `.is-loading`，替職業 chips／筆數／翻頁器撐出載入後的真實高度（窄屏折行另分 4 段斷點，斷點值＝iframe 逐 px 實測）；首次 `renderTable()` 後卸下，故篩選只剩少量結果時不會留空井。表格則由 `.recipe-loading` 佔位塊自撐 `60vh`（＝`.recipe-table` 的 `max-height`，首頁 60 列必吃滿），innerHTML 一換就自動消失、不靠 class。
+- **首次使用提示提前判定**：`loadGear()` + `updateHint()` 移到 `await loadData()` 之前（只讀 localStorage，不需等網路）— 原本等資料回來才 unhide，等於再推開一次版面。
+
+### Testing
+- 測試 117 → 122（T17：靜態標記 == `flowHtml({})`、`is-loading` 兩條路徑都會卸下、佔位高度 == 表格 max-height）。**靜態標記與程式輸出的漂移由 T17 逐字比對機械守** — 改 app-flow.js 文案後測試會紅，重印貼回即可。
+- 瀏覽器實測（iframe 固定寬度模擬各裝置）：位移 588px → **≤1px**，涵蓋 1400 / 1024 / 910 / 800 / 509 / 412 / 390 / 360 / 320 寬；零 console error。
+
+### Notes
+- 另有 `#ftw-main` / `body` / `#main-tabs` 各 1 次取樣的高分位移，來源不在本工具（page-header 之上只有 portal CDN 的 `header.css`／`body padding-top`），單次取樣、疑似 CDN 樣式延遲抵達，本輪未動 — 若持續出現要回 portal 層查。
+
 ## 2026-07-29 — 台服官方譯名同步 ＋ 搜尋支援簡中輸入
 
 **為什麼**：繁中名改以本機台服 client 自解包為權威（monorepo cycle `2026-07-29-B038-tc-client-datamine`）——upstream `datamining-tc` 落後兩個大改版，7.2 新內容原本退 OpenCC 機轉、產出**陸服譯名**。
