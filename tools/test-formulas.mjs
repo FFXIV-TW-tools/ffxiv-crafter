@@ -312,9 +312,9 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T11 init 缺依賴 → 早炸（注入契約不變量）', threwMiss);
 
   let rindex = [
-    { id: 1, name: '青銅錠', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬' },
-    { id: 2, name: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材' },
-    { id: 3, name: '亞麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料' },
+    { id: 1, name: '青銅錠', nameSc: '青铜锭', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬' },
+    { id: 2, name: '橡木材', nameSc: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材' },
+    { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料' },
   ];
   CB.init(DEP);
 
@@ -330,6 +330,23 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 
   $('recipe-search').value = '青銅'; CB.renderTable();
   eq('T11 搜尋「青銅」→ 1 列', rowCount(), 1);
+
+  // 簡中搜尋：很多人記的是陸服名或直接從簡中攻略貼過來，打簡體查不到會以為工具沒這個配方。
+  // **只比對、不顯示**——顯示一律繁中（繁中服至上）。
+  $('recipe-search').value = '青铜'; CB.renderTable();
+  eq('T11 搜尋簡中「青铜」→ 1 列（簡繁都查得到）', rowCount(), 1);
+  eq('T11 簡中命中仍顯示繁中名', /青銅錠/.test($('recipe-table').innerHTML), true);
+  $('recipe-search').value = '亚麻'; CB.renderTable();
+  eq('T11 搜尋簡中「亚麻」→ 1 列', rowCount(), 1);
+  // nameSc 缺失（舊資料／查無簡中名）不得炸掉搜尋
+  rindex = [{ id: 9, name: '無簡名物', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬' }];
+  $('recipe-search').value = '無簡名'; CB.renderTable();
+  eq('T11 nameSc 缺失時搜尋仍可用', rowCount(), 1);
+  rindex = [
+    { id: 1, name: '青銅錠', nameSc: '青铜锭', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬' },
+    { id: 2, name: '橡木材', nameSc: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材' },
+    { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料' },
+  ];
 
   // rlvVal 空狀態修正（codex/grok：僅 rlv 篩選 0 命中 → 「無符合配方」非空白）
   $('recipe-search').value = ''; $('rlv-filter').value = '999'; CB.renderTable();

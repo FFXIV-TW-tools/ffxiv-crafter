@@ -43,7 +43,7 @@
       (!jobFilter || r.job === jobFilter) &&
       (!range || (r.level >= lo && r.level <= hi)) &&
       (!rlvVal || r.rlv === rlvVal) &&
-      (!q || r.name.toLowerCase().includes(q)));
+      (!q || r.name.toLowerCase().includes(q) || (r.nameSc && r.nameSc.includes(q))));
     const total = list.length;
     list.sort((a, b) => b.level - a.level || NAME_COLLATOR.compare(a.name, b.name));
     const key = filterKey();

@@ -68,6 +68,8 @@ async function loadData() {
   globalThis.CraftConsumable?.setData?.(meals, medicine);
   RINDEX = RECIPES.map(r => ({
     id: r.id, name: r.item_name || '', job: r.job || '', rlv: r.rlv,
+    // 簡中名只進搜尋、不顯示（顯示一律繁中）：很多人記的是陸服名或直接從簡中攻略貼過來
+    nameSc: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].name_sc) || '',
     level: (RLV[String(r.rlv)] && RLV[String(r.rlv)].class_job_level) || 0,
     icon: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].icon) || null,
     category: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].category) || '', // 道具種類（繁中）→ 配方名副行說明
