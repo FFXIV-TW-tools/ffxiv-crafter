@@ -2,6 +2,15 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-07-29 — 台服官方譯名同步 ＋ 搜尋支援簡中輸入
+
+**為什麼**：繁中名改以本機台服 client 自解包為權威（monorepo cycle `2026-07-29-B038-tc-client-datamine`）——upstream `datamining-tc` 落後兩個大改版，7.2 新內容原本退 OpenCC 機轉、產出**陸服譯名**。
+
+- `items.json` 255 件更名（儀仗長刀→典禮長刀、鬃背獸裡脊肉→鬃背獸里肌肉），書名號改回《》。
+- **`recipes.json` 是第二個坑**：站上的物品搜尋走配方表的 `item_name`，不是 `items.json` ⇒ 只更新後者的話，線上仍搜不到「典禮長刀」，**開無痕也一樣**（不是快取問題）。該檔來自 best-craft 的凍結 static-data，其產生器步驟⑦ 正是「以 `item_lookup.name_tc` 繁中化」且 idempotent，重跑即補齊 13874/13874。
+- **搜尋支援簡中輸入**：`items.json` 多帶 `name_sc`、`RINDEX` 掛 `nameSc`、搜尋兩欄都比對；**只比對不顯示**（顯示一律繁中）。市場板與本機素材計算機早就簡繁都能查，crafter 是唯一沒跟上的。測試 113→117（T16）。
+- 資料檔快取改 `max-age=0`＋ETag（全站一致）——原本 `/data/*` 給 600 秒，推上新資料後分不清是沒推成功還是快取沒過期。
+
 ## 2026-07-28 — 重編 WASM：產物不再外洩建置者路徑（cycle 2026-07-28-wasm-remap）
 
 **為什麼**：查授權合規時掃 `pkg/crafter_wasm_bg.wasm`，發現 39 條含 `C:\Users\shawn_lin\.cargo\...` 的字串——Rust 把每個 panic 的原始碼路徑編進二進位，而這個檔案**公開可下載**（線上實測 `https://ffxiv-crafter.pages.dev/pkg/crafter_wasm_bg.wasm` → 200 / application/wasm / 285557 bytes；瀏覽器本來就得抓它才能執行）。等於站上一直公開著建置者的 Windows 帳號名。
