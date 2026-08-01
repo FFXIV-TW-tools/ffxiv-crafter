@@ -859,5 +859,37 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     HTML_SRC.includes('<script src="app-level-sync.js"></script>'));
 }
 
+// ===== T21：`hidden` 屬性必須真的收得起來（[hidden] 守衛哨兵）=====
+// UA 樣式的 [hidden]{display:none} 優先權最低，本地 `.x{display:flex}` 一寫就蓋掉它 →
+// JS 設 `el.hidden = true` 完全沒作用，元素照樣顯示。這個坑在本 repo 反覆出現（styles.css 已有 6 條
+// 手寫守衛），且**用 `el.hidden` 斷言驗不出來**（屬性是 true、畫面是顯示）——2026-08-02 等級同步面板
+// 就是這樣過了測試卻每個配方都顯示。故改成機械掃描：index.html 裡帶 hidden 的元素，其 id/class 若在
+// styles.css 被指定了非 none 的 display，就必須有對應的 `[hidden]` 守衛。
+// 涵蓋範圍限本地 styles.css（portal CDN 的 .codex-* 不在此檔，其守衛見 styles.css 檔頭 B-006 註）。
+{
+  const HTML_SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const sels = new Set();
+  for (const m of HTML_SRC.matchAll(/<\w+\s([^>]*)>/g)) {
+    const attrs = m[1];
+    if (!/(^|\s)hidden(\s|$|=)/.test(attrs)) continue;
+    const id = (attrs.match(/\bid="([^"]+)"/) || [])[1];
+    const cls = (attrs.match(/\bclass="([^"]+)"/) || [])[1];
+    if (id) sels.add('#' + id);
+    if (cls) cls.split(/\s+/).filter(Boolean).forEach((c) => sels.add('.' + c));
+  }
+  const unguarded = [];
+  for (const s of sels) {
+    const rule = CSS_SRC.match(
+      new RegExp('(?:^|[,}\\s])' + s.replace(/[.#]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'm'));
+    if (!rule) continue;                                   // 本地 CSS 沒管這個選擇器 → UA 規則生效，安全
+    const display = rule[1].match(/display\s*:\s*([^;!]+)/);
+    if (!display || /none/.test(display[1])) continue;      // 沒設 display 或本來就 none → 蓋不到
+    if (!CSS_SRC.includes(s + '[hidden]')) unguarded.push(`${s}(display:${display[1].trim()})`);
+  }
+  check(`T21 哨兵本身有效：掃到帶 hidden 的選擇器（實測 ${sels.size} 個）`, sels.size >= 20);
+  eq('T21 帶 hidden 的元素若被本地 CSS 指定 display，必須有 [hidden] 守衛',
+    unguarded.join(' '), '');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

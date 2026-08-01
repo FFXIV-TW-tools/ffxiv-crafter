@@ -235,6 +235,7 @@ body {
 
 /* ---- 等級同步（宇宙探索配方）---- */
 .crafter-lvsync { display: flex; flex-direction: column; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
+.crafter-lvsync[hidden] { display: none; }   /* display:flex 蓋 UA [hidden] → 補守衛（只有會同步的配方才該出現）*/
 .crafter-lvsync__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2, 8px); }
 .crafter-lvsync__line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); }
 .crafter-lvsync__input { width: 6em; flex: 0 0 auto; }   /* 定寬：等級最多三位數，跟著容器伸縮只是噪音 */

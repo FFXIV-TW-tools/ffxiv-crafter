@@ -2,6 +2,27 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-02 — 修：等級同步面板每個配方都顯示（cycle 2026-08-02-lvsync-hidden-guard）
+
+**為什麼**（Owner 回報：「你為什麼每個都要顯示」）：`.crafter-lvsync { display: flex }` 的優先權蓋過
+瀏覽器內建的 `[hidden] { display: none }` → JS 設的 `hidden` 屬性形同無效，那塊面板在**所有**配方上都出現。
+
+**為什麼上一輪測試沒抓到**：我在瀏覽器裡驗的是 `element.hidden`（**屬性**，值確實是 `true`），
+不是實際算出來的 `display`。屬性對、畫面錯，兩邊都「通過」。這是本 repo 反覆出現的坑
+（`styles.css` 原本已有 6 條手寫 `[hidden]` 守衛與一段說明註解），我沒補第 7 條。
+
+### Fixed
+
+- `styles.css` 補 `.crafter-lvsync[hidden] { display: none; }`。
+  實測：一般配方（35426）computed display `none`、高度 0；宇宙配方（36165）`flex`、高度 150px。
+
+### Added
+
+- **T21 `[hidden]` 守衛哨兵**（177 passed）：掃 index.html 裡帶 `hidden` 的元素，其 id/class 若在
+  `styles.css` 被指定了非 `none` 的 `display`，就必須有對應的 `[hidden]` 守衛。
+  **負對照驗過**：把 styles.css 換回出包版本，T21 確實會紅並指名 `.crafter-lvsync(display:flex)`
+  ——不是一條永遠會綠的空測試。
+
 ## 2026-08-01 — 等級同步配方：未滿 100 級不再算錯（cycle 2026-08-01-B016-level-sync）
 
 **為什麼**（B-016，Owner 轉述玩家回報）：宇宙探索（Cosmic Exploration）的 768 個配方（8 職 × 96）
