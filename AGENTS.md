@@ -104,18 +104,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 
 ## 開發循環（DEVLOOP）
 
-正典：`~/.claude/process/DEVLOOP.md`。本 repo 工件：`CHANGELOG.md`、`docs/BACKLOG.md`、`docs/health-reviews/`（健檢檔案庫）。**設計 spec 落外部 portal repo**（`external/ffxiv-tw-tools-portal/docs/specs/2026-06-22-craft-solver-spec.md` + ADR-013），本 repo 不另立 specs/。摘要（對齊 DEVLOOP v1.20；正典不可得時以此為準）：
-
-1. 循環：Intake→Brainstorm→[Gate1 Owner 拍板 spec]→Plan→Build(TDD，適用可測行為變更；純文件走 lint/smoke)→Verify→Review→Record(changelog)→Close+Propose→[Gate2 驗收＋排序]→回 BACKLOG。
-2. 小修旁路可跳 spec/plan；**Verify 與 Record 永不可跳**；資料模型／對外契約／刪除遷移／安全類**即使單檔不可旁路**。
-3. 複審者能力階 ≥ 實作者；未驗證不算完成；能跑≠完成。**否定性斷言（「工具沒有 X」「抓不到」）須先窮盡落點**（資料目錄／全域 log／config／內嵌 sqlite／CLI 子命令／自帶 README），已排除的候選逐項寫進 spec 勘查段；結論不符 Owner 預期或將寫入 spec／硬編碼者，先委派 codex（實地查檔重算）＋grok（零 context 挑盲點）各驗一次再回報。**外審閘（依執行風險軸，紅線 8）**：高＝Plan 後與 Verify 後各一次雙家外審（前閘審計畫、後閘對照驗收條件核實作）；中＝Plan 後單審；外審不可用＝停下回報 Owner；結論與 triage 留痕；低風險不強制。
-4. spec 放 `docs/specs/`（front-matter `status/type/cycle/date`；`draft→approved` 僅 Owner 拍板）；行文引用其他 cycle＝markdown link 指向其 spec 檔（LEDGER 自動建關聯，裸 id 不成關聯）。
-5. 提案進 `docs/BACKLOG.md`（B-NNN 條目）；變更記 `CHANGELOG.md`（含為什麼）。
-6. 測試基線只准升（合理下降須 Record 說明＋複審核可，不得靜默降）；教訓優先固化成測試（本 repo 先例：`check-actions.py` 不變量、`cargo test` round-trip）。
-7. 不經 Owner 核可不得自主實作 backlog 項目（排序≠開工授權；Owner 標 `[go]`＝授權）。
-8. 旁路（無 spec）cycle id＝`YYYY-MM-DD-<BACKLOG 編號>`，供 CHANGELOG 段標題／BACKLOG 完成式共用。
-9. 除錯先根因：動手修 bug 前必先根因調查；一次一假設；同 bug 修 2 次不過升能力階、3 次不過停手質疑架構回 Owner。
-10. 查歷史脈絡：先讀 `docs/LEDGER.md`（若有；生成檔勿手改）挑 cycle，**依決策實作前必開該 cycle spec 全文**並檢查更新的相關 cycle。
+正典：`~/.claude/process/DEVLOOP.md`。本 repo 工件：`CHANGELOG.md`、`docs/BACKLOG.md`、`docs/health-reviews/`（健檢檔案庫）。**設計 spec 落外部 portal repo**（`external/ffxiv-tw-tools-portal/docs/specs/2026-06-22-craft-solver-spec.md` + ADR-013），本 repo 不另立 specs/。
 
 ### 🔒 部署面鐵則（2026-08-01，勿回退）
 
