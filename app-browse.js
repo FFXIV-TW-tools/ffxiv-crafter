@@ -18,7 +18,7 @@
   function renderChips() {
     if (!deps) return;   // 未 init 即被呼叫（app.js 已保證順序）→ 防 destructure null 崩潰（對抗審 grok F2）
     const { $, esc, iconUrl, DOH, JOB_ICON } = deps;
-    // 職業篩選＝共用 .codex-btn 方形分段（shawn 拍板：不用 pill 橢圓）：選中＝--primary 填色 / 未選＝--ghost，aria-pressed 同步 a11y。
+    // 職業篩選＝共用 .codex-btn 方形分段（Owner 拍板：不用 pill 橢圓）：選中＝--primary 填色 / 未選＝--ghost，aria-pressed 同步 a11y。
     // 沿用真實職業 icon（JOB_ICON→xivapi），勿換 emoji。picker 與求解 work 互斥顯示 → 選中職業的 --primary 不會與 solve-btn 主 CTA 同框。
     $('job-chips').innerHTML = ['', ...DOH].map(j => {
       const on = j === jobFilter;

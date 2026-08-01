@@ -102,7 +102,7 @@ body {
 .filter-row .codex-select { flex: 0 0 auto; min-width: 130px; }
 .filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
 .recipe-count { margin: var(--space-2, 8px) 0; }
-/* 結果列表與上方搜尋/篩選控件視覺分模塊（shawn：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
+/* 結果列表與上方搜尋/篩選控件視覺分模塊（Owner：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
 .recipe-table { max-height: 60vh; overflow-y: auto; overflow-x: auto; background: var(--color-bg); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
 /* 首載配方資料佔位：撐到與載入後同高（60vh＝.recipe-table 的 max-height，首頁 60 列必吃滿）＝零版面位移 */
 .recipe-loading { display: flex; align-items: center; justify-content: center;
@@ -160,7 +160,7 @@ body {
 .rt-row:hover { background: var(--color-surface-hover); }
 .rt-row.is-sel { background: var(--color-surface-hover); outline: 1px solid var(--accent); }
 .rt-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }  /* 鍵盤 focus 可見（配方列可鍵盤選取） */
-/* 已在製造清單的列：整列換綠色底（主要掃視提示，shawn 指定）＋左緣 success 色條；名稱旁徽章與 ＋→✓ 鈕由 markListState 驅動 */
+/* 已在製造清單的列：整列換綠色底（主要掃視提示，Owner 指定）＋左緣 success 色條；名稱旁徽章與 ＋→✓ 鈕由 markListState 驅動 */
 .rt-row.rt-in { background: color-mix(in srgb, var(--color-success, #7dd87d) 14%, transparent); }
 .rt-row.rt-in:hover { background: color-mix(in srgb, var(--color-success, #7dd87d) 24%, transparent); }
 .rt-row.rt-in > td:first-child { box-shadow: inset 3px 0 0 var(--color-success, #7dd87d); }
