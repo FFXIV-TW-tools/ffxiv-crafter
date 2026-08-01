@@ -2,7 +2,7 @@
 
 FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引擎（web worker），無後端。輸入配方＋角色數值 → 算最佳製作手法 → 手法序列 + 逐步走查 + 一鍵複製遊戲巨集。external 公開工具，部署 Cloudflare Pages（`ffxiv-crafter.pages.dev`），FFXIV-TW-tools portal 註冊。
 
-**規模級別：S**（DEVLOOP §5）——單一子系統（一個求解器工具）、~1.6k 行手寫碼分佈 10 檔（app.js / app-flow.js / app-render.js / app-solve.js / app-browse.js / crafting-list.js / worker.js / index.html / styles.css / wasm/src/lib.rs）、單一部署目標、無後端 / cron / 多機協作 / 資料管線。**故不設 ROADMAP 分解層**（直接 Plan→Build）；設計 spec 落在外部 portal repo（見下），本 repo 工件＝`CHANGELOG.md` + `docs/BACKLOG.md` + `docs/health-reviews/`。判 S 偏 M（有 Rust/WASM 一層非顯而易見），但無跨子系統協調需求 → 維持 S。
+**規模級別：S**（DEVLOOP §5）——單一子系統（一個求解器工具）、~2.7k 行前端/站台手寫碼分佈 12 檔（app.js / app-flow.js / app-render.js / app-solve.js / app-browse.js / app-consumable.js / app-quality-stages.js / app-level-sync.js / crafting-list.js / worker.js / index.html / styles.css）、單一部署目標、無後端 / cron / 多機協作 / 資料管線。**故不設 ROADMAP 分解層**（直接 Plan→Build）；設計 spec 落在外部 portal repo（見下），本 repo 工件＝`CHANGELOG.md` + `docs/BACKLOG.md` + `docs/health-reviews/`。判 S 偏 M（有 Rust/WASM 一層非顯而易見），但無跨子系統協調需求 → 維持 S。
 
 > 設計＆決策不在本 repo：spec `external/ffxiv-tw-tools-portal/docs/specs/2026-06-22-craft-solver-spec.md`（公式 §4 對抗驗證）+ ADR-013。重建 / 部署見 `README.md`。
 
@@ -27,7 +27,7 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 | 檔案 / 目錄 | 職責 |
 |------|------|
 | `index.html` | 靜態骨架 + `document.write` 注入 portal CDN bootstrap（tokens/header/settings）+ SEO/JSON-LD |
-| `app.js` | 前端控制器（module 入口）：資料載入 / gear(localStorage) / 公式 computeSettings / 選配方 selectRecipe / 配方詳情 refreshSelectedGear / 消耗品公式套用 / 分頁 / init 接線（**500 行**（wc -l，pre-commit gate 同法），B-002＋B-007＋引導改造拆分後；渲染/求解編排/配方瀏覽表/流程引導/食藥選單已抽出，同名 proxy 委派 CraftBrowse） |
+| `app.js` | 前端控制器（module 入口）：資料載入 / gear(localStorage) / 公式 computeSettings / 選配方 selectRecipe / 配方詳情 refreshSelectedGear / 消耗品公式套用 / 分頁 / init 接線（**640 行**（wc -l，pre-commit gate 同法），B-002＋B-007＋引導改造拆分後；渲染/求解編排/配方瀏覽表/流程引導/食藥選單已抽出，同名 proxy 委派 CraftBrowse） |
 | `app-flow.js` | 流程引導層（classic script `globalThis.CraftFlow`）：`flowState()` 純函式（①選配方 →②設定條件 →③求解取巨集 三步狀態＋「下一步」文案，唯一真相）／`update()` 重繪步驟軸＋pick-panel 收合＋CTA 就緒提示＋`work.is-idle`／`flowHtml()`（狀態→HTML，**index.html 的靜態初始標記即其 `flowHtml({})` 輸出**，T17 逐字守）／`setTargetMode`·`updateConsumableSummary`（停用原因與現值顯示，不需 init）。自帶 `$`（deep-link 路徑會早於 init 呼叫） |
 | `app-render.js` | 結果渲染層（classic script `globalThis.CraftRender`）：hqPercent(純) / render / 手法序列 chips（**`<button data-step>`，點擊經 `linkStep()` 與走查表同序號列雙向高亮＋自動展開走查**）/ 走查表（`tr[data-step]`）/ 巨集。app.js init 注入 getter 取 live 狀態（loadData 會重賦值 ITEMS/ACTIONS 綁定） |
 | `app-solve.js` | 求解編排層（classic script `globalThis.CraftSolve`）：worker 生命週期 / doSolve / 求解計時 / 結果回傳分派 / 取消 / setSolving。worker·solveClock 為該層私有；渲染委派 CraftRender、公式/gear 由 app.js 注入 |
@@ -42,8 +42,8 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 | `app-quality-stages.js` | 品質階段層（classic script `globalThis.CraftStages`）：配方的三段品質門檻 → 目標品質。**兩種來源單位不同，換算只有這裡一份**——收藏品＝值×10；宇宙任務＝`ceil(滿品質×值/100)`（進位方向有意義，floor 會差一格達不到門檻）。某檔為 0 不列該檔、整個配方無資料就收起整組欄位 |
 | `app-level-sync.js` | 等級同步層（classic script `globalThis.CraftSync`）：宇宙探索配方**同一列資料掛在多個等級級距的任務上**（`WKSMissionUnit` 的 LevelGroup 1/2/3 共用同一 recipe id、`IsSynced=1`），存的 rlv 690 是「Lv100 版本」。`resolve()` 依角色等級（或手動指定，本機保存 `ffxiv-crafter-level-sync-v1`）解出生效的 recipe level 列，`refreshSelectedGear` 把它寫回 `selected.rlv` → 顯示與求解共用。**等級→rlv 的對照只有這裡一份**＝取該職業等級的最小 rlv（identity：代入最高等級會還原成配方原始 rlv，T20 全量釘住）。**不靜默換數字**：生效 rlv、三上限與配方原始值都寫在畫面上 |
 | `data/` | recipes / items / ingredients / recipe_levels / craft-actions / meals / medicine / **quality-stages** / **level-sync** JSON（`tools/build-data.py` 產，來自 monorepo item_dict + game_ref） |
-| `tools/` | `build-data.py`（產 data/；`--actions-only` 只重刷技能對照、`--consumables-only` 只補食藥 icon）、`check-actions.py`（action-set 與 `pkg/`／`wasm/src` 同步不變量閘）、`build-wasm.ps1`（重建 `pkg/` 並更新 `wasm/BUILD-STAMP.json`）、`build-notices.py`（第三方授權聲明）、`serve.py`（本地預覽） |
-| `_headers` | CF Pages 安全標頭（CSP 完整分域）+ 快取策略（.js/.css/pkg `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
+| `tools/` | `build-data.py`（產 data/；`--actions-only` 只重刷技能對照、`--consumables-only` 只補食藥 icon）、`check-actions.py`（action-set 與 `pkg/`／`wasm/src` 同步不變量閘）、`build-wasm.ps1`（重建 `pkg/` 並更新 `wasm/BUILD-STAMP.json`）、`build-notices.py`（第三方授權聲明）、`serve.py`（本地預覽）、`test-formulas.mjs`（前端純函式 golden 測試） |
+| `_headers` | CF Pages 安全標頭（CSP 完整分域）+ 快取策略（.js/.css/pkg/ 與 `/data/*` `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
 | `docs/health-reviews/` | 永久健檢檔案庫（`project-health-review` skill 產出，豁免 docs 暫存→歸檔規則） |
 
 **資料流**：使用者選配方 + 填角色數值 → `computeSettings`（FFXIV 公式，含食物/藥水/專家之證）→ postMessage worker → raphael `MacroSolver` → replay 逐步 → render 手法序列 + 巨集。跨工具深連結：`?recipe=<id>` / `?item=<id>`（marketboard「求解手法」鈕、宇宙探索站的需求物跳來）＋ `?stage=1|2|3` 預選品質階段。**`stage` 只認階段序號，刻意不收絕對品質數字**——讓外部站塞絕對值進來等於開第二條換算路徑，對面資料一舊就靜默給出達不到門檻的手法。
@@ -63,7 +63,7 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 
 ```bash
 node --check app.js app-flow.js app-render.js app-solve.js app-browse.js app-consumable.js app-quality-stages.js app-level-sync.js crafting-list.js worker.js   # JS 語法
-node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機 + T15 食藥選擇層與保存 + T16 簡中搜尋 + T17 首屏 CLS 預留（122 passed）
+node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機 + T15 食藥選擇層與保存 + T16 簡中搜尋 + T17 首屏 CLS 預留（239 passed）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一（2 passed）
 ```
@@ -77,12 +77,12 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 
 ## 🛠 開發注意（踩坑 / 教訓）
 
-- **技能 icon 取列策略勿改回 `ORDER BY id LIMIT 1`**（2026-07-27）：CraftAction sheet 同一技能有 8 個職業版本，**外加一批 `ClassJobLevel=1` 的未使用佔位列，Icon 一律是 `000786`（灰底紅斜線「無圖示」圖）且 id 最小**。取最小 id ＝ 7 個技能拿到佔位圖、看起來像「已停用技能」且不會報錯。正解＝排除 `000786` → `class_job_level` DESC → id ASC；`check-actions.py` 已加不變量機械守。只改技能對照時用 `py -3.11 tools/build-data.py --actions-only`（免重刷 3.5MB 配方資料）。**職業專屬 icon 固定木工版**（做金工配方也顯示木工工具）＝**Owner 2026-07-27 裁示的最終取捨**：技能名稱一致、只是圖示因職業略有差異，不影響使用，不值得為此改資料模型（B-008 已否決，勿再提案）。**紅線只有一條——不得出現佔位「刪除號」圖**（`000786`），已由 `check-actions.py` 不變量機械守。
+- **技能 icon 取列策略勿改回 `ORDER BY id LIMIT 1`**（2026-07-27）：CraftAction sheet 同一技能有 8 個職業版本，**外加一批 `ClassJobLevel=1` 的未使用佔位列，Icon 一律是 `000786`（灰底紅斜線「無圖示」圖）且 id 最小**。取最小 id ＝ 7 個技能拿到佔位圖、看起來像「已停用技能」且不會報錯。正解＝排除 `000786` → `class_job_level` DESC → id ASC；`check-actions.py` 已加不變量機械守。只改技能對照時用 `py -3.11 tools/build-data.py --actions-only`（免重刷 4.1MB 配方資料）。**職業專屬 icon 固定木工版**（做金工配方也顯示木工工具）＝**Owner 2026-07-27 裁示的最終取捨**：技能名稱一致、只是圖示因職業略有差異，不影響使用，不值得為此改資料模型（B-008 已否決，勿再提案）。**紅線只有一條——不得出現佔位「刪除號」圖**（`000786`），已由 `check-actions.py` 不變量機械守。
 - **食物/藥水下拉是自繪 listbox，不是 `<select>`**（2026-07-28）：需求要在選項裡顯示 icon＋物品品級＋功效，`<option>` 只吃純文字 → `app-consumable.js` 自建 `role=listbox`。**按鈕上的 Enter/Space 不要自己處理**——瀏覽器本來就會把它轉成 click，兩邊都做會「開了又關」（實測踩到）；keydown 只接 ↑↓ 開選單。選項的 icon/品級來自 `data/meals.json`・`medicine.json` 的 `icon`／`level` 欄，由 `tools/build-data.py --consumables-only` 以**繁中名對 item_lookup** 補上（124/124 全中；`level` 已驗證 == `items.level_item`＝物品品級，勿另算）。
 - **這一區的設定是本地保存的**（`ffxiv-crafter-consumables-v1`）：食物／藥水／兩個 HQ 勾／專家之證／`<details>` 展開狀態全存。新增這一區的輸入項要一併進 `state` 並在 `init` 套回 DOM，否則會出現「畫面有值但重整就跑掉」的半套狀態。`setData` 會清掉資料改版後已不存在的保存品項（不留幽靈選擇）。
 - **icon 一律走 xivapi v2 asset CDN**（2026-07-16）：v1 `xivapi.com/i/...` 圖庫停更、7.5 新 icon 404 → `app.js` `iconUrl()` 把 data 層 v1 路徑轉 v2 URL（權威寫法＝marketboard `modules/icon.js`）；新增 icon 出口勿再直拼 v1 網域，`_headers` CSP img-src 已鎖 `v2.xivapi.com`。
 - **配方資料源＝tnze zh-CN（7.5 跟版）＋item_lookup 繁中化**（2026-07-16）：zh-TW 源停更 7.1 勿換回；重建流程＝best-craft `scripts/build-static-data.py`（刪 static-data 快取強制重爬）→ 本 repo `tools/build-data.py`。舊逐色染劑配方 200 筆是遊戲 7.5 改版移除（通用染劑 38254–38261 取代），勿當缺漏回補。
-- **expert（高難度）配方靜態巨集僅供參考**：104 個 expert 配方在遊戲內為隨機製作狀態，靜態 Normal 巨集無法保證完成 → render 已加中性「試算完成 ⚠」+ 警語（**勿移除、勿改回無條件「✓ 可完成」金徽**）。
+- **expert（高難度）配方靜態巨集僅供參考**：536 個 expert 配方在遊戲內為隨機製作狀態，靜態 Normal 巨集無法保證完成 → render 已加中性「試算完成 ⚠」+ 警語（**勿移除、勿改回無條件「✓ 可完成」金徽**）。
 - **求解計時＝軟提示不殺 worker**（`solveClock` interval，每秒更新已耗時）：求解跑在 worker、主執行緒空閒故計數不凍結；≥60s 升級「可取消」提示但**不殺** worker（正常長求解仍在跑，UI 文案「可能數十秒」）；`stopSolveClock()` 掛在 onWorkerMsg / cancelSolve / onerror（別讓成功後計數殘留）。
 - **「現在該做什麼」的唯一真相＝`app-flow.js` 的 `flowState()`**（2026-07-27 引導改造）：步驟軸／「下一步」文案／CTA 就緒提示／`pick-panel` 收合／`work.is-idle` 全由它一次算出，**勿在各層自己寫步驟文案或自行 toggle 這些 class**。新增會改變流程位置的事件（新分頁／新輸入）→ 呼叫 `globalThis.CraftFlow?.update?.()`（一律選擇性呼叫，測試 sandbox 缺本層不炸）。
 - **首屏「等 fetch 才長內容」的區塊一律要預留高度**（2026-07-29 CLS 修）：field CLS P75 0.225 的來源是 `#pick-panel` 空殼→實體內容 **+588px**。三種手法各有適用：①內容是**確定的**（流程軸冷啟動態）→ 直接把 `flowHtml({})` 輸出寫進 index.html，JS 同字串覆寫（T17 守漂移）；②內容**筆數不定**（chips／翻頁器）→ `#picker.is-loading` 分段 `min-height`，首次 `renderTable()` 後卸下（**失敗路徑也要卸**，否則空井留著）；③**佔位塊自撐**（`.recipe-loading` min-height 60vh == `.recipe-table` max-height），innerHTML 一換即消失，最省事。新增首屏區塊時照這三類挑一種，**別再留空殼**。量測方法＝同源 iframe 固定寬度載入本站，比對「清空成載入態 vs 實際內容」的高度差（可逐 px 掃出窄屏折行斷點；本機 window 無法被自動化縮放）。

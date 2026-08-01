@@ -2,6 +2,31 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-02 — 文件與 memory 同步（cycle 2026-08-02-B015-docs-sync）
+
+**為什麼**（B-015 / 健檢批次 6，排最後因為行數與測試數要等前五批定案）：文件宣告的數字與指令
+會隨 code 漂移，而**漂移的文件比沒有文件更危險**——它是每個 session 都會被讀進 context 的常駐指令。
+
+### Fixed
+
+- **`README.md` 的重建 WASM 指令照抄必失敗**：原本寫 `cd wasm` 再跑 `tools/build-wasm.ps1`，
+  但 `tools/` 在 repo 根，`cd wasm` 之後那個路徑不存在。失敗後使用者的自然退路正是**被明令禁止**的
+  裸 `wasm-pack`（會把建置者的 Windows 帳號名編進公開產物）。改成從 repo 根執行。
+- **`AGENTS.md` 數字更正**（每項都實測過）：expert 配方 104 → **536**；`app.js` 500 → **640** 行；
+  規模描述「~1.6k 行 10 檔」→「~2.7k 行 12 檔」（原清單漏了 `app-consumable.js`／`app-quality-stages.js`／
+  `app-level-sync.js`）；`tools/` 與 `_headers` 兩列補上本輪新增項。
+- **portal `templates/_headers` 補 `/data/*` must-revalidate**（portal repo `752db3e`）：
+  模板缺這段 → 新工具照抄就讓 `data/` 走預設快取，推完玩家仍看到舊資料且**零訊號**。
+  掃描 9 個有 `data/` 的 external 站，**`ffxiv-tw-sightseeing` 已經是活受害者**（未動，待 Owner 決定）。
+- **memory**：刪 `external.audit-followups.md` 的 Analytics-A（**先 curl 驗證 crafter／treasure 的 beacon
+  都已注入才刪**，不是照報告說「已完成」就刪）＋同步 `MEMORY.md` 索引；
+  修 `external.data-cache-must-revalidate.md` 的「（見下）」斷鏈 → 指向 crafter CHANGELOG 的明確段落。
+
+> **CC 退掉執行者一處改動**：它把 B-005（2026-07-27 **已結案**）的前提數字 4.8MB 改寫成 7.3MB。
+> 那是**當時**的資料量，而同一段的「實際傳輸 536 KB」正是對那份資料量測的——改了會讓該段自相矛盾，
+> 等於竄改歷史紀錄。已還原。（順帶：現況實測 `du -ch data/*.json` 是 7.1M，跟它寫的 7.3 也對不上。）
+> 教訓：**「更新過時數字」與「改寫歷史紀錄」是兩回事**，已結案條目的當時數值不該被現況覆蓋。
+
 ## 2026-08-02 — a11y：live region 不再轟炸、鍵盤焦點看得見（cycle 2026-08-02-B014-a11y）
 
 **為什麼**（B-014 / 健檢批次 5）：兩項的共通點是**看得見的人完全不受影響**，不實測就永遠不會發現。

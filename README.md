@@ -25,8 +25,7 @@ py -3.11 tools/build-data.py
 ## 重建 WASM
 
 ```bash
-cd wasm
-powershell -ExecutionPolicy Bypass -File tools/build-wasm.ps1   # 內含 --remap-path-prefix，勿跑裸 wasm-pack
+powershell -ExecutionPolicy Bypass -File tools/build-wasm.ps1   # 從 repo 根執行；內含 --remap-path-prefix，勿跑裸 wasm-pack
 ```
 需 nightly + wasm-pack + wasm32 target。`pkg/` 要 commit（CF Pages 不編 Rust）。
 
