@@ -893,6 +893,97 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T27 重試後舊世代結果不得渲染', rendered.length, 0);
 }
 
+// ===== T28：求解計時不應每秒重建 aria-live 節點 + listbox 焦點不可消失（B-014）=====
+// live region 的狀態節點必須固定；這裡用 T28 專用 DOM stub 保留節點物件參照，
+// 不改共用 makeEl()，避免把其他 sandbox 一起改成「看不出 innerHTML 重建」的假綠。
+{
+  const SOLVE_SRC = fs.readFileSync(path.join(ROOT, 'app-solve.js'), 'utf8');
+  let now = 0;
+  let tick = null;
+  const els = {};
+
+  function solveNode(text = '', attrs = {}) {
+    let value = String(text);
+    const attributes = { ...attrs };
+    const el = {
+      checked: false, value: '', hidden: true, disabled: false, dataset: {}, style: {},
+      classList: { toggle() {}, add() {}, remove() {} },
+      setAttribute(name, v) { attributes[name] = String(v); },
+      getAttribute(name) { return attributes[name] ?? null; },
+      querySelector() { return null; }, querySelectorAll() { return []; },
+      appendChild() {}, removeChild() {}, focus() {},
+      textWrites: 0,
+    };
+    Object.defineProperty(el, 'textContent', {
+      get() { return value; },
+      set(v) { value = String(v); el.textWrites++; },
+    });
+    return el;
+  }
+
+  const status = solveNode();
+  let statusMarkup = '';
+  status.markupWrites = 0;
+  Object.defineProperty(status, 'innerHTML', {
+    get() { return statusMarkup; },
+    set(v) {
+      statusMarkup = String(v);
+      status.markupWrites++;
+      status.messageNode = solveNode('求解中…（高難度配方可能數十秒）');
+      status.elapsedNode = solveNode('已耗時 0 秒', { 'aria-hidden': 'true' });
+    },
+  });
+  status.querySelector = (selector) => selector === '.crafter-solve-status__message'
+    ? status.messageNode
+    : selector === '.crafter-solve-status__elapsed' ? status.elapsedNode : null;
+  els['solve-status'] = status;
+  const sbEl = (id) => els[id] || (els[id] = solveNode());
+  const sb = {
+    console,
+    Date: { now: () => now },
+    document: { getElementById: sbEl, createElement() { return solveNode(); } },
+    setInterval(fn) { tick = fn; return 1; },
+    clearInterval() { tick = null; },
+    Worker: function () { this.postMessage = () => {}; this.terminate = () => {}; },
+  };
+  sb.globalThis = sb;
+  vm.createContext(sb);
+  vm.runInContext(SOLVE_SRC, sb, { filename: 'app-solve.js' });
+  sb.CraftSolve.init({
+    $: sbEl, toast() {}, PH_HTML: '',
+    getSelected: () => ({ recipe: { job: '木工' }, rlv: 700 }),
+    gearFor: () => ({ craftsmanship: 4000, control: 4000, cp: 600 }),
+    computeSettings: () => ({ base_progress: 100, base_quality: 100 }),
+    switchTab() {},
+  });
+
+  sb.CraftSolve.doSolve();
+  const firstMessage = status.messageNode;
+  const firstElapsed = status.elapsedNode;
+  const initialElapsed = firstElapsed.textContent;
+  eq('T28 求解開始只建立一次狀態結構', status.markupWrites, 1);
+  eq('T28 秒數節點帶 aria-hidden="true"', firstElapsed.getAttribute('aria-hidden'), 'true');
+
+  now = 2000; tick();
+  now = 3000; tick();
+  eq('T28 多次計時後狀態文字仍是同一個節點', status.messageNode, firstMessage);
+  eq('T28 多次計時後秒數節點仍是同一個節點', status.elapsedNode, firstElapsed);
+  check('T28 每秒只改秒數節點的 textContent', firstElapsed.textContent !== initialElapsed
+    && firstElapsed.textContent === '已耗時 3 秒');
+
+  now = 60000; tick();
+  const overtimeWrites = firstMessage.textWrites;
+  now = 61000; tick();
+  eq('T28 跨過 60 秒仍不重建狀態文字節點', status.messageNode, firstMessage);
+  eq('T28 ≥60 秒升級文案只寫一次', firstMessage.textWrites, overtimeWrites);
+
+  // CSS 哨兵只擋「已知會壞的形狀」；文字比對驗不了 ring 是否真的在視覺上可見，須用鍵盤實測。
+  const optRules = [...CSS_SRC.matchAll(/\.crafter-cons__opt[^{}]*\{([^}]*)\}/g)]
+    .map((m) => m[1]).join('\n');
+  check('T28 食藥 listbox focus 規則不得 outline:none', !/outline\s*:\s*none\b/.test(optRules),
+    `實際規則：${optRules}`);
+}
+
 // ===== T14：app-flow.js 流程引導狀態機（設計系統 §功能頁引導標準的可測落點）=====
 // 「現在該做什麼」是純函式決定的 → 這裡鎖住四條驗收線裡機械可驗的兩條：
 //   ② 多步流程要有當前步驟指示（完成／進行中／待辦三態齊全、且同時只有一步 current）

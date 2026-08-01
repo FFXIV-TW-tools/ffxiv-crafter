@@ -43,11 +43,21 @@
     const { $ } = deps;
     stopSolveClock();
     const t0 = Date.now();
+    const status = $('solve-status');
+    status.innerHTML = '<span class="codex-spinner" aria-hidden="true"></span> ' +
+      '<span class="crafter-solve-status__message">求解中…（高難度配方可能數十秒）</span> ' +
+      '<span class="crafter-solve-status__elapsed" aria-hidden="true">已耗時 0 秒</span>';
+    const message = status.querySelector?.('.crafter-solve-status__message');
+    const elapsed = status.querySelector?.('.crafter-solve-status__elapsed');
+    let overtime = false;
     const paint = () => {
       if ($('cancel-btn').hidden) { stopSolveClock(); return; }  // 已結束的保險
       const secs = Math.floor((Date.now() - t0) / 1000);
-      const overtime = secs >= 60 ? ' — 仍在計算中，可繼續等待或按「取消」' : '';
-      $('solve-status').innerHTML = `<span class="codex-spinner"></span> 求解中… 已耗時 ${secs} 秒（高難度配方可能數十秒）${overtime}`;
+      if (elapsed) elapsed.textContent = `已耗時 ${secs} 秒`;
+      if (message && secs >= 60 && !overtime) {
+        message.textContent = '求解中… — 仍在計算中，可繼續等待或按「取消」';
+        overtime = true;
+      }
     };
     paint();
     solveClock = setInterval(paint, 1000);
@@ -128,7 +138,7 @@
     } else if (!$('results') || $('results').hidden) {
       $('results-placeholder').innerHTML = PH_HTML; // 取消/錯誤結束 → 還原提示（成功時 render 會隱藏）
     }
-    $('solve-status').innerHTML = on ? '<span class="codex-spinner"></span> 求解中…（高難度配方可能數十秒）' : '';
+    if (!on) $('solve-status').textContent = '';
     globalThis.CraftFlow?.update?.();   // 步驟軸 ③ 進行中/退回（選擇性呼叫：測試 sandbox 無本層時不炸）
   }
 

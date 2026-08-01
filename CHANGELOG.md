@@ -2,6 +2,34 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-02 — a11y：live region 不再轟炸、鍵盤焦點看得見（cycle 2026-08-02-B014-a11y）
+
+**為什麼**（B-014 / 健檢批次 5）：兩項的共通點是**看得見的人完全不受影響**，不實測就永遠不會發現。
+
+### Fixed
+
+- **求解計時不再每秒重播整段**：`#solve-status` 是 `role="status" aria-live="polite"`，
+  而 `startSolveClock` 每秒重寫整個 region 的 `innerHTML` → 多數螢幕閱讀器對 live region 的任何 mutation
+  都會重播**整段**，求解數十秒就被唸數十次。
+  **只把秒數標 `aria-hidden` 不夠**——region 的 innerHTML 還是被換掉，mutation 照樣發生。
+  改成求解開始時建立一次結構，之後每秒只改一個 `aria-hidden="true"` 秒數節點的 `textContent`；
+  「≥60 秒」的升級文案只在跨過門檻的**那一次**寫入（那是真的該播報一次的狀態變化）。
+- **自繪 listbox 的鍵盤焦點看得見**：`.crafter-cons__opt` 原本 `outline: none` 且**焦點樣式與 hover 完全相同**
+  → 100+ 筆食藥清單用 ↑↓ 移動時看不出目前在哪一列，且違反 portal 設計系統的「禁止 `outline: none`」鐵則。
+  改 `:focus-visible` + 2px accent ring，`outline-offset: -2px`（選單是 `overflow-y: auto` 的捲動容器，
+  正 offset 會讓第一／最後一列的 ring 被裁掉）。
+
+### Verified
+
+- 四道機械閘：`test-formulas` 231 → **239 passed**／`check-actions` 35=35／`node --check` 全檔。
+- **CC 獨立突變測試**：`paint()` 改回重寫父層 `innerHTML` → T28 紅 5 條；把 `outline: none` 加回 → CSS 哨兵紅。
+- **真實鍵盤實測**（這批唯一能真正驗證的方式）：按實體 ↓ 之後 `:focus-visible` 為 true、
+  computed outline 是 `solid 2px rgb(78,201,208)`；焦點移到**非選中**列時該列 `box-shadow: none`
+  但仍有 ring ⇒ **「目前鍵盤焦點」與「已選中」視覺可區分**（修前兩者樣式相同）。
+
+> 測試斷言的是「**狀態節點物件沒有被重建**」而不是「可見字串值不變」——後者恆綠，是空殼。
+> 執行＝委派 codex `gpt-5.6-luna`（xhigh），一次過。
+
 ## 2026-08-02 — pkg/ 與 wasm/src 的同步機械守（cycle 2026-08-02-B013-pkg-stamp）
 
 **為什麼**（B-013(b) / 健檢批次 4）：`pkg/` 是 wasm-pack 的輸出、必須 commit 進 repo（CF Pages 不編 Rust）。
