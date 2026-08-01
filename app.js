@@ -86,7 +86,20 @@ async function loadData() {
 }
 
 // ---------- 角色數值（localStorage）----------
-function loadGear() { try { gearsets = JSON.parse(localStorage.getItem(GEAR_KEY)) || {}; } catch { gearsets = {}; } }
+function loadGear() {
+  try {
+    const raw = localStorage.getItem(GEAR_KEY);
+    if (raw == null) { gearsets = {}; return; } // 首次使用：沒有保存值不是錯誤
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new TypeError('角色數值資料不是物件');
+    gearsets = parsed;
+  } catch (e) {
+    gearsets = {};
+    console.warn('[crafter] 角色數值讀取失敗，已重置:', e);
+    if (!gearLoadWarned) { gearLoadWarned = true; toast('角色數值讀取失敗，已重置', 'warn'); }
+  }
+}
+let gearLoadWarned = false;
 let gearSaveWarned = false;
 function saveGear() {
   try { localStorage.setItem(GEAR_KEY, JSON.stringify(gearsets)); }
@@ -132,7 +145,7 @@ function onGearInput(e) {
   }
   (gearsets[job] = gearsets[job] || {})[f] = value;
   saveGear(); updateHint();
-  if (selected) refreshSelectedGear();
+  if (selected) refreshGearNote();
   invalidateResults(); // 改角色數值 → 舊巨集過期
   globalThis.CraftFlow?.update?.(); // 填完數值 → ② 由「無法進行」轉「進行中」（invalidateResults 無結果時會早退，故此處明呼）
 }
@@ -190,6 +203,51 @@ function recipeMaxes(recipe, rlv) {
     max_durability: Math.floor(rlv.durability * recipe.durability_factor / 100),
   };
 }
+function refreshGearNote() {
+  if (!selected) return;
+  const { recipe } = selected;
+  const g = gearFor(recipe.job);
+  // 角色等級改變時，等級同步配方的生效 rlv 也可能改變；只有這時才需要完整重繪。
+  const sync = globalThis.CraftSync?.resolve?.(recipe, RLV, g && Number(g.level));
+  const nextRlv = (sync && sync.row) || selected.baseRlv;
+  const oldRlv = selected.rlv;
+  const rlvChanged = oldRlv && nextRlv ? oldRlv.id !== nextRlv.id : oldRlv !== nextRlv;
+  if (rlvChanged) {
+    // 完整重繪會重建素材列／目標欄；先記住玩家成果，重繪後再套回（目標超過新上限則收斂）。
+    const targetBefore = $('opt-target').value;
+    const hqBefore = {};
+    $('ingredients').querySelectorAll('.ing-hq-in').forEach((inp) => { hqBefore[inp.dataset.iid] = inp.value; });
+    refreshSelectedGear();
+    const { max_quality: maxQ } = recipeMaxes(recipe, selected.rlv);
+    const target = $('opt-target');
+    if (targetBefore === '') target.value = '';
+    else {
+      const n = Number(targetBefore);
+      target.value = Number.isFinite(n) ? String(Math.min(Math.max(0, n), maxQ)) : targetBefore;
+    }
+    globalThis.CraftStages?.syncFromInput?.();
+    $('ingredients').querySelectorAll('.ing-hq-in').forEach((inp) => {
+      const old = hqBefore[inp.dataset.iid];
+      if (old == null) return;
+      const n = Number(old), amount = Number(inp.dataset.amt);
+      inp.value = Number.isFinite(n) ? String(Math.min(Math.max(0, n), Number.isFinite(amount) ? amount : n)) : '0';
+    });
+    updateInitial(recipe, maxQ);
+    return;
+  }
+  const note = g
+    ? `✅ 套用「${esc(g._src)}」數值：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${Number(g.level) || 100}${g.level ? '' : '（假設，未填等級）'}`
+    : `⚠ 尚未設定「${esc(recipe.job)}」數值 — <a href="#" id="goto-stats">去填角色數值 →</a>`;
+  const noteEl = $('gear-note');
+  if (noteEl) {
+    noteEl.className = `ri-gear codex-tint-panel codex-tint-panel--bar ${g ? 'codex-tint-panel--success' : 'codex-tint-panel--warn'}`;
+    noteEl.innerHTML = note;
+  }
+  const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats', true); };
+  updateEff();
+  // 缺角色數值時不用 disabled，保留可聚焦的補救入口；只更新 gear 實際影響的 aria 狀態。
+  $('solve-btn').setAttribute('aria-disabled', g ? 'false' : 'true');
+}
 function refreshSelectedGear() {
   const { recipe } = selected;
   const g = gearFor(recipe.job);
@@ -200,11 +258,6 @@ function refreshSelectedGear() {
   const { max_progress: maxP, max_quality: maxQ, max_durability: maxD } = recipeMaxes(recipe, rlv);
   globalThis.CraftSync?.render?.(recipe, sync, g && Number(g.level),
     { max_progress: maxP, max_quality: maxQ, max_durability: maxD });
-  // 套用狀況＝共用 .codex-tint-panel--bar（左緣色條資訊盒）：綠＝已套用、金＝缺數值並附補救入口
-  const note = g
-    ? `✅ 套用「${esc(g._src)}」數值：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${Number(g.level) || 100}${g.level ? '' : '（假設，未填等級）'}`
-    : `⚠ 尚未設定「${esc(recipe.job)}」數值 — <a href="#" id="goto-stats">去填角色數值 →</a>`;
-  const noteTone = g ? 'codex-tint-panel--success' : 'codex-tint-panel--warn';
   const icon = (ITEMS[String(recipe.item_id)] || {}).icon;
   const jico = JOB_ICON[recipe.job] ? `<img class="ri-jico" src="${iconUrl(JOB_ICON[recipe.job])}" alt="">` : '';
   // 動作列：統一 ghost 按鈕群（設計系統，取代自寫 link-button）。marketboard 連結只在有 item_id 時出（防壞連結）。
@@ -227,8 +280,7 @@ function refreshSelectedGear() {
         ${backToList}
       </div>
     </div>
-    <div class="ri-gear codex-tint-panel codex-tint-panel--bar ${noteTone}">${note}</div>`;
-  const gl = $('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); switchTab('stats', true); };
+    <div id="gear-note" class="ri-gear codex-tint-panel codex-tint-panel--bar"></div>`;
   const ab = $('add-to-list'); if (ab) ab.onclick = () => { if (typeof globalThis.CraftList?.add === 'function') globalThis.CraftList.add(recipe.id); };
   // 回清單：switchTab('list') 已集中清 openedFromList + 收返回鈕（見 switchTab），此處只需切頁+移焦
   const bl = $('back-to-list'); if (bl) bl.onclick = () => switchTab('list', true);
@@ -236,10 +288,9 @@ function refreshSelectedGear() {
   globalThis.CraftStages?.setRecipe?.(recipe, maxQ);   // 該配方有幾檔品質門檻（收藏品／宇宙任務）→ 重建階段選單
   globalThis.CraftFlow.setTargetMode();         // NQ 模式目標品質欄停用 + 寫出原因（引導層）
   renderIngredients(recipe, maxQ);
-  updateEff();
+  refreshGearNote();
   // 缺角色數值時**不用 disabled**（真 disabled 不可聚焦 → 螢幕閱讀器讀不到原因、鍵盤也走不到）：
   // 改 aria-disabled 暗掉但可按，按下由 doSolve 導去「角色數值」分頁（驗收線 3：控制不隱藏＋寫出原因＋給補救入口）
-  $('solve-btn').setAttribute('aria-disabled', g ? 'false' : 'true');
   $('opt-adversarial').disabled = recipe.is_expert; // 高難度配方引擎不支援防球
   $('adv-why').hidden = !recipe.is_expert;
   if (recipe.is_expert) $('opt-adversarial').checked = false;

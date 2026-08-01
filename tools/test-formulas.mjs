@@ -13,6 +13,8 @@ const ROOT = path.join(HERE, '..');
 const APP_SRC = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
 const RENDER_SRC = fs.readFileSync(path.join(ROOT, 'app-render.js'), 'utf8'); // 結果渲染層（hqPercent 純函式住此）
 const CSS_SRC = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');       // T17 首載空間預留（CLS）規則哨兵
+const HANDWRITTEN_JS = ['app.js', 'app-flow.js', 'app-render.js', 'app-solve.js', 'app-browse.js',
+  'app-consumable.js', 'app-quality-stages.js', 'app-level-sync.js', 'crafting-list.js', 'worker.js'];
 
 // ---------- 可控 DOM stub ----------
 const dom = {};
@@ -297,6 +299,80 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T24 Lv85 正常值不寫回輸入框', normalInput.writes, 0);
 }
 
+// ===== T25：角色數值更新不得遺失成果；等級同步改變 rlv 時同步重算三上限 =====
+{
+  const LS_SRC = fs.readFileSync(path.join(ROOT, 'app-level-sync.js'), 'utf8');
+  const mkT25Ctx = ({ recipe, rlvTable, syncMap = null, level }) => {
+    const els = {}, store = { 'ffxiv-crafter-gearsets-v1': JSON.stringify({ 木工: { level, cms: 4048, ctrl: 3980, cp: 600 } }) };
+    const makeEl = () => {
+      const attrs = {};
+      return { checked: false, value: '', innerHTML: '', textContent: '', hidden: true, disabled: false,
+        max: '', min: '', placeholder: '', dataset: {}, style: {}, className: '',
+        classList: { toggle() {}, add() {}, remove() {} },
+        setAttribute(k, v) { attrs[k] = String(v); }, getAttribute(k) { return attrs[k] ?? null; },
+        addEventListener() {}, removeEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; },
+        appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, focus() {}, scrollIntoView() {}, select() {} };
+    };
+    const ingredients = { _html: '', _inputs: [],
+      set innerHTML(v) { this._html = v; this._inputs = [{ value: '0', dataset: { iid: '42', amt: '2' }, addEventListener() {} }]; },
+      get innerHTML() { return this._html; },
+      querySelectorAll(sel) { return sel === '.ing-hq-in' ? this._inputs : []; }, querySelector() { return null; } };
+    const ctx = {
+      console: { log() {}, error() {}, warn() {} },
+      document: { getElementById: (id) => id === 'ingredients' ? ingredients : (els[id] || (els[id] = makeEl())),
+        querySelector() { return null; }, querySelectorAll() { return []; }, body: makeEl(), activeElement: null },
+      location: { hostname: 'localhost', search: '' }, window: { FFXIVToast: { show() {} } },
+      localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); }, removeItem() {} },
+      Worker: function () {}, fetch: () => Promise.reject(new Error('test: no network')),
+      setTimeout, clearTimeout, setInterval, clearInterval, URLSearchParams,
+      CraftFlow: { setTargetMode() {}, update() {} },
+    };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t25.mjs' });
+    vm.runInContext(`RECIPES = ${JSON.stringify([recipe])}; RLV = ${JSON.stringify(rlvTable)}; ITEMS = {"42":{"name":"測試素材","can_be_hq":true,"level":100}}; INGREDIENTS = {"${recipe.id}":[[42,2]]};`, ctx);
+    if (syncMap) {
+      vm.runInContext(LS_SRC, ctx, { filename: 'app-level-sync-t25.js' });
+      ctx.CraftSync.setData(syncMap);
+    }
+    return { ctx, ingredients, store };
+  };
+  const baseRecipe = { id: 1, item_id: 0, item_name: 'T25 測試配方', job: '木工', rlv: 90,
+    difficulty_factor: 100, quality_factor: 100, durability_factor: 100, material_quality_factor: 50, is_expert: false };
+  const baseRlv = { id: 90, class_job_level: 90, difficulty: 1000, quality: 1000, durability: 40,
+    progress_divider: 130, quality_divider: 115, progress_modifier: 80, quality_modifier: 70 };
+  const stable = mkT25Ctx({ recipe: baseRecipe, rlvTable: { 90: baseRlv }, level: 90 });
+  stable.ctx.loadGear();
+  stable.ctx.selectRecipe(1);
+  const stableTarget = stable.ctx.document.getElementById('opt-target');
+  stableTarget.value = '432';
+  stable.ingredients._inputs[0].value = '1';
+  stable.ctx.updateInitial(baseRecipe, 1000);
+  const initialBefore = vm.runInContext('computedInitial', stable.ctx);
+  stable.ctx.onGearInput({ target: { dataset: { job: '木工', f: 'cms' }, value: '4100' } });
+  eq('T25 生效 rlv 不變 → 目標品質保留', stableTarget.value, '432');
+  eq('T25 生效 rlv 不變 → computedInitial 保留', vm.runInContext('computedInitial', stable.ctx), initialBefore);
+  eq('T25 生效 rlv 不變 → HQ 數量保留', stable.ingredients._inputs[0].value, '1');
+
+  const syncRecipe = { ...baseRecipe, id: 2, item_name: 'T25 同步配方', rlv: 100 };
+  const rlv70 = { ...baseRlv, id: 70, class_job_level: 70, difficulty: 700, quality: 700, durability: 30 };
+  const rlv100 = { ...baseRlv, id: 100, class_job_level: 100, difficulty: 1000, quality: 1000, durability: 40 };
+  const synced = mkT25Ctx({ recipe: syncRecipe, rlvTable: { 70: rlv70, 100: rlv100 }, syncMap: { '2': 100 }, level: 100 });
+  synced.ctx.loadGear();
+  synced.ctx.selectRecipe(2);
+  const syncedTarget = synced.ctx.document.getElementById('opt-target');
+  syncedTarget.value = '900';
+  synced.ingredients._inputs[0].value = '1';
+  synced.ctx.updateInitial(syncRecipe, 1000);
+  synced.ctx.onGearInput({ target: { dataset: { job: '木工', f: 'level' }, value: '70' } });
+  const activeRlv = vm.runInContext('selected.rlv', synced.ctx);
+  eq('T25 改角色等級 → 同步配方生效 rlv 改為 Lv70 基準', activeRlv.id, 70);
+  eqObj('T25 改角色等級 → 難度/品質/耐久三上限跟著 rlv 變', synced.ctx.recipeMaxes(syncRecipe, activeRlv),
+    { max_progress: 700, max_quality: 700, max_durability: 30 });
+  eq('T25 生效 rlv 改變 → 目標品質保留但收在新品質上限', syncedTarget.value, '700');
+  eq('T25 生效 rlv 改變 → HQ 數量保留', synced.ingredients._inputs[0].value, '1');
+}
+
 // ===== T4：hqPercent 斷點抽樣（品質% → HQ%；含邊界 100/99/98、5/2、0、超上限、maxQ=0）=====
 {
   const M = 9000;
@@ -328,10 +404,92 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     !/\$\{\s*g\.level\s*\|\|/.test(APP_SRC), '偵測到裸插 g.level（應為 Number(g.level)）');
   check('T6 sec-A1：Number(g.level) 硬化在位', /Number\(g\.level\)/.test(APP_SRC));
 
-  // sec A2：禁空 catch（saveGear 已補 console.warn + toast）— 去註解後不得殘留 catch(){}
-  const stripped = APP_SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-  const empties = stripped.match(/catch\s*(\([^)]*\))?\s*\{\s*\}/g) || [];
-  check('T6 sec-A2：無空 catch 區塊（失敗至少 console.warn）', empties.length === 0, `空 catch ${empties.length} 處`);
+  // sec A2：每個 catch 都要有可觀測回報；不能用 regex 截斷巢狀 `{}`，否則 app.js init catch 會誤判。
+  const skipJsTrivia = (src, start) => {
+    let i = start;
+    for (;;) {
+      while (/\s/.test(src[i] || '')) i++;
+      if (src.startsWith('//', i)) { const nl = src.indexOf('\n', i + 2); i = nl < 0 ? src.length : nl + 1; continue; }
+      if (src.startsWith('/*', i)) { const end = src.indexOf('*/', i + 2); i = end < 0 ? src.length : end + 2; continue; }
+      return i;
+    }
+  };
+  const skipJsString = (src, start) => {
+    const quote = src[start];
+    let i = start + 1;
+    while (i < src.length) {
+      if (src[i] === '\\') { i += 2; continue; }
+      if (src[i] === quote) return i + 1;
+      i++;
+    }
+    return src.length;
+  };
+  const matchingJs = (src, start, open, close) => {
+    let depth = 0;
+    for (let i = start; i < src.length; i++) {
+      if (src[i] === '\'' || src[i] === '"' || src[i] === '`') { i = skipJsString(src, i) - 1; continue; }
+      if (src.startsWith('//', i)) { const nl = src.indexOf('\n', i + 2); i = nl < 0 ? src.length : nl; continue; }
+      if (src.startsWith('/*', i)) { const end = src.indexOf('*/', i + 2); i = end < 0 ? src.length : end + 1; continue; }
+      if (src[i] === open) depth++;
+      else if (src[i] === close && --depth === 0) return i;
+    }
+    return -1;
+  };
+  const catchBodies = (src) => {
+    const bodies = [];
+    for (let i = 0; i < src.length; i++) {
+      if (src[i] === '\'' || src[i] === '"' || src[i] === '`') { i = skipJsString(src, i) - 1; continue; }
+      if (src.startsWith('//', i)) { const nl = src.indexOf('\n', i + 2); i = nl < 0 ? src.length : nl; continue; }
+      if (src.startsWith('/*', i)) { const end = src.indexOf('*/', i + 2); i = end < 0 ? src.length : end + 1; continue; }
+      if (src.slice(i, i + 5) !== 'catch' || /[\w$]/.test(src[i - 1] || '') || /[\w$]/.test(src[i + 5] || '')) continue;
+      let j = skipJsTrivia(src, i + 5);
+      if (src[j] === '(') { const end = matchingJs(src, j, '(', ')'); if (end < 0) continue; j = skipJsTrivia(src, end + 1); }
+      if (src[j] !== '{') continue;
+      const end = matchingJs(src, j, '{', '}');
+      if (end >= 0) bodies.push(src.slice(j + 1, end));
+    }
+    return bodies;
+  };
+  const silentCatches = [];
+  for (const file of HANDWRITTEN_JS) {
+    const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    for (const body of catchBodies(src)) {
+      // worker 的 catch 有明確 postMessage 回報，這是唯一的具體白名單，不放寬成整檔跳過。
+      if (!body.includes('console.') && !(file === 'worker.js' && /\bpostMessage\s*\(/.test(body))) {
+        silentCatches.push(file);
+      }
+    }
+  }
+  check('T6 sec-A2：全部手寫 JS 的 catch 都有回報（worker postMessage 為具體白名單）',
+    silentCatches.length === 0, silentCatches.length ? `靜默 catch：${silentCatches.join(', ')}` : '');
+
+  // sec A2 行為回歸：壞掉／錯型別的 localStorage 不得靜默當成正常空設定。
+  const mkGearLoadCtx = (raw) => {
+    const warnings = [], toasts = [];
+    const el = () => ({ addEventListener() {}, classList: { toggle() {}, add() {}, remove() {} },
+      setAttribute() {}, getAttribute() { return null; }, querySelectorAll() { return []; } });
+    const store = { 'ffxiv-crafter-gearsets-v1': raw };
+    const ctx = {
+      console: { log() {}, error() {}, warn(...args) { warnings.push(args); } },
+      document: { getElementById: () => el(), querySelector() { return null; }, querySelectorAll() { return []; }, body: el() },
+      location: { hostname: 'localhost', search: '' }, window: { FFXIVToast: { show(...args) { toasts.push(args); } } },
+      localStorage: { getItem: (k) => store[k] ?? null, setItem() {}, removeItem() {} },
+      Worker: function () {}, fetch: () => Promise.reject(new Error('test: no network')),
+      setTimeout, clearTimeout, setInterval, clearInterval, URLSearchParams,
+    };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-gear-load.mjs' });
+    ctx.loadGear();
+    return { ctx, warnings, toasts };
+  };
+  const malformed = mkGearLoadCtx('{{{');
+  check('T6 sec-A2：壞 JSON 讀取後重置為空物件',
+    vm.runInContext('gearsets', malformed.ctx) && Object.keys(vm.runInContext('gearsets', malformed.ctx)).length === 0);
+  check('T6 sec-A2：壞 JSON 至少 console.warn 且有一次性提示', malformed.warnings.length > 0 && malformed.toasts.length === 1);
+  const wrongType = mkGearLoadCtx(JSON.stringify('a string'));
+  check('T6 sec-A2：非物件 JSON 也走重置與回報路徑',
+    Object.keys(vm.runInContext('gearsets', wrongType.ctx)).length === 0 && wrongType.warnings.length > 0);
 }
 
 // ===== T7：crafting-list aggregateMats（清單素材彙總純函式；獨立 vm 載 crafting-list.js）=====
@@ -726,6 +884,18 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     (APP_SRC.match(/classList\.remove\('is-loading'\)/g) || []).length >= 2);
   check('T17 載入佔位撐到與載入後同高（.recipe-loading min-height 60vh == .recipe-table max-height）',
     /\.recipe-loading\s*\{[^}]*min-height:\s*60vh/.test(CSS_SRC) && /\.recipe-table\s*\{[^}]*max-height:\s*60vh/.test(CSS_SRC));
+  const bodyRule = (CSS_SRC.match(/(?:^|\n)body\s*\{([\s\S]*?)\n\}/) || [])[1] || '';
+  check('T17 body 首屏預留 portal navbar：padding-top 64px + margin 0',
+    /padding-top\s*:\s*64px/.test(bodyRule) && /margin\s*:\s*0/.test(bodyRule));
+  // T26：食藥 listbox 不得再寫死超過手機視窗的最小寬（2026-08-02 實測迴歸）。
+  // ⚠ 這兩條只擋「已知會壞的形狀」，**不保證版面真的不溢出**——CSS 文字比對驗不了 layout。
+  // 真正的驗收＝同源 iframe 定寬實測七種寬度（1400/1018/900/800/430/390/360）量 getBoundingClientRect，
+  // 手法與判準見 AGENTS.md「開發注意」段；改這一區的寬度/定位時必須重跑那個實測。
+  const menuRule = (CSS_SRC.match(/\.crafter-cons__menu\s*\{([^}]*)\}/) || [])[1] || '';
+  check('T26 食藥 listbox 寬度不得寫死無上界的最小寬（360px 手機會溢出）',
+    /width:\s*max\(100%,\s*min\(/.test(menuRule), `實際：${menuRule.match(/width:[^;]*/)?.[0] || '(找不到 width)'}`);
+  check('T26 窄屏另有規則讓選單收進容器內（不得只靠 min-width 硬撐）',
+    /@media\s*\([^)]*max-width:\s*\d+px[^)]*\)\s*\{[\s\S]*?\.crafter-cons__menu\s*\{[^}]*width:\s*100%/.test(CSS_SRC));
 }
 
 // ===== T15：app-consumable.js 食物/藥水選擇層（自繪 listbox 取代原生 select 後，選擇與保存需真測）=====

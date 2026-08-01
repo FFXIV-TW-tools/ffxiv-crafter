@@ -10,6 +10,8 @@
 #change-recipe[hidden], #cancel-btn[hidden], #solve-btn[hidden], #back-to-list[hidden] { display: none; }
 
 body {
+  margin: 0;
+  padding-top: 64px;
   font-family: var(--font-sans, "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif);
   background:
     var(--pattern-overlay),
@@ -315,9 +317,19 @@ body {
 .crafter-cons__btn-name--none { color: var(--color-text-muted); }
 .crafter-cons__btn-eff { flex: 1 1 0; min-width: 0; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .crafter-cons__menu { position: absolute; z-index: var(--z-dropdown, 100); top: calc(100% + 4px); left: 0;
-  width: max(100%, 400px); max-height: 320px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
+  width: max(100%, min(400px, calc(100vw - 64px))); max-height: 320px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
   background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px);
   box-shadow: var(--shadow-card-hover); }
+/* 手機寬度：選單不再堅持 400px 最小寬，改與按鈕同寬。
+   固定 min-width 在窄屏必然溢出，且「距視窗左緣多少」隨版面變動（實測 24→59px），
+   用 calc(100vw - 常數) 去扣是靠猜的；100% 由版面自己保證落在容器內。 */
+@media (max-width: 700px) {
+  /* 標籤定寬 3.5em 在窄屏會吃掉近三分之一橫向空間 → 讓標籤獨佔一行、控制項吃滿寬 */
+  .cfg-line { flex-wrap: wrap; }
+  .cfg-line__label { flex: 0 0 100%; }
+  .cfg-line .crafter-cons { flex: 1 1 100%; }
+  .crafter-cons__menu { width: 100%; }
+}
 .crafter-cons__opt { display: flex; align-items: center; gap: var(--space-2, 8px);
   padding: var(--space-1, 4px) var(--space-2, 8px); border-radius: var(--radius-sm, 6px); cursor: pointer; }
 .crafter-cons__opt:nth-child(even) { background: rgba(255, 255, 255, .02); }   /* 斑馬紋掃視（表格穩定鐵則同精神：不加實線） */
