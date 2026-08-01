@@ -112,6 +112,38 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eqObj('T2b effectiveStats 無專家＝原值', T.effectiveStats(gear), { cms: 4048, ctrl: 3980, cp: 600 });
 }
 
+// ===== T22：effectiveStats 食物／藥水加成 golden（百分比、上限、base 與專家之證順序）=====
+{
+  const oldCraftConsumable = sandbox.CraftConsumable;
+  let fixture = { food: null, potion: null };
+  sandbox.CraftConsumable = { get: (kind) => fixture[kind] || null };
+  try {
+    setInputs({ specialist: false });
+    fixture = { food: { cm: 7, cm_max: 999 }, potion: null };
+    eqObj('T22 百分比加成取 floor', T.effectiveStats(gear),
+      { cms: 4048 + Math.floor(4048 * 7 / 100), ctrl: 3980, cp: 600 });
+
+    fixture = { food: { cm: 10, cm_max: 5 }, potion: null };
+    eqObj('T22 硬上限小於百分比結果時取上限', T.effectiveStats(gear),
+      { cms: 4048 + 5, ctrl: 3980, cp: 600 });
+
+    fixture = { food: { cm: 3, cm_max: 999 }, potion: { cm: 4, cm_max: 999 } };
+    eqObj('T22 食物與藥水都以原始 base 計算', T.effectiveStats(gear),
+      { cms: 4048 + Math.floor(4048 * 3 / 100) + Math.floor(4048 * 4 / 100), ctrl: 3980, cp: 600 });
+
+    setInputs({ specialist: true });
+    fixture = { food: { cm: 10, cm_max: 999, ct: 10, ct_max: 999, cp: 10, cp_max: 999 }, potion: null };
+    eqObj('T22 專家之證先疊入食藥加成 base', T.effectiveStats(gear),
+      {
+        cms: 4068 + Math.floor(4068 * 10 / 100),
+        ctrl: 4000 + Math.floor(4000 * 10 / 100),
+        cp: 615 + Math.floor(615 * 10 / 100),
+      });
+  } finally {
+    sandbox.CraftConsumable = oldCraftConsumable;
+  }
+}
+
 // ===== T3：computeSettings 模式/技能閘 golden =====
 {
   setInputs({ mode: 'nq' });                                   // NQ 模式 → target_quality 0
@@ -372,8 +404,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T11 末頁「下一頁」停用', /data-pg="next" disabled/.test($('recipe-pager').innerHTML));
 
   // 篩選變更必須回第 1 頁（否則使用者搜完停在不存在的第 3 頁 → 空白表）
-  $('recipe-search').value = '物1'; CB.renderTable();
-  check('T11 篩選變更 → 回第 1 頁', /第 1 \//.test($('recipe-count').textContent) || !/頁/.test($('recipe-count').textContent));
+  $('recipe-search').value = '物'; CB.renderTable();
+  eq('T11 篩選變更 → 回第 1 頁（結果仍跨 3 頁）', $('recipe-count').textContent, '130 個配方（第 1 / 3 頁）');
   $('recipe-search').value = ''; CB.renderTable();
   eq('T11 清空篩選 → 回第 1 頁 60 列', rowCount(), 60);
 
