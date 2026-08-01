@@ -38,26 +38,29 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 | `wasm/` | 自寫 Rust 薄綁定（raphael-rs v0.26.2，Apache-2.0）；`wasm-pack build --target web` → `pkg/`。公式在 JS 端算好、WASM 只跑引擎 |
 | `pkg/` | wasm-pack 輸出 — **必須 commit 進 repo**（CF Pages 不編 Rust） |
 | `THIRD-PARTY-NOTICES.md`／`LICENSE-APACHE-2.0.txt`／`LICENSE-MIT.txt` | 散布 `pkg/*.wasm`（二進位衍生作品）的授權義務：Apache-2.0 §4(a) 要交付 License 副本、MIT 要附著作權宣告——頁尾只寫授權名稱不算。**`LICENSE-APACHE-2.0.txt` 隨站部署、頁尾直連 `/LICENSE-APACHE-2.0.txt`**（Owner 裁示：repo 未公開前不從頁面連 GitHub，會 404）；MIT 全文與 notices 先只存 repo，**轉公開時頁尾要補 notices 連結**。**SE 版權聲明刻意不放頁尾**（2026-07-28 Owner 裁示：全站大量使用官方 icon，只在求解器頁尾補一行反而不成體系；要做就是整個 portal 生態一起處理）。notices 由 `tools/build-notices.py` 自 `wasm/Cargo.lock` 產生，**改 wasm 依賴後必須重跑並一起 commit** |
-| `data/` | recipes / items / ingredients / recipe_levels / craft-actions / meals / medicine JSON（`tools/build-data.py` 產，來自 monorepo item_dict + game_ref） |
+| `app-quality-stages.js` | 品質階段層（classic script `globalThis.CraftStages`）：配方的三段品質門檻 → 目標品質。**兩種來源單位不同，換算只有這裡一份**——收藏品＝值×10；宇宙任務＝`ceil(滿品質×值/100)`（進位方向有意義，floor 會差一格達不到門檻）。某檔為 0 不列該檔、整個配方無資料就收起整組欄位 |
+| `data/` | recipes / items / ingredients / recipe_levels / craft-actions / meals / medicine / **quality-stages** JSON（`tools/build-data.py` 產，來自 monorepo item_dict + game_ref） |
 | `tools/` | `build-data.py`（產 data/；`--actions-only` 只重刷技能對照、`--consumables-only` 只補食藥 icon）、`check-actions.py`（action-set 不變量閘）、`build-notices.py`（第三方授權聲明）、`serve.py`（本地預覽） |
 | `_headers` | CF Pages 安全標頭（CSP 完整分域）+ 快取策略（.js/.css/pkg `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
 | `docs/health-reviews/` | 永久健檢檔案庫（`project-health-review` skill 產出，豁免 docs 暫存→歸檔規則） |
 
-**資料流**：使用者選配方 + 填角色數值 → `computeSettings`（FFXIV 公式，含食物/藥水/專家之證）→ postMessage worker → raphael `MacroSolver` → replay 逐步 → render 手法序列 + 巨集。跨工具深連結：`?recipe=<id>` / `?item=<id>`（marketboard「求解手法」鈕跳來）。
+**資料流**：使用者選配方 + 填角色數值 → `computeSettings`（FFXIV 公式，含食物/藥水/專家之證）→ postMessage worker → raphael `MacroSolver` → replay 逐步 → render 手法序列 + 巨集。跨工具深連結：`?recipe=<id>` / `?item=<id>`（marketboard「求解手法」鈕、宇宙探索站的需求物跳來）＋ `?stage=1|2|3` 預選品質階段。**`stage` 只認階段序號，刻意不收絕對品質數字**——讓外部站塞絕對值進來等於開第二條換算路徑，對面資料一舊就靜默給出達不到門檻的手法。
+
+- **DRY — 品質階段權威＝`game_ref.sqlite` 的 `recipe_quality_stages`**（monorepo `build_game_ref.py` 由 `Recipe.CollectableMetadata` ＋判別欄 `CollectableMetadataKey` 解出）：禁自建收藏值對照表。目前只收已確證的 key 1（收藏品）與 key 7（宇宙任務）＝992 個配方；key 2/3/4/6 的 728 個配方**刻意不輸出**（未確證，見 root BACKLOG B-041），那些配方只有「滿品質」可選是預期行為、不是 bug。
 
 ---
 
 ## ✅ VERIFY（改動後跑，未過不算完成）
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="147" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="151" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="2" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠**（只准升不准降；2026-07-11 R2 加 test-formulas.mjs → 29 passed；2026-07-16 加 T7 製造清單彙總 → 34 passed；2026-07-19 加 T8 marketboard URL 契約 + T9 selectRecipe 回傳 → 40 passed；2026-07-19 加 T10 清單 add/has/count + 上限誠實 → 50 passed；2026-07-19 加 T11 app-browse 瀏覽層 init/chips/table/篩選/CAP/空狀態/守衛 → 60 passed；2026-07-19 加 T12 buildShoplistCsv 送端 CSV 契約（成品 yield/合併/三上限/invalidCount/多 item 升冪排序）→ 68 passed；2026-07-25 加 T13 求解世代守衛（過期結果/錯誤幀丟棄＋worker gen 回傳契約）→ 75 passed；2026-07-27 加 T14 流程引導狀態機（三態齊全／同時只一步進行中／上游變更使下游失效）→ 87 passed；2026-07-27 T11 擴充配方表分頁（每頁 60／頁碼／末頁餘數／篩選變更回第 1 頁／單頁收翻頁器）→ 96 passed；2026-07-27 外審【高】修正 T13 補「求解中改設定必須作廢飛行中求解」＋不搶焦點/不誤 toast → 101 passed；2026-07-28 加 T15 食藥選擇層（無加成品項排除／功效文字含上限／品級排序／保存往返含 HQ・專家之證・展開狀態／HQ 切換取 NQ 或 HQ／保存值失效清除）→ 113 passed；2026-07-29 加 T16 簡中搜尋（簡繁都查得到／命中仍顯示繁中／nameSc 缺失不炸）→ 117 passed；2026-07-29 加 T17 首屏 CLS 預留（index.html 靜態流程軸 == flowHtml({}) 冷啟動輸出／`is-loading` 成功與失敗路徑都卸下／載入佔位高度 == 表格 max-height）→ 122 passed）。
+> 機械閘基線 **4 項全綠**（只准升不准降；2026-07-11 R2 加 test-formulas.mjs → 29 passed；2026-07-16 加 T7 製造清單彙總 → 34 passed；2026-07-19 加 T8 marketboard URL 契約 + T9 selectRecipe 回傳 → 40 passed；2026-07-19 加 T10 清單 add/has/count + 上限誠實 → 50 passed；2026-07-19 加 T11 app-browse 瀏覽層 init/chips/table/篩選/CAP/空狀態/守衛 → 60 passed；2026-07-19 加 T12 buildShoplistCsv 送端 CSV 契約（成品 yield/合併/三上限/invalidCount/多 item 升冪排序）→ 68 passed；2026-07-25 加 T13 求解世代守衛（過期結果/錯誤幀丟棄＋worker gen 回傳契約）→ 75 passed；2026-07-27 加 T14 流程引導狀態機（三態齊全／同時只一步進行中／上游變更使下游失效）→ 87 passed；2026-07-27 T11 擴充配方表分頁（每頁 60／頁碼／末頁餘數／篩選變更回第 1 頁／單頁收翻頁器）→ 96 passed；2026-07-27 外審【高】修正 T13 補「求解中改設定必須作廢飛行中求解」＋不搶焦點/不誤 toast → 101 passed；2026-07-28 加 T15 食藥選擇層（無加成品項排除／功效文字含上限／品級排序／保存往返含 HQ・專家之證・展開狀態／HQ 切換取 NQ 或 HQ／保存值失效清除）→ 113 passed；2026-07-29 加 T16 簡中搜尋（簡繁都查得到／命中仍顯示繁中／nameSc 缺失不炸）→ 117 passed；2026-07-29 加 T17 首屏 CLS 預留（index.html 靜態流程軸 == flowHtml({}) 冷啟動輸出／`is-loading` 成功與失敗路徑都卸下／載入佔位高度 == 表格 max-height）→ 122 passed；2026-08-01 加 T18 品質階段層（收藏品 ×10／宇宙任務百分比無條件進位／超滿品質 clamp／未知來源不猜換算／無分階整組隱藏／某檔為 0 不列／手打數字與下拉雙向同步／提示的階名不隨缺檔位移）→ 137 passed；2026-08-01 加 T19 求解技能預設不勾 + 選擇本機保存（index.html 無 `checked`／保存往返／非布林值不套用）→ 147 passed；2026-08-01 加 `shortfallHtml` 目標品質未達成警語（達成／超過／未設目標都不警告，未達成要寫出差額）→ 151 passed）。
 
 ```bash
-node --check app.js app-flow.js app-render.js app-solve.js app-browse.js app-consumable.js crafting-list.js worker.js   # JS 語法
+node --check app.js app-flow.js app-render.js app-solve.js app-browse.js app-consumable.js app-quality-stages.js crafting-list.js worker.js   # JS 語法
 node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機 + T15 食藥選擇層與保存 + T16 簡中搜尋 + T17 首屏 CLS 預留（122 passed）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一（2 passed）

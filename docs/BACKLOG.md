@@ -23,6 +23,14 @@
 - [ ] **B-014** (P3, a11y) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】批次 5：a11y — (a) 求解計時每秒 `innerHTML` 重寫整個 live region → 螢幕閱讀器整段等待期間連續播報數十次（只標秒數 `aria-hidden` 不夠，需狀態節點固定不動）；(b) 自繪 listbox `outline: none` 且焦點樣式同 hover → 100+ 筆食藥清單鍵盤看不出選到哪列，違反設計系統禁 `outline:none` 鐵則。來源: 健檢 2026-08-01（a11y-compat A1/A3）
 - [ ] **B-015** (P3, docs) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 跨 repo（portal／本機 only 檔）】批次 6：文件與 memory 同步（**排最後**，行數/測試數屆時才定案）— (a) `_NEW-TOOL.md` 模板缺 `/data/*` 行，使 memory `external.data-cache-must-revalidate.md:27` 的「照模板寫」機械化落空；(b) 8 項文件 drift，其中 `README.md:27-30` 重建 WASM 指令**照抄必失敗**（`cd wasm` 後 `wasm/tools/` 不存在），失敗後的自然退路正是被明令禁止的裸 `wasm-pack`；AGENTS「104 個 expert 配方」實際 536（5.15 倍）、宣告 app.js「500 行」實際 506；(c) memory 3 項處置候選待 shawn 確認。來源: 健檢 2026-08-01（docs-drift 全維／memory-audit A2/A4）
 
+- [ ] **B-016** (P1, bug) 【建議 高｜延遲風險 中｜執行風險 中（動 rlv 解析＝公式上游）｜副作用 無】**未滿 100 級的等級同步配方算錯**（Owner 2026-08-01 回報：「有人反應若角色等級未滿 100，月球的配方等級也會跟著變換」）。
+  - **確認為真，且資料抓得到**：`Recipe.MaxAdjustableJobLevel`＝100 的有 **768 個配方**，其中 **184 個是宇宙任務配方**（`CollectableMetadataKey==7`）。這批配方會依角色職業等級同步降級。
+  - **現況錯在哪**：`selectRecipe` 固定用 `RLV[recipe.rlv]`，等級同步配方全是 rlv 690（Lv100）。一個 90 級製作職玩家會拿到 **Lv100 的難度/品質/耐久上限**去求解 ⇒ 手法完全不對，正中本工具最痛的「算錯巨集」失敗模式。**我剛加的品質階段目標也是從滿品質推的，會一起錯。**
+  - **規則（已對標＋交叉驗證）**：對標 BestCraft `ConfirmDialog.vue:59-65` 用硬編啟發式（`recipe_notebook_list` 落在 1496–1503 或 1528–1535 且 `rlv==690`）。我拿它跟正規欄位 `MaxAdjustableJobLevel` 交叉比對：**768 vs 768，交集完全相等、兩邊各零差異** ⇒ 兩者在這份資料上等價，但 `MaxAdjustableJobLevel` 才是不會隨新內容失效的判準，應採用它。
+  - **⚠ 兩份對標實作互相矛盾，別照抄**：`static-source.ts:107` 取該職業等級對應 rlv **最大**的一筆；`src-tauri/main.rs:202` 的 SQL 取 **最小**（`order_by_asc(Id).one()`）。差距極大——Lv100 對應 42 個 rlv（690–775）、Lv90 對應 14 個（560–644）。**判準＝取最小**：等級同步配方全是 rlv 690，而 690 正是 Lv100 的最小值 ⇒ 滿等時結果不變（正確）；取最大會在滿等就把配方改掉（明顯錯）。這個 identity-at-100 就是內建的健全性檢查，實作時寫成測試。
+  - **要動的**：(a) `tools/build-data.py` 把 `max_adjustable_job_level` 從 `en_Recipe.csv` 補進 `recipes.json`（best-craft 凍結資料沒這欄）；(b) 解析生效 rlv 的縫在 `selectRecipe` 與 `refreshSelectedGear` 兩處（改角色等級後要重算，`onGearInput` 已會呼叫後者）；(c) UI 要**寫出來**「已依 Lv90 同步 → rlv 560」，不能靜默換掉玩家看到的數字。
+  - 來源: Owner 2026-08-01 轉述玩家回報，調查於 cycle 2026-08-01-recipe-quality-stages
+
 ---
 
 ## 已完成（保留紀錄）

@@ -679,6 +679,14 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T18 一階為 0 → 提示的階名不得位移', $q('target-stage-hint').textContent,
     '收藏品交易 · 二階 160／三階 200（收藏價值）');
 
+  // 目標沒達到必須講出來：raphael 達不到目標時回「最佳努力」而非失敗，complete 只看進展
+  // ⇒ 沒這行就會出現「✓ 可完成」配上達不到門檻的品質（2026-08-01 實測 三階 12665 / 實際 8488 全綠）
+  const SF = sandbox.CraftRender.shortfallHtml;
+  eq('T18 未達目標 → 出警語並寫出差額', /未達目標品質 12665.*實際 8488.*差 4177/.test(SF(12665, 8488)), true);
+  eq('T18 達到目標 → 不警告', SF(12665, 12665), '');
+  eq('T18 超過目標 → 不警告', SF(7450, 7509), '');
+  eq('T18 未設目標（欄位留空／NQ）→ 不警告', SF(0, 100), '');
+
   QS.setRecipe({ id: 36199 }, 14900);
   $q('opt-target').value = '8940';
   QS.syncFromInput();

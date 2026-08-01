@@ -58,7 +58,9 @@ async function loadData() {
   // 選配資料（食物/藥水）非必要 → 失敗只降級該功能、不拖垮整站；回傳 [] 讓 buildConsumables 安全略過
   const fetchOpt = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return []; } };
   // 七檔同一輪併發：meals/medicine 原本排第二輪 await，白等一個 RTT 只換 2.5KB（fetchOpt 自己吞錯，不會拖垮必要資料）
-  const [recipes, rlv, actions, items, ingredients, meals, medicine] = await Promise.all([
+  // 品質階段同為選配：載不到只是少了「一階/二階/三階」快捷，目標品質仍可手打 → 不拖垮整站
+  const fetchOptObj = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return {}; } };
+  const [recipes, rlv, actions, items, ingredients, meals, medicine, stages] = await Promise.all([
     fetchJson('data/recipes.json'),
     fetchJson('data/recipe_levels.json'),
     fetchJson('data/craft-actions.json'),
@@ -66,9 +68,11 @@ async function loadData() {
     fetchJson('data/ingredients.json'),
     fetchOpt('data/meals.json'),
     fetchOpt('data/medicine.json'),
+    fetchOptObj('data/quality-stages.json'),
   ]);
   RECIPES = recipes; RLV = rlv; ACTIONS = actions; ITEMS = items; INGREDIENTS = ingredients;
   globalThis.CraftConsumable?.setData?.(meals, medicine);
+  globalThis.CraftStages?.setData?.(stages);
   RINDEX = RECIPES.map(r => ({
     id: r.id, name: r.item_name || '', job: r.job || '', rlv: r.rlv,
     // 簡中名只進搜尋、不顯示（顯示一律繁中）：很多人記的是陸服名或直接從簡中攻略貼過來
@@ -213,6 +217,7 @@ function refreshSelectedGear() {
   // 回清單：switchTab('list') 已集中清 openedFromList + 收返回鈕（見 switchTab），此處只需切頁+移焦
   const bl = $('back-to-list'); if (bl) bl.onclick = () => switchTab('list', true);
   $('opt-target').value = ''; $('opt-target').max = maxQ; $('opt-target').placeholder = '滿(' + maxQ + ')';
+  globalThis.CraftStages?.setRecipe?.(recipe, maxQ);   // 該配方有幾檔品質門檻（收藏品／宇宙任務）→ 重建階段選單
   globalThis.CraftFlow.setTargetMode();         // NQ 模式目標品質欄停用 + 寫出原因（引導層）
   renderIngredients(recipe, maxQ);
   updateEff();
@@ -395,11 +400,6 @@ function onTabKey(e) {
 }
 function updateHint() { $('first-run-hint').hidden = anyGear(); }
 
-// ---------- utils ----------
-function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); } // 含單引號 → 無例外通用轉義（防 attribute 用單引號時破格）
-function toast(msg, v) {
-  if (window.FFXIVToast && window.FFXIVToast.show) { window.FFXIVToast.show(msg, v); return; }
-  console.log(`[toast:${v || 'info'}] ${msg}`);            // codex CDN 未載時的降級：至少留主控台紀錄
 // ---------- 求解選項（localStorage）----------
 // 全部預設**不勾**：這些技能不是到等級就自動有（掌握需 Lv65 **並完成解鎖任務**、
 // 專心致志/快速改革需專家之證），預設替玩家勾＝預設產出他按不出來的巨集 → 一律由他自己選。
@@ -425,6 +425,11 @@ function saveSolveOpts() {
   }
 }
 
+// ---------- utils ----------
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); } // 含單引號 → 無例外通用轉義（防 attribute 用單引號時破格）
+function toast(msg, v) {
+  if (window.FFXIVToast && window.FFXIVToast.show) { window.FFXIVToast.show(msg, v); return; }
+  console.log(`[toast:${v || 'info'}] ${msg}`);            // codex CDN 未載時的降級：至少留主控台紀錄
   if (v === 'error' || v === 'warn') alert(msg);           // 重要訊息用原生提示 → CDN toast 未載時玩家仍看得到
 }
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
@@ -455,10 +460,16 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 且本層 init 才會把保存值套回 HQ / 專家之證 checkbox（保存值要先就位，後續公式與摘要才讀得到）
   if (!globalThis.CraftConsumable) throw new Error('app-consumable.js 未載入（部署不完整）');
   globalThis.CraftConsumable.init({ $, esc, iconUrl, toast, onChange: onConsumableChange });
+  // 品質階段層（app-quality-stages.js classic script）：**必須早於 loadData**——loadData 尾端 setData、
+  // 且深連結路徑會在 init 之後立刻 selectRecipe → refreshSelectedGear → setRecipe，監聽器要先掛好
+  globalThis.CraftStages?.init?.({ $, invalidateResults });
   // gear 只讀 localStorage（同步）→ 刻意早於 await：首次使用提示要在資料回來前就定案，
   // 否則等 fetch 完才 unhide 會把下方整段推開一次（CLS）
   loadGear();
   updateHint();
+  // 求解選項同樣只讀 localStorage（同步、無網路）→ 與 gear 一起在 await 前套回，
+  // 讓深連結路徑（init 後立刻 selectRecipe→求解）拿到的就是玩家上次的選擇
+  loadSolveOpts();
   await loadData();
   // 配方瀏覽層（app-browse.js classic script）：注入依賴後才能 render（getter 取 live RINDEX/selected——loadData 會重賦值綁定）
   if (!globalThis.CraftBrowse) throw new Error('app-browse.js 未載入（部署不完整）'); // 明確早報 → 落 catch 顯錯誤橫幅，非等 render 才 undefined.X 白屏（對抗審 grok F3）
@@ -467,18 +478,24 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     getRINDEX: () => RINDEX, getSelected: () => selected, selectRecipe, toast });
   renderChips();
   renderGearsets();
-  // 求解選項同樣只讀 localStorage（同步、無網路）→ 與 gear 一起在 await 前套回，
-  // 讓深連結路徑（init 後立刻 selectRecipe→求解）拿到的就是玩家上次的選擇
-  loadSolveOpts();
   renderTable();
   $('picker').classList.remove('is-loading');   // 預留高度交還給真實內容（篩選出少量結果時不留空井）
-  // 深連結：?recipe=<id> 或 ?item=<id> → 自動選配方（marketboard「求解手法」鈕用）
+  // 深連結：?recipe=<id> 或 ?item=<id> → 自動選配方（marketboard / 宇宙探索「求解手法」鈕用）
   const dlp = new URLSearchParams(location.search);
   const dlRecipe = +dlp.get('recipe') || 0, dlItem = +dlp.get('item') || 0;
   const dlByItem = dlItem ? RECIPES.find(r => r.item_id === dlItem) : null;
   if (dlRecipe && RECIPES.some(r => r.id === dlRecipe)) selectRecipe(dlRecipe);
   else if (dlByItem) selectRecipe(dlByItem.id);
   else if (dlRecipe || dlItem) toast('找不到深連結指定的配方，請用搜尋手動選擇', 'warn'); // 從 marketboard 點過來但該物品無配方 → 給提示不迷路（ux-3）
+  // ?stage=1|2|3 → 直接選到那一檔品質（宇宙探索任務點過來時已知要交幾檔）。
+  // **只認階段序號、不收絕對品質數字**：門檻換算的唯一實作在 CraftStages，讓外部站塞絕對值進來
+  // 等於開第二條換算路徑，對面資料一舊就靜默給出達不到門檻的手法。
+  const dlStage = +dlp.get('stage') || 0;
+  if (dlStage >= 1 && dlStage <= 3 && $('opt-target-stage')) {
+    const opt = [...$('opt-target-stage').options].find(o => o.textContent.startsWith(['一階', '二階', '三階'][dlStage - 1]));
+    if (opt) { $('opt-target-stage').value = opt.value; $('opt-target').value = opt.value; }
+    else toast('此配方沒有第 ' + dlStage + ' 階品質門檻，已改用滿品質', 'warn');
+  }
   globalThis.CraftFlow.updateConsumableSummary();
   // HQ 勾選 / 專家之證仍是原生 checkbox；食物/藥水本體是 CraftConsumable 的自繪選單（無 change 事件 → 走 onChange 回呼）
   ['food-hq', 'potion-hq', 'specialist'].forEach(id => $(id).addEventListener('change', onConsumableChange));
@@ -487,6 +504,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   $('opt-target').addEventListener('input', () => {
     const el = $('opt-target'), max = +el.max || 0;
     if (max && +el.value > max) el.value = max; // 超配方品質上限即時回填 maxQ（求解本就 clamp，先讓 UI 誠實一致，ux-5）
+    globalThis.CraftStages?.syncFromInput?.();  // 手打的數字剛好等於某一檔 → 下拉跟著指到那一檔，不然顯示「自訂」
     invalidateResults();
   });
   $('solve-mode').addEventListener('change', () => { globalThis.CraftFlow.setTargetMode(); invalidateResults(); }); // NQ 模式不吃目標品質 → 停用該欄並寫出原因

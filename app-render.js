@@ -4,6 +4,17 @@
 (function () {
   let deps = null; // { $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE, PH_HTML, getSelected, getItems, getActions }
 
+  /**
+   * 目標品質未達成的警語（純函式，golden 測試面）。
+   * target=0 ＝沒設目標（欄位留空＝滿品質，或 NQ 模式）⇒ 不警告，那不是「沒達成」。
+   */
+  function shortfallHtml(target, finalQuality) {
+    if (!(target > 0) || finalQuality >= target) return '';
+    return '<div class="sum-err codex-small">⚠ 未達目標品質 ' + target
+      + '（實際 ' + finalQuality + '，差 ' + (target - finalQuality)
+      + '）— 提高作業／加工精度、開食物藥水或掌握等技能，或改選較低的品質階段</div>';
+  }
+
   // HQ 高品質率：品質% → HQ%。表逐格移植自 ffxiv-crafting 7.4.5 data::high_quality_table（Tnze，權威遊戲表）— 勿自改。純函式（golden 測試面）。
   function hqPercent(quality, maxQuality) {
     if (!maxQuality) return null;
@@ -91,6 +102,11 @@
       : '<span class="codex-badge codex-badge--danger">✗ 未完成</span>';
     const expertWarn = isExpert ? '<div class="sum-err codex-small">⚠ 高難度配方在遊戲內為隨機製作狀態，此靜態巨集僅供參考、無法保證能在遊戲內完成</div>' : '';
     const errLine = r.error ? `<div class="sum-err codex-small">⚠ 第 ${r.error_step + 1} 步無法執行（${esc(r.error)}）— 之後略過</div>` : ''; // engine 錯誤字串轉義（轉義紀律一致；icon 皆來自 build-data 常數、無注入面故不包）
+    // 目標品質沒達到**必須講出來**：raphael 達不到目標時回的是「最佳努力」而不是失敗，
+    // 而 `complete` 只看進展有沒有做完 ⇒ 會出現「✓ 可完成」配上達不到門檻的品質。
+    // 玩家選「三階」就是衝著門檻來的，少了這行就是拿到一份達不到門檻的巨集而不自知
+    // （2026-08-01 實測：三階 12665、實際 8488，畫面全綠）。
+    const shortLine = shortfallHtml(Number($('opt-target').value) || 0, r.final_quality);
     $('result-summary').innerHTML = `
       <div class="sum-row">
         ${completeBadge}
@@ -99,6 +115,7 @@
         <span class="sum-meta"><span class="sum-metric"><b>${r.step_count}</b><span class="codex-small">步</span></span><span class="sum-metric"><b>${r.total_time}</b><span class="codex-small">秒</span></span></span>
       </div>
       ${expertWarn}
+      ${shortLine}
       ${errLine}
       ${bar('進展', r.final_progress, r.max_progress, pct)}
       ${bar('品質', r.final_quality, r.max_quality, pct)}`;
@@ -149,5 +166,6 @@
     init(d) { deps = d; bindStepLink(); },
     render,
     hqPercent, // 純函式，golden 測試面（test-formulas 載本檔取用）
+    shortfallHtml, // 同上：目標品質未達成的警語（純函式）
   };
 })();

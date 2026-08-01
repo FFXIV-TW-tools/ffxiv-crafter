@@ -164,6 +164,11 @@
                 <option value="nq">只求完成（NQ・最快）</option>
               </select>
             </div>
+            <div class="codex-field" id="target-stage-field" hidden>
+              <label class="codex-field__label" for="opt-target-stage">品質階段</label>
+              <select id="opt-target-stage" class="codex-select"></select>
+              <span id="target-stage-hint" class="crafter-stage-hint codex-small"></span>
+            </div>
             <div class="codex-field">
               <label class="codex-field__label" for="opt-target">目標品質</label>
               <input id="opt-target" class="codex-input" type="number" min="0" placeholder="滿品質">
@@ -265,6 +270,7 @@
   <script src="app-solve.js"></script>
   <script src="app-browse.js"></script>
   <script src="app-consumable.js"></script>
+  <script src="app-quality-stages.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
