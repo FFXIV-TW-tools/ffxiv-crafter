@@ -20,7 +20,7 @@
       worker = null;                            // 設 null → 下次 doSolve 的 if(!worker) 重建，不卡在壞掉的 worker
       stopSolveClock();
       setSolving(false);
-      deps.toast('求解器載入失敗，請重新整理頁面後再試', 'error');
+      showEngineInitFailure();
     };
   }
   function doSolve() {
@@ -56,11 +56,28 @@
   // SolverException（raphael）3 變體 + serde 反序列化錯誤 → 繁中人話 + 下一步
   function solveErrorMessage(raw) {
     const s = String(raw || '');
+    // 引擎載入失敗（不是玩家設定的問題）：訊息由各家瀏覽器與 wasm-bindgen 產生，字面差很多。
+    // `HTTP status code is not ok` 是 2026-08-02 實測抽掉 pkg/*.wasm 時 Chrome 真的吐的那句
+    // （只比對 `WebAssembly.instantiate` 會漏掉它）。這串是**唯一**的引擎失敗文案來源，
+    // showEngineInitFailure 也走這裡 —— 兩處各寫一份必然漂移。
+    if (/Failed to fetch|NetworkError|expected magic word|HTTP status code is not ok|WebAssembly/i.test(s)) {
+      return '求解引擎載入失敗（可能是網路問題），請按「重試」再試一次。';
+    }
     if (s === 'NoSolution') return '以目前數值無法完成此配方 — 試著提升作業精度／加工精度／等級、開啟食物藥水或專家之證，或降低目標品質後再求解。';
     if (s === 'Interrupted') return '求解被中斷，請再試一次。';
     if (/internal error|bug report/i.test(s)) return '求解器內部錯誤，請稍後再試（技術細節已記錄於主控台）。';
     if (/invalid value|expected u\d|integer/i.test(s)) return '角色數值超出合理範圍 — 請確認作業精度／加工精度／CP／等級的數字是否正確。';
     return '求解失敗，請調整設定後再試一次。';
+  }
+  function showEngineInitFailure(raw) {
+    const { $ } = deps;
+    $('solve-status').textContent = solveErrorMessage(raw || 'Failed to fetch');
+    const retry = $('solve-retry-btn');
+    if (retry) retry.hidden = false;
+  }
+  function retrySolve() {
+    abortSolve('retry');
+    doSolve();
   }
   function onWorkerMsg(e) {
     const { $, toast, PH_HTML } = deps;
@@ -70,6 +87,11 @@
     stopSolveClock();
     setSolving(false);
     if (!e.data.ok) {
+      if (e.data.kind === 'init') {
+        console.warn('[crafter] 求解引擎初始化失敗:', e.data.error);
+        showEngineInitFailure(e.data.error);
+        return;
+      }
       console.warn('[crafter] 求解失敗:', e.data.error);   // 技術原文進主控台，不丟給玩家
       toast(solveErrorMessage(e.data.error), 'error');
       return;
@@ -97,6 +119,8 @@
     const { $, PH_HTML } = deps;
     $('solve-btn').hidden = on;
     $('cancel-btn').hidden = !on;
+    const retry = $('solve-retry-btn');
+    if (retry) retry.hidden = true;
     if (on) {
       $('results').hidden = true;
       $('results-placeholder').hidden = false;
@@ -118,8 +142,12 @@
   }
 
   globalThis.CraftSolve = {
-    init(d) { deps = d; },
+    init(d) {
+      deps = d;
+      const retry = d.$('solve-retry-btn');
+      if (retry) retry.onclick = retrySolve;
+    },
     newWorker,   // 預熱 WASM（app.js init 提前呼叫，讓 WASM download 與資料 fetch 並行）
-    doSolve, cancelSolve, invalidateInFlight,
+    doSolve, cancelSolve, invalidateInFlight, solveErrorMessage,
   };
 })();

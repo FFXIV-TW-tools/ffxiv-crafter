@@ -2,6 +2,39 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-02 — 求解引擎載不到不再是永久死路（cycle 2026-08-02-B012-engine-deadend）
+
+**為什麼**（B-012 / 健檢批次 3）：`worker.js` 把 `await ready` 與 `solve()` 包在**同一個 try**，
+而 `ready` 是**模組層級的單一 Promise**。網路瞬斷／`.wasm` 404 讓 `init()` reject 之後，
+那個 Promise **永久 reject**、worker 卻還活著（`onerror` 不觸發，那只管 worker/module 載入失敗）
+→ 主執行緒把它當成一般求解失敗，回一句「求解失敗，請調整設定後再試一次」。
+**但調設定永遠不會好**，玩家唯一出路是自己重整，而站上不會這樣說。
+
+### Fixed
+
+- worker 把兩種失敗分開回傳（`kind: 'init'` / `kind: 'solve'`），**兩者都原樣帶回 `gen`**
+  （世代守衛的身分依據，T13 釘住）。
+- 主執行緒對 init 失敗顯示誠實訊息＋**重試鈕**，不再導向「調整設定」。
+- **重試走 `abortSolve('retry')` 再 `doSolve()`**：`newWorker()` 不動 `solveGen`，
+  而 terminate 與訊息投遞有 race——只重建 worker 不遞增世代的話，舊 worker 被砍前剛好投遞的那則
+  會被當成當前結果渲染。reason 也不能用 `'user'`（那會 toast「已取消求解」並搶焦點）。
+- `solveErrorMessage` export 到 `globalThis.CraftSolve`（原本 IIFE 私有，寫不出斷言）。
+
+### Verified
+
+- 四道機械閘：`test-formulas` 220 → **231 passed**／`check-actions` 35=35／`node --check` 全檔。
+- **CC 獨立突變測試**：worker 兩個 try 合回一個 → T27 紅；重試改成只呼叫 `newWorker()` → 世代那條紅。
+- **真實失敗路徑實測**（把 `pkg/crafter_wasm_bg.wasm` 移走再放回）：
+  求解 → 顯示「求解引擎載入失敗（可能是網路問題）」＋重試鈕（`display: flex`，沒被 `hidden` 蓋掉）、
+  全頁無「調整設定」字樣 → 還原 wasm → 按重試 → 新 worker 重跑 `init()` → **求解成功（20 步、品質 100%）**。
+  **不必重整頁面**。
+
+> 執行＝委派 codex `gpt-5.6-luna`（xhigh）。**CC 實測補了一刀**：Chrome 對缺檔實際吐的是
+> `Failed to execute 'compile' on 'WebAssembly': HTTP status code is not ok`，
+> **不符合**執行者新增的三個 pattern。UI 之所以仍正確，是因為 `showEngineInitFailure()` 把文案寫死、
+> 根本沒走分類器——分類器等於裝飾品，且同一句話有兩份會漂移。已合併成單一來源、pattern 補上實測字串、加測試釘住。
+> 這條只有真的把檔案抽掉跑一次才看得到，單元測試與程式碼審閱都不會發現。
+
 ## 2026-08-02 — 使用者可見缺陷：版面位移／成果被清空／窄屏裁切／靜默吞錯（cycle 2026-08-02-B011-visible-defects）
 
 **為什麼**（B-011 / 健檢批次 2）：四項的共通點是**使用者看得到、但站上不會說**。

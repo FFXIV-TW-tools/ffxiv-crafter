@@ -10,8 +10,14 @@ self.onmessage = async (e) => {
 
   try {
     await ready;
+  } catch (err) {
+    self.postMessage({ ok: false, gen, kind: 'init', error: String((err && err.message) || err) });
+    return;
+  }
+
+  try {
     self.postMessage({ ok: true, gen, result: solve(input) });
   } catch (err) {
-    self.postMessage({ ok: false, gen, error: String((err && err.message) || err) });
+    self.postMessage({ ok: false, gen, kind: 'solve', error: String((err && err.message) || err) });
   }
 };

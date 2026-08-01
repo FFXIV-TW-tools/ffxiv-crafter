@@ -7,7 +7,7 @@
 /* [hidden] 守衛：.codex-btn 的 display:inline-flex 蓋過 UA [hidden]{display:none} → 帶 hidden 的按鈕仍顯示。
    收窄到本工具具體按鈕 ID（**不覆寫共用 .codex-btn 根 selector**，避免與 portal 未來規則衝突／全域改所有 CDN 按鈕行為）。
    ★TODO：portal header.css 宜全域補 .codex-btn[hidden]（同 badge 既有鐵則）＝BACKLOG B-006，屆時刪本地。 */
-#change-recipe[hidden], #cancel-btn[hidden], #solve-btn[hidden], #back-to-list[hidden] { display: none; }
+#change-recipe[hidden], #cancel-btn[hidden], #solve-btn[hidden], #solve-retry-btn[hidden], #back-to-list[hidden] { display: none; }
 
 body {
   margin: 0;

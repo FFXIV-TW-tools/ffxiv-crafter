@@ -818,6 +818,81 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     'worker.js 未回傳 gen → 主執行緒收到的訊息無身分，守衛失效');
 }
 
+// ===== T27：WASM 引擎初始化失敗必須可辨識且可重試（B-012）=====
+// init() 的 Promise 在 worker 模組層級只建立一次；若把 await ready 與 solve() 共用 catch，
+// 該 worker 會永久卡在 reject，玩家只能重新整理。這裡鎖住分流、誠實訊息與「abortSolve→重建 worker」契約。
+{
+  const SOLVE_SRC = fs.readFileSync(path.join(ROOT, 'app-solve.js'), 'utf8');
+  const WORKER_SRC = fs.readFileSync(path.join(ROOT, 'worker.js'), 'utf8');
+  const sent = [];
+  let onmsg = null;
+  let workerCount = 0;
+  const rendered = [];
+  const toasted = [];
+  const sbDom = {};
+  const sbEl = (id) => sbDom[id] || (sbDom[id] = makeEl());
+  const sb = {
+    console,
+    document: { getElementById: sbEl, createElement() { return makeEl(); } },
+    setTimeout, clearTimeout, setInterval, clearInterval,
+    Worker: function () {
+      workerCount++;
+      this.postMessage = (m) => sent.push(m);
+      this.terminate = () => {};
+      Object.defineProperty(this, 'onmessage', { set(fn) { onmsg = fn; }, get() { return onmsg; } });
+      Object.defineProperty(this, 'onerror', { set() {}, get() { return null; } });
+    },
+  };
+  sb.globalThis = sb;
+  sb.CraftRender = { render: (r) => rendered.push(r) };
+  vm.createContext(sb);
+  vm.runInContext(SOLVE_SRC, sb, { filename: 'app-solve.js' });
+  sb.CraftSolve.init({
+    $: sbEl,
+    toast: (msg) => toasted.push(msg),
+    PH_HTML: '',
+    getSelected: () => ({ recipe: { job: '木工' }, rlv: 700 }),
+    gearFor: () => ({ craftsmanship: 4000, control: 4000, cp: 600 }),
+    computeSettings: () => ({ base_progress: 100, base_quality: 100 }),
+    switchTab: () => {},
+  });
+
+  check('T27 solveErrorMessage 已匯出供分類測試', typeof sb.CraftSolve.solveErrorMessage === 'function');
+  for (const raw of ['Failed to fetch', 'expected magic word', 'WebAssembly.instantiate']) {
+    const msg = sb.CraftSolve.solveErrorMessage(raw);
+    check(`T27 ${raw} → 引擎/網路訊息且不導向調整設定`, /引擎|網路/.test(msg) && !/調整設定/.test(msg), `msg=${msg}`);
+  }
+
+  check('T27 worker init/solve 兩種失敗型別都原樣帶回 gen',
+    /ok:\s*false,\s*gen,\s*kind:\s*["']init/.test(WORKER_SRC)
+      && /ok:\s*false,\s*gen,\s*kind:\s*["']solve/.test(WORKER_SRC));
+
+  sb.CraftSolve.doSolve();
+  const failedGen = sent.at(-1).gen;
+  onmsg({ data: { ok: false, gen: failedGen, kind: 'init', error: 'Failed to fetch' } });
+  // 訊息用 textContent 寫入（純文字，不進 innerHTML）；文案唯一來源＝solveErrorMessage
+  check('T27 kind:init → 顯示引擎失敗與重試鈕，不走一般求解失敗文案',
+    /求解引擎載入失敗（可能是網路問題）/.test(sbEl('solve-status').textContent)
+      && sbEl('solve-retry-btn').hidden === false
+      && !/調整設定/.test(sbEl('solve-status').textContent));
+  // 2026-08-02 實測：抽掉 pkg/*.wasm 時 Chrome 吐的是這句，只比對 `WebAssembly.instantiate` 會漏掉
+  check('T27 實測過的真實引擎失敗字串也要分類為引擎問題',
+    /引擎|網路/.test(sb.CraftSolve.solveErrorMessage(
+      "Failed to execute 'compile' on 'WebAssembly': HTTP status code is not ok")));
+  eq('T27 kind:init → 不跳一般求解失敗 toast', toasted.length, 0);
+
+  const workersBeforeRetry = workerCount;
+  sbEl('solve-retry-btn').onclick();
+  const retryGen = sent.at(-1).gen;
+  check('T27 重試 → abortSolve 先遞增世代、再重建 worker 並送出新世代',
+    workerCount === workersBeforeRetry + 1 && retryGen === failedGen + 2,
+    `workers=${workerCount} retryGen=${retryGen} failedGen=${failedGen}`);
+  eq('T27 重試不 toast「已取消求解」', toasted.filter((msg) => /已取消求解/.test(msg)).length, 0);
+
+  onmsg({ data: { ok: true, gen: failedGen, result: { steps: ['舊結果'] } } });
+  eq('T27 重試後舊世代結果不得渲染', rendered.length, 0);
+}
+
 // ===== T14：app-flow.js 流程引導狀態機（設計系統 §功能頁引導標準的可測落點）=====
 // 「現在該做什麼」是純函式決定的 → 這裡鎖住四條驗收線裡機械可驗的兩條：
 //   ② 多步流程要有當前步驟指示（完成／進行中／待辦三態齊全、且同時只有一步 current）
