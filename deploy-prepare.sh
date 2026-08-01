@@ -40,7 +40,7 @@ rm -rf "$OUT"; mkdir -p "$OUT"
 
 # ── 1. 頂層分類閘：未列入允許或拒絕清單的項目一律擋下 ──────────────────
 UNKNOWN=""
-for e in * .[!.]*; do
+for e in * .[!.]* ..?*; do   # ..?*＝codex 外審：.[!.]* 匹配不到「..internal」這種兩點開頭的名稱
   [ -e "$e" ] || continue
   case "$e" in
     "$OUT"|.git|"$ALLOW"|"$DENY"|deploy-prepare.sh|.deploy-minify) continue ;;
@@ -66,21 +66,30 @@ fi
 #（線上驗不到本機驗的東西）。只取 tracked 檔可保證「本機驗的 == 線上發的」。
 # git 不可用時退回 cp -r（CF 的 checkout 沒有未追蹤雜物，行為等價）。
 if git rev-parse --git-dir >/dev/null 2>&1; then
-  git -c core.quotepath=false ls-files | while IFS= read -r f; do
+  # grok 外審【高】：原本寫成 `git ls-files | while ... done`，while 跑在 subshell，
+  # cp 失敗（磁碟滿／路徑異常）不保證讓整支腳本中止 → 可能出貨殘缺產物。
+  # 改成先落檔再 `done < 檔案`：無 subshell，set -e 直接生效。
+  LIST=.deploy-filelist.tmp
+  git -c core.quotepath=false ls-files > "$LIST"
+  while IFS= read -r f; do
     top=${f%%/*}
+    [ "$f" = ".deploy-filelist.tmp" ] && continue
     grep -qxF "$top" "$ALLOW" 2>/dev/null || continue
     # 根層檔名的 ${f%/*} 會回傳檔名本身 → 只有含斜線才建目錄，
     # 否則會建出「叫 index.html 的目錄」，cp 進去 ⇒ / 404（實際踩過）
+    # codex 外審【高】：cp 會解參照 symlink → data/foo.json -> ../worker/secret 這種連結
+    # 會把 deny 區內容複製成看似安全的 .json，最終驗收也攔不到。一律拒絕。
+    [ -L "$f" ] && { echo "✗ 允許路徑下有符號連結，拒絕部署：$f" >&2; exit 1; }
     case "$f" in */*) mkdir -p "$OUT/${f%/*}" ;; esac
-    cp "$f" "$OUT/$f"
-  done
+    cp "$f" "$OUT/$f" || { echo "✗ 複製失敗：$f" >&2; rm -f "$LIST"; exit 1; }
+  done < "$LIST"
+  rm -f "$LIST"
 else
-  echo "· git 不可用，改用 cp -r 複製允許項目"
-  while IFS= read -r e; do
-    case "$e" in ''|'#'*) continue ;; esac
-    [ -e "$e" ] || continue
-    cp -r "$e" "$OUT"/
-  done < "$ALLOW"
+  # codex 外審【中】：原本 git 不可用時退回 cp -r，會把「只複製 tracked 檔」的保證換成
+  # 「複製目錄內全部內容」（含未追蹤快取／憑證／產物）＝安全語意被悄悄放寬。
+  # 寧可 build 失敗（CF 保留前一版）也不出貨語意不明的產物。
+  echo "✗ git 不可用，無法確認 tracked 檔清單，中止（不退回語意更寬鬆的 cp -r）" >&2
+  exit 1
 fi
 
 # ── 3. 二次清理：允許的目錄內部若混有內部檔（如 data/ 裡的 README.md）一併移除 ──
@@ -101,7 +110,8 @@ if [ -f .deploy-minify ]; then
   for f in "$OUT"/*.js; do
     [ -f "$f" ] || continue
     npx --yes esbuild@0.28.1 "$f" --minify --charset=utf8 --target=es2022 --outfile="$f.min" >/dev/null 2>&1 \
-      && mv "$f.min" "$f"
+      || { echo "✗ 壓縮失敗：$f（網路或 registry 問題）" >&2; exit 1; }
+    mv "$f.min" "$f"
   done
 fi
 
@@ -109,7 +119,18 @@ fi
 N=$(find "$OUT" -type f | wc -l)
 [ "$N" -ge 3 ] || { echo "✗ 輸出只有 $N 個檔案，複製失敗，中止" >&2; exit 1; }
 [ -f "$OUT/index.html" ] || { echo "✗ 輸出缺 index.html（/ 會 404），中止" >&2; exit 1; }
-LEAK=$(find "$OUT" -type f \( -name '*.md' -o -name '*.py' -o -name '*.ts' -o -name '*.toml' \) \
-  ! -name 'LICENSE*.txt' | head -5)
-[ -z "$LEAK" ] || { echo "✗ 內部檔混入輸出：" >&2; echo "$LEAK" >&2; exit 1; }
+# codex 外審【高】：原本最終驗收只查 4 種副檔名＝另一份不完整的黑名單。
+# 改成**白名單**：輸出中出現任何不在站台資產副檔名清單內的檔案即中止。
+# 新增合法資產類型時要在這裡一起加（這正是我們要的：逼你當場決定）。
+LEAK=$(find "$OUT" -type f \
+  ! -name '*.html' ! -name '*.css' ! -name '*.js' ! -name '*.mjs' ! -name '*.json' \
+  ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.webp' ! -name '*.svg' \
+  ! -name '*.ico' ! -name '*.gif' ! -name '*.avif' \
+  ! -name '*.woff' ! -name '*.woff2' ! -name '*.ttf' \
+  ! -name '*.mp3' ! -name '*.ogg' ! -name '*.wav' \
+  ! -name '*.wasm' ! -name '*.gz' ! -name '*.br' ! -name '*.xml' ! -name '*.csv' \
+  ! -name 'robots.txt' ! -name '_headers' ! -name '_redirects' ! -name '_routes.json' \
+  ! -name 'LICENSE' ! -name 'LICENSE*.txt' ! -name 'NOTICE' \
+  ! -path "$OUT/.well-known/*" | head -8)
+[ -z "$LEAK" ] || { echo "✗ 輸出含非站台資產（副檔名不在白名單），中止：" >&2; echo "$LEAK" >&2; exit 1; }
 echo "✓ 部署輸出就緒：$N 個檔案"
