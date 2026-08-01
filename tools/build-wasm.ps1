@@ -8,8 +8,30 @@
 # 用法（powershell，於 repo 根或任意位置）：
 #   powershell -ExecutionPolicy Bypass -File tools\build-wasm.ps1
 $ErrorActionPreference = 'Stop'
-$wasmDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'wasm'
-$out = Join-Path (Split-Path -Parent $PSScriptRoot) 'pkg'
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$wasmDir = Join-Path $repoRoot 'wasm'
+$out = Join-Path $repoRoot 'pkg'
+$stampPath = Join-Path $wasmDir 'BUILD-STAMP.json'
+
+function Get-NormalizedSha256([string]$Path) {
+  # 與 check-actions.py 對齊：只把 CRLF 正規化成 LF，其他 bytes 原樣保留。
+  $bytes = [System.IO.File]::ReadAllBytes($Path)
+  $normalized = New-Object 'System.Collections.Generic.List[byte]'
+  for ($i = 0; $i -lt $bytes.Length; $i++) {
+    if ($bytes[$i] -eq 13 -and $i + 1 -lt $bytes.Length -and $bytes[$i + 1] -eq 10) {
+      [void]$normalized.Add(10)
+      $i++
+    } else {
+      [void]$normalized.Add($bytes[$i])
+    }
+  }
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    return -join ($sha.ComputeHash([byte[]]$normalized.ToArray()) | ForEach-Object { $_.ToString('x2') })
+  } finally {
+    $sha.Dispose()
+  }
+}
 
 # 家目錄 → ~；cargo home 若被搬到別處（CARGO_HOME）也一併改寫
 $flags = @("--remap-path-prefix=$env:USERPROFILE=~")
@@ -29,3 +51,13 @@ $text = [System.Text.Encoding]::ASCII.GetString($bytes)
 $leaks = ([regex]::Matches($text, [regex]::Escape($env:USERPROFILE))).Count
 if ($leaks -gt 0) { throw "✗ 產物仍含 $leaks 處建置者路徑（$env:USERPROFILE）— remap 未生效" }
 Write-Host "✓ pkg/ 重建完成，無建置者路徑外洩（$($bytes.Length) bytes）"
+
+$stamp = [ordered]@{
+  lib_rs = Get-NormalizedSha256 (Join-Path $wasmDir 'src\lib.rs')
+  cargo_lock = Get-NormalizedSha256 (Join-Path $wasmDir 'Cargo.lock')
+  built_at = [DateTime]::UtcNow.ToString('o', [Globalization.CultureInfo]::InvariantCulture)
+}
+$stampJson = $stamp | ConvertTo-Json -Compress
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($stampPath, $stampJson + [Environment]::NewLine, $utf8NoBom)
+Write-Host "✓ wasm/BUILD-STAMP.json 已更新（lib.rs / Cargo.lock hash）"

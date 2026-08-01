@@ -42,7 +42,7 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 | `app-quality-stages.js` | 品質階段層（classic script `globalThis.CraftStages`）：配方的三段品質門檻 → 目標品質。**兩種來源單位不同，換算只有這裡一份**——收藏品＝值×10；宇宙任務＝`ceil(滿品質×值/100)`（進位方向有意義，floor 會差一格達不到門檻）。某檔為 0 不列該檔、整個配方無資料就收起整組欄位 |
 | `app-level-sync.js` | 等級同步層（classic script `globalThis.CraftSync`）：宇宙探索配方**同一列資料掛在多個等級級距的任務上**（`WKSMissionUnit` 的 LevelGroup 1/2/3 共用同一 recipe id、`IsSynced=1`），存的 rlv 690 是「Lv100 版本」。`resolve()` 依角色等級（或手動指定，本機保存 `ffxiv-crafter-level-sync-v1`）解出生效的 recipe level 列，`refreshSelectedGear` 把它寫回 `selected.rlv` → 顯示與求解共用。**等級→rlv 的對照只有這裡一份**＝取該職業等級的最小 rlv（identity：代入最高等級會還原成配方原始 rlv，T20 全量釘住）。**不靜默換數字**：生效 rlv、三上限與配方原始值都寫在畫面上 |
 | `data/` | recipes / items / ingredients / recipe_levels / craft-actions / meals / medicine / **quality-stages** / **level-sync** JSON（`tools/build-data.py` 產，來自 monorepo item_dict + game_ref） |
-| `tools/` | `build-data.py`（產 data/；`--actions-only` 只重刷技能對照、`--consumables-only` 只補食藥 icon）、`check-actions.py`（action-set 不變量閘）、`build-notices.py`（第三方授權聲明）、`serve.py`（本地預覽） |
+| `tools/` | `build-data.py`（產 data/；`--actions-only` 只重刷技能對照、`--consumables-only` 只補食藥 icon）、`check-actions.py`（action-set 與 `pkg/`／`wasm/src` 同步不變量閘）、`build-wasm.ps1`（重建 `pkg/` 並更新 `wasm/BUILD-STAMP.json`）、`build-notices.py`（第三方授權聲明）、`serve.py`（本地預覽） |
 | `_headers` | CF Pages 安全標頭（CSP 完整分域）+ 快取策略（.js/.css/pkg `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
 | `docs/health-reviews/` | 永久健檢檔案庫（`project-health-review` skill 產出，豁免 docs 暫存→歸檔規則） |
 
@@ -107,6 +107,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 - **求解上限單一算式**：顯示（refreshSelectedGear）與求解（computeSettings）共用 `recipeMaxes(recipe, rlv)`，勿再內聯重算（防漂移）。
 - **DOH / JOB_ICON 為 local hardcode**：`jobs.json` 僅 21 戰鬥職、不含製作職 → 刻意 local，非漏 sync（是否加 AUTO-SYNC marker / 不變量＝BACKLOG B-001 待拍板）。
 - **改 `wasm/Cargo.toml` 依賴＝授權義務跟著變**（2026-07-28）：`pkg/*.wasm` 把 raphael-rs（Apache-2.0）與約 40 個 crate 編譯進去散布給網站訪客，Apache-2.0 §4(a)／MIT 都要求隨散布附上授權全文與著作權宣告 → 動依賴後跑 `py -3.11 tools/build-notices.py` 重產 `THIRD-PARTY-NOTICES.md` 一起 commit。raphael-rs 上游**無 NOTICE 檔**（已查 v0.26.2 checkout），故 §4(d) 不觸發；我們也未改其原始碼，§4(b) 修改標示不適用——若哪天 fork 改了引擎，這兩條都會啟動。
+- **WASM 同步戳記**（B-013）：改 `wasm/src/lib.rs` 或 `wasm/Cargo.lock` 後，必須跑 `powershell tools\build-wasm.ps1`（會重建 `pkg/` 並更新 `wasm/BUILD-STAMP.json`），否則 `check-actions.py` 會紅並要求重建；不要直接跑裸 `wasm-pack`。
 - **git 邊界**：commit 先知會、逐主題切；**push → CF Pages 自動部署對外可見 → STOP，由 shawn 自己跑** `!git -C external/ffxiv-crafter push`（cmd.exe，Windows Credential Manager）。
 
 ---

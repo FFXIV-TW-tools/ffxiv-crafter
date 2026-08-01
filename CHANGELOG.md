@@ -2,6 +2,37 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-02 — pkg/ 與 wasm/src 的同步機械守（cycle 2026-08-02-B013-pkg-stamp）
+
+**為什麼**（B-013(b) / 健檢批次 4）：`pkg/` 是 wasm-pack 的輸出、必須 commit 進 repo（CF Pages 不編 Rust）。
+改了 `wasm/src/lib.rs` 卻忘記重編時，**四道機械閘全綠**——`cargo test` 跑的是 host target 的 Rust 原始碼，
+跟 `pkg/` 裡那顆舊 wasm 無關——而線上跑的是舊引擎。零回饋訊號。
+
+（(a) 部署面暴露已於 2026-08-01 用 `deploy-prepare.sh` + 允許清單獨立解決，不在本輪。）
+
+### Added
+
+- `tools/build-wasm.ps1` 編完寫 `wasm/BUILD-STAMP.json`（`lib.rs` 與 `Cargo.lock` 的 hash）。
+- `tools/check-actions.py` 追加不變量比對，不符即非零 exit 並指名是哪個檔對不上。
+
+### 兩個已探明的坑（別回退）
+
+- **戳記放 `wasm/` 不放 `pkg/`**：`pkg/.gitignore` 的內容是單一個 `*`，**而且它自己也被自己忽略**。
+  在 `pkg/` 加檔要改那個 `.gitignore` 成白名單，但 **wasm-pack 每次 build 都會重新產生該檔** → 白名單會被蓋掉。
+  `wasm` 已列在 `deploy-deny.txt`，戳記不會被發佈（實測 `_site` 30 檔內無戳記）。
+- **hash 必須先正規化行尾**：repo `core.autocrlf=true` 且無 `.gitattributes`，直接 sha256 會在換機／重新 clone 後
+  誤紅。兩支腳本（PowerShell 寫、Python 讀）用同一套 CRLF→LF 正規化。
+
+### Verified
+
+- **CC 親跑四項**：PowerShell 側 hash `21699b2d…0cf7` == Python 寫進戳記的值（跨語言一致，不是採信回報）；
+  在 `lib.rs` 加一行註解 → **紅**且印出戳記 vs 現況 hash → 還原 → 綠；
+  **整檔行尾轉成 CRLF → 仍綠**（正是上面那個誤紅坑）；
+  `check-actions.py` 的成功訊息格式未變 → pre-commit gate 6 三項照常對帳。
+- `test-formulas` 231 passed（本批不增測試）。
+
+> 執行＝委派 codex `gpt-5.6-luna`（xhigh），一次過。
+
 ## 2026-08-02 — 求解引擎載不到不再是永久死路（cycle 2026-08-02-B012-engine-deadend）
 
 **為什麼**（B-012 / 健檢批次 3）：`worker.js` 把 `await ready` 與 `solve()` 包在**同一個 try**，
