@@ -53,17 +53,20 @@ let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
 
 // ---------- 資料 ----------
 async function loadData() {
-  const fetchJson = async (url) => { const r = await fetch(url); if (!r.ok) throw new Error(`${url} HTTP ${r.status}`); return r.json(); }; // HTTP 錯誤明確降級（非把 404 頁當 JSON 硬 parse）
+  // 逾時：網路 stall 時不讓「📦 載入配方資料中…」無限空轉（無逾時＝玩家看不出是慢還是壞掉，只能自己重整）
+  const fetchJson = async (url) => { const r = await fetch(url, { signal: AbortSignal.timeout(30000) }); if (!r.ok) throw new Error(`${url} HTTP ${r.status}`); return r.json(); }; // HTTP 錯誤明確降級（非把 404 頁當 JSON 硬 parse）
   // 選配資料（食物/藥水）非必要 → 失敗只降級該功能、不拖垮整站；回傳 [] 讓 buildConsumables 安全略過
   const fetchOpt = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return []; } };
-  const [recipes, rlv, actions, items, ingredients] = await Promise.all([
+  // 七檔同一輪併發：meals/medicine 原本排第二輪 await，白等一個 RTT 只換 2.5KB（fetchOpt 自己吞錯，不會拖垮必要資料）
+  const [recipes, rlv, actions, items, ingredients, meals, medicine] = await Promise.all([
     fetchJson('data/recipes.json'),
     fetchJson('data/recipe_levels.json'),
     fetchJson('data/craft-actions.json'),
     fetchJson('data/items.json'),
     fetchJson('data/ingredients.json'),
+    fetchOpt('data/meals.json'),
+    fetchOpt('data/medicine.json'),
   ]);
-  const [meals, medicine] = await Promise.all([fetchOpt('data/meals.json'), fetchOpt('data/medicine.json')]);
   RECIPES = recipes; RLV = rlv; ACTIONS = actions; ITEMS = items; INGREDIENTS = ingredients;
   globalThis.CraftConsumable?.setData?.(meals, medicine);
   RINDEX = RECIPES.map(r => ({
