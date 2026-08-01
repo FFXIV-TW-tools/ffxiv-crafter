@@ -13,6 +13,16 @@
 
 - [x] ~~**B-008** (P3, data) 技能 icon 跟著配方職業走 — CraftAction sheet 對每個 DoH 職業各有一份 icon（如 `Basic Synthesis` 有 8 筆：001501 木工 / 001551 鍛造 / …）。現行 `build-data.py` 固定取同批內 id 最小者＝**永遠是木工版** → 做金工配方時手法序列顯示的是木工的鋸子/刨刀圖。修法需：① monorepo `build_game_ref.py` 的 `craft_actions` 加 `class_job_id` 欄 ② 重建 `game_ref.sqlite` ③ `build-data.py` 產 per-job icon map ④ `app-render.js` 依 `selected.recipe.job` 取。~~ — ✗ **否決於 2026-07-27（Owner 裁示）**：技能**名稱一致**、只是圖示因職業有些微差異，不影響使用；不值得為此改資料模型 + 重建 game_ref。真正的紅線是「不得出現佔位『刪除號』圖」，該項已由 `tools/check-actions.py` 的 icon 不變量機械守。來源: 2026-07-27 icon 佔位圖修正 cycle 的殘留項
 
+### 健檢 2026-08-01 須修改項（12 項，依 [修復計畫](health-reviews/2026-08-01-全維健檢-fix-plan.md) 批次切；**未標 `[go]` 不得開工**）
+
+- [ ] **B-009** (P1, test) 【建議 高｜延遲風險 中｜執行風險 低｜副作用 無】批次 0：測試地基 — T11「篩選變更回第 1 頁」經**突變測試證實為空殼斷言**（刪掉 `app-browse.js:50` 的 `page = 0`，122 項仍全綠）＋補 `effectiveStats` 食藥加成 golden。零行為變更，是後續所有批次的安全網，**應最先做**。來源: 健檢 2026-08-01（quality-tests A1）
+- [ ] **B-010** (P1, bug) 【建議 高｜延遲風險 高｜執行風險 中｜副作用 無】批次 1：「算錯巨集」家族 — (a) `computeSettings` 的 `use_heart_and_soul`/`use_quick_innovation` **完全不看 `#specialist`**（app.js:323-325），沒插專家之證也會把「專心致志」排進巨集 → 玩家貼進遊戲那行直接失敗，正中本工具最痛失敗模式；(b) 角色等級欄無上界，輸入 101~255 關掉等級懲罰並誤開精修之眼（clamp 位置在 `onGearInput` 非 `cell()`）；(c) app.js 506 行拆分閘門一次性定案。來源: 健檢 2026-08-01（correctness A1/A3）
+- [ ] **B-011** (P2, ux) 【建議 高｜延遲風險 中｜執行風險 低｜副作用 無】批次 2：使用者可見缺陷＋成果遺失 — (a) `body` 缺 `padding-top: 64px` + `margin: 0` → 跨網域 header.css 晚到的 CLS race（**這解釋了 2026-07-29 CLS 輪留下的 `body`/`#ftw-main` 懸案，不必回 portal 查**）；(b) 改角色數值會靜默清空已填的 HQ 素材與目標品質；(c) 食藥選單 `max(100%, 400px)` 在 <1018px 與手機被 `.codex-tablet` 的 clip-path 裁掉且無法捲回；(d) `loadGear` 靜默 catch（全 repo 唯一，違反鐵則字面，且哨兵 T6 只掃 app.js 只認空 catch 故漏網）。來源: 健檢 2026-08-01（design-system A2／perf-ux A3＝correctness A2／ux-flows A4＝a11y A2／resilience A2）
+- [ ] **B-012** (P2, resilience) 【建議 中｜延遲風險 中｜執行風險 中｜副作用 無】批次 3：WASM 引擎初始化失敗＝永久死路 — `worker.js` 把 `await ready` 與 `solve()` 包在同一 try，`ready` 一旦 reject 就永久 reject 且 worker 還活著（`onerror` 不觸發），玩家只能自己重整而站上不會說；錯誤訊息還把他導向「調整設定」。修法需重建 worker（走 `abortSolve` 才守得住世代）＋ export `solveErrorMessage` 才寫得出驗證。來源: 健檢 2026-08-01（resilience A1）
+- [ ] **B-013** (P2, build) 【建議 中｜延遲風險 中｜執行風險 中｜副作用 部署面需 Owner 拍板】批次 4：部署面 — (a) 整個 repo 被 CF Pages 當靜態根部署（實測 `/AGENTS.md` 回 200），`docs/health-reviews/*`／`tools/*.py`／`wasm/src` 全部線上可讀，且 **`CHANGELOG.md:32` 把 2026-07-28 才清乾淨的建置者帳號名重新公開在同一網域**；(b) `pkg/` 與 `wasm/src/lib.rs` 無同步機械守 → 改引擎忘重編，VERIFY 四閘全綠而線上跑舊 WASM。修法需處理 `pkg/.gitignore` 內容為 `*` 與 `core.autocrlf` 行尾兩個坑。來源: 健檢 2026-08-01（build-release A1/A2＋sec-frontend A1）
+- [ ] **B-014** (P3, a11y) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】批次 5：a11y — (a) 求解計時每秒 `innerHTML` 重寫整個 live region → 螢幕閱讀器整段等待期間連續播報數十次（只標秒數 `aria-hidden` 不夠，需狀態節點固定不動）；(b) 自繪 listbox `outline: none` 且焦點樣式同 hover → 100+ 筆食藥清單鍵盤看不出選到哪列，違反設計系統禁 `outline:none` 鐵則。來源: 健檢 2026-08-01（a11y-compat A1/A3）
+- [ ] **B-015** (P3, docs) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 跨 repo（portal／本機 only 檔）】批次 6：文件與 memory 同步（**排最後**，行數/測試數屆時才定案）— (a) `_NEW-TOOL.md` 模板缺 `/data/*` 行，使 memory `external.data-cache-must-revalidate.md:27` 的「照模板寫」機械化落空；(b) 8 項文件 drift，其中 `README.md:27-30` 重建 WASM 指令**照抄必失敗**（`cd wasm` 後 `wasm/tools/` 不存在），失敗後的自然退路正是被明令禁止的裸 `wasm-pack`；AGENTS「104 個 expert 配方」實際 536（5.15 倍）、宣告 app.js「500 行」實際 506；(c) memory 3 項處置候選待 shawn 確認。來源: 健檢 2026-08-01（docs-drift 全維／memory-audit A2/A4）
+
 ---
 
 ## 已完成（保留紀錄）
