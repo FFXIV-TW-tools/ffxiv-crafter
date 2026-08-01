@@ -29,7 +29,7 @@
 
 ## 2026-07-28 — 重編 WASM：產物不再外洩建置者路徑（cycle 2026-07-28-wasm-remap）
 
-**為什麼**：查授權合規時掃 `pkg/crafter_wasm_bg.wasm`，發現 39 條含 `C:\Users\shawn_lin\.cargo\...` 的字串——Rust 把每個 panic 的原始碼路徑編進二進位，而這個檔案**公開可下載**（線上實測 `https://ffxiv-crafter.pages.dev/pkg/crafter_wasm_bg.wasm` → 200 / application/wasm / 285557 bytes；瀏覽器本來就得抓它才能執行）。等於站上一直公開著建置者的 Windows 帳號名。
+**為什麼**：查授權合規時掃 `pkg/crafter_wasm_bg.wasm`，發現 39 條含 `C:\Users\<建置者>\.cargo\...` 的字串——Rust 把每個 panic 的原始碼路徑編進二進位，而這個檔案**公開可下載**（線上實測 `https://ffxiv-crafter.pages.dev/pkg/crafter_wasm_bg.wasm` → 200 / application/wasm / 285557 bytes；瀏覽器本來就得抓它才能執行）。等於站上一直公開著建置者的 Windows 帳號名。
 
 ### Added
 - `tools/build-wasm.ps1`：重建 `pkg/` 的唯一入口。設 `RUSTFLAGS=--remap-path-prefix=%USERPROFILE%=~` 後跑 wasm-pack，**編完驗收產物不含建置者路徑**（不是「編過就算」）。不用 `.cargo/config.toml` 是因為 rustflags 不做環境變數展開，寫死絕對路徑換機即失效。
