@@ -10,3 +10,8 @@ tools
 wasm
 .agents
 .adversarial-reviews
+.wrangler
+.venv
+.pytest_cache
+node_modules
+package-lock.json

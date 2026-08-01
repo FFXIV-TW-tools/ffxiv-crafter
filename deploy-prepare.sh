@@ -44,6 +44,10 @@ for e in * .[!.]* ..?*; do   # ..?*＝codex 外審：.[!.]* 匹配不到「..int
   [ -e "$e" ] || continue
   case "$e" in
     "$OUT"|.git|"$ALLOW"|"$DENY"|deploy-prepare.sh|.deploy-minify) continue ;;
+    # CF build 容器在執行 build command 前會自動跑 npm install，產生 repo 裡沒有的
+    # package-lock.json／node_modules（2026-08-01 treasure canary 實測擋在這）。
+    # 這些是建置環境產物、永遠不是站台資產，固定略過分類閘。
+    node_modules|package-lock.json|yarn.lock|pnpm-lock.yaml|.npm|.cache|.yarn) continue ;;
   esac
   # git 忽略的本機產物（.venv / node_modules / _site / 快取…）本來就不會進 CF 的 checkout，
   # 不該被分類閘擋下（否則本機跑不動、線上又用不到）。git 不可用時此檢查自動略過。
