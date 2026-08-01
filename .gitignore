@@ -10,3 +10,6 @@ Thumbs.db
 .DS_Store
 .adversarial-reviews/
 _site/
+.wrangler/
+# 委派任務書（delegate-coding）等一次性工作檔（.gitignore 不支援行尾註解，勿併行寫）
+tmp/
