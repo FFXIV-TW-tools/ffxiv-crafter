@@ -166,6 +166,137 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T3 高難度配方 → adversarial 強制關', se.adversarial, false);
 }
 
+// ===== T23：專心致志／快速改革必須隨專家之證 gate =====
+// 沒有 Soul of the Crafter 就沒有這兩個技能；公式層必須是最後一道防線，不能只靠 UI disabled。
+{
+  setInputs({ specialist: false, heart: true, qi: true });
+  const noSpecialist = T.computeSettings(recipe100, rlv640, gear);
+  eq('T23 無專家之證 → 專心致志強制關', noSpecialist.use_heart_and_soul, false);
+  eq('T23 無專家之證 → 快速改革強制關', noSpecialist.use_quick_innovation, false);
+
+  setInputs({ specialist: true, heart: true, qi: true });
+  const specialist = T.computeSettings(recipe100, rlv640, gear);
+  eq('T23 有專家之證 → 專心致志可用', specialist.use_heart_and_soul, true);
+  eq('T23 有專家之證 → 快速改革可用', specialist.use_quick_innovation, true);
+
+  // gate 的程式化 uncheck 不得反向保存，把玩家暫時拔證後的偏好永久清掉。
+  const mkCtx = (store) => {
+    const els = {};
+    const el = () => ({ checked: false, value: '', innerHTML: '', textContent: '', hidden: true,
+      disabled: false, max: '', min: '', placeholder: '', dataset: {}, style: {},
+      classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, getAttribute: () => null,
+      addEventListener() {}, removeEventListener() {}, querySelectorAll: () => [], querySelector: () => null,
+      appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, focus() {}, scrollIntoView() {}, select() {} });
+    const ctx = {
+      console, document: { getElementById: (id) => els[id] || (els[id] = el()), querySelector: () => null,
+        querySelectorAll: () => [], createElement: el, body: el() },
+      location: { hostname: 'localhost', search: '' }, window: {},
+      localStorage: { getItem: (k) => (k in store ? store[k] : null),
+        setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } },
+      Worker: function () { this.postMessage = () => {}; this.terminate = () => {}; },
+      fetch: () => Promise.reject(new Error('test: no network')),
+      setTimeout, clearTimeout, setInterval, clearInterval, URLSearchParams,
+    };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t23.js' });
+    return ctx;
+  };
+  const store = { 'ffxiv-crafter-solve-opts-v1': JSON.stringify({ 'opt-heart': true, 'opt-qi': false }) };
+  const ctx = mkCtx(store);
+  ctx.loadSolveOpts();
+  ctx.refreshSpecialistGate();
+  eq('T23 gate 強制 uncheck 不覆寫已保存的專心致志偏好',
+    JSON.parse(store['ffxiv-crafter-solve-opts-v1'])['opt-heart'], true);
+}
+
+// ===== T24：角色等級輸入收斂到 0..100（0 ＝未填） =====
+// rlv640 的 class_job_level=90 會讓 Lv100/Lv150 走同一公式分支，拿它測 clamp 是空殼；這裡特意用 100。
+{
+  const rlv100 = { ...rlv640, class_job_level: 100 };
+  setInputs({});
+  const lv100 = T.computeSettings(recipe100, rlv100, { ...gear, level: 100 });
+  const lv150 = T.computeSettings(recipe100, rlv100, { ...gear, level: 150 });
+  eq('T24 新 fixture：Lv100 吃等級懲罰（base_progress=250）', lv100.base_progress, 250);
+  eq('T24 新 fixture：Lv150 不吃等級懲罰（base_progress=313）', lv150.base_progress, 313);
+  eq('T24 新 fixture：Lv100 use_trained_eye=false', lv100.use_trained_eye, false);
+  eq('T24 新 fixture：Lv150 use_trained_eye=true', lv150.use_trained_eye, true);
+
+  const mkGearCtx = (store) => {
+    const els = {};
+    const el = () => ({ checked: false, value: '', innerHTML: '', textContent: '', hidden: true,
+      disabled: false, max: '', min: '', placeholder: '', dataset: {}, style: {},
+      classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, getAttribute: () => null,
+      addEventListener() {}, removeEventListener() {}, querySelectorAll: () => [], querySelector: () => null,
+      appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, focus() {}, scrollIntoView() {}, select() {} });
+    const ctx = {
+      console, document: { getElementById: (id) => els[id] || (els[id] = el()), querySelector: () => null,
+        querySelectorAll: () => [], createElement: el, body: el() },
+      location: { hostname: 'localhost', search: '' }, window: {},
+      localStorage: { getItem: (k) => (k in store ? store[k] : null),
+        setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } },
+      Worker: function () { this.postMessage = () => {}; this.terminate = () => {}; },
+      fetch: () => Promise.reject(new Error('test: no network')),
+      setTimeout, clearTimeout, setInterval, clearInterval, URLSearchParams,
+    };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t24.js' });
+    return ctx;
+  };
+  const runLevelInput = (raw) => {
+    const store = { 'ffxiv-crafter-gearsets-v1': JSON.stringify({ '木工': { level: 100, cms: 4048, ctrl: 3980, cp: 600 } }) };
+    const ctx = mkGearCtx(store);
+    ctx.loadGear();
+    let inputValue = raw;
+    let writes = 0;
+    const target = {
+      dataset: { job: '木工', f: 'level' },
+      get value() { return inputValue; },
+      set value(v) { writes++; inputValue = String(v); },
+    };
+    ctx.onGearInput({ target });
+    const saved = JSON.parse(store['ffxiv-crafter-gearsets-v1']);
+    const gearFor = ctx.gearFor('木工');
+    return {
+      savedLevel: saved['木工'].level,
+      inputValue,
+      writes,
+      gearFor,
+      jobLevel: ctx.computeSettings(recipe100, rlv100, gearFor).job_level,
+    };
+  };
+
+  const lv150Input = runLevelInput('150');
+  eq('T24 onGearInput 將超界等級存成 100', lv150Input.savedLevel, 100);
+  eq('T24 gearFor 讀到 clamp 後的等級', lv150Input.gearFor.level, 100);
+  eq('T24 clamp 後 computeSettings 只會使用 Lv100', lv150Input.jobLevel, 100);
+  eq('T24 Lv150 輸入框回填 100', lv150Input.inputValue, '100');
+
+  const blankInput = runLevelInput('');
+  eq('T24 清空等級存成 0（代表未填）', blankInput.savedLevel, 0);
+  eq('T24 清空等級輸入框維持空白', blankInput.inputValue, '');
+  eq('T24 清空等級 computeSettings 走未填假設 Lv100', blankInput.jobLevel, 100);
+
+  const zeroInput = runLevelInput('0');
+  eq('T24 顯式輸入 0 存成 0', zeroInput.savedLevel, 0);
+  eq('T24 顯式輸入 0 正規化為空白', zeroInput.inputValue, '');
+
+  const negativeInput = runLevelInput('-5');
+  eq('T24 負等級收斂到 0', negativeInput.savedLevel, 0);
+  eq('T24 負等級輸入框正規化為空白', negativeInput.inputValue, '');
+
+  const boundaryInput = runLevelInput('100');
+  eq('T24 Lv100 邊界存值不變', boundaryInput.savedLevel, 100);
+  eq('T24 Lv100 邊界輸入框不變', boundaryInput.inputValue, '100');
+  eq('T24 Lv100 邊界不寫回輸入框', boundaryInput.writes, 0);
+
+  const normalInput = runLevelInput('85');
+  eq('T24 Lv85 正常值存值不變', normalInput.savedLevel, 85);
+  eq('T24 Lv85 正常值輸入框不變', normalInput.inputValue, '85');
+  eq('T24 Lv85 正常值不寫回輸入框', normalInput.writes, 0);
+}
+
 // ===== T4：hqPercent 斷點抽樣（品質% → HQ%；含邊界 100/99/98、5/2、0、超上限、maxQ=0）=====
 {
   const M = 9000;

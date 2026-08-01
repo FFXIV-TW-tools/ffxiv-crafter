@@ -122,7 +122,15 @@ function renderGearsets() {
 }
 function onGearInput(e) {
   const { job, f } = e.target.dataset;
-  (gearsets[job] = gearsets[job] || {})[f] = +e.target.value || 0;
+  const raw = e.target.value;
+  let value = +raw || 0;
+  if (f === 'level') {
+    const clamped = Math.min(100, Math.max(0, value));
+    // 0 是「未填」：清空要保留空白，顯式輸入 0 也正規化回 placeholder。
+    if (clamped !== value || (clamped === 0 && String(raw).trim() !== '')) e.target.value = clamped || '';
+    value = clamped;
+  }
+  (gearsets[job] = gearsets[job] || {})[f] = value;
   saveGear(); updateHint();
   if (selected) refreshSelectedGear();
   invalidateResults(); // 改角色數值 → 舊巨集過期
@@ -282,7 +290,18 @@ function applyConsumables(baseCms, baseCtrl, baseCp) {
   return { cms, ctrl, cp };
 }
 // 食藥/專家之證任一變更 → 實際數值、摘要、舊結果失效（三者永遠同步，勿在別處只做其中一項）
-function onConsumableChange() { updateEff(); globalThis.CraftFlow?.updateConsumableSummary?.(); invalidateResults(); }
+function refreshSpecialistGate() {
+  const enabled = $('specialist').checked;
+  $('opt-heart').disabled = !enabled;
+  $('opt-qi').disabled = !enabled;
+  $('heart-why').hidden = enabled;
+  $('qi-why').hidden = enabled;
+  if (!enabled) {
+    $('opt-heart').checked = false;
+    $('opt-qi').checked = false;
+  }
+}
+function onConsumableChange() { refreshSpecialistGate(); updateEff(); globalThis.CraftFlow?.updateConsumableSummary?.(); invalidateResults(); }
 function effectiveStats(gear) {
   const spec = $('specialist').checked;
   const sp = spec ? 20 : 0;                    // 專家之證：作業 +20・加工 +20
@@ -337,8 +356,8 @@ function computeSettings(recipe, rlv, gear) {
     max_cp: eff.cp, max_durability, max_progress, max_quality,
     base_progress: bp, base_quality: bq, job_level: level,
     use_manipulation: $('opt-manip').checked,
-    use_heart_and_soul: $('opt-heart').checked,
-    use_quick_innovation: $('opt-qi').checked,
+    use_heart_and_soul: $('opt-heart').checked && $('specialist').checked,
+    use_quick_innovation: $('opt-qi').checked && $('specialist').checked,
     use_trained_eye: !recipe.is_expert && level >= rlv.class_job_level + 10, // 自動（出等級即可）
     adversarial: $('opt-adversarial').checked && !recipe.is_expert, // 高難度配方引擎不支援，強制關
 
@@ -484,6 +503,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 求解選項同樣只讀 localStorage（同步、無網路）→ 與 gear 一起在 await 前套回，
   // 讓深連結路徑（init 後立刻 selectRecipe→求解）拿到的就是玩家上次的選擇
   loadSolveOpts();
+  refreshSpecialistGate();
   await loadData();
   // 配方瀏覽層（app-browse.js classic script）：注入依賴後才能 render（getter 取 live RINDEX/selected——loadData 會重賦值綁定）
   if (!globalThis.CraftBrowse) throw new Error('app-browse.js 未載入（部署不完整）'); // 明確早報 → 落 catch 顯錯誤橫幅，非等 render 才 undefined.X 白屏（對抗審 grok F3）
