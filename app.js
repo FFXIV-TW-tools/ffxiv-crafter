@@ -400,6 +400,31 @@ function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 function toast(msg, v) {
   if (window.FFXIVToast && window.FFXIVToast.show) { window.FFXIVToast.show(msg, v); return; }
   console.log(`[toast:${v || 'info'}] ${msg}`);            // codex CDN 未載時的降級：至少留主控台紀錄
+// ---------- 求解選項（localStorage）----------
+// 全部預設**不勾**：這些技能不是到等級就自動有（掌握需 Lv65 **並完成解鎖任務**、
+// 專心致志/快速改革需專家之證），預設替玩家勾＝預設產出他按不出來的巨集 → 一律由他自己選。
+// 保存讓「選一次就好」，否則每次重整都要重勾一輪（食藥區早有同樣的本地保存）。
+const SOLVE_OPTS_KEY = 'ffxiv-crafter-solve-opts-v1';
+const SOLVE_OPT_IDS = ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-adversarial'];
+function loadSolveOpts() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SOLVE_OPTS_KEY)) || {};
+    // 只認布林：localStorage 被竄改成別的型別時退回 HTML 的預設值，不硬套
+    SOLVE_OPT_IDS.forEach(id => { if (typeof s[id] === 'boolean') $(id).checked = s[id]; });
+  } catch (e) { console.warn('[crafter] 求解選項讀取失敗，使用預設值:', e); }
+}
+let solveOptsSaveWarned = false;
+function saveSolveOpts() {
+  try {
+    const s = {};
+    SOLVE_OPT_IDS.forEach(id => { s[id] = $(id).checked; });
+    localStorage.setItem(SOLVE_OPTS_KEY, JSON.stringify(s));
+  } catch (e) {                                 // 無痕/配額滿：至少 warn（禁靜默吞）＋一次性提醒
+    console.warn('[crafter] 求解選項儲存失敗（可能是無痕模式）:', e);
+    if (!solveOptsSaveWarned) { solveOptsSaveWarned = true; toast('無法保存求解選項（可能是無痕/私密模式），重整後會回到預設', 'warn'); }
+  }
+}
+
   if (v === 'error' || v === 'warn') alert(msg);           // 重要訊息用原生提示 → CDN toast 未載時玩家仍看得到
 }
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
@@ -442,6 +467,9 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     getRINDEX: () => RINDEX, getSelected: () => selected, selectRecipe, toast });
   renderChips();
   renderGearsets();
+  // 求解選項同樣只讀 localStorage（同步、無網路）→ 與 gear 一起在 await 前套回，
+  // 讓深連結路徑（init 後立刻 selectRecipe→求解）拿到的就是玩家上次的選擇
+  loadSolveOpts();
   renderTable();
   $('picker').classList.remove('is-loading');   // 預留高度交還給真實內容（篩選出少量結果時不留空井）
   // 深連結：?recipe=<id> 或 ?item=<id> → 自動選配方（marketboard「求解手法」鈕用）
@@ -454,8 +482,8 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   globalThis.CraftFlow.updateConsumableSummary();
   // HQ 勾選 / 專家之證仍是原生 checkbox；食物/藥水本體是 CraftConsumable 的自繪選單（無 change 事件 → 走 onChange 回呼）
   ['food-hq', 'potion-hq', 'specialist'].forEach(id => $(id).addEventListener('change', onConsumableChange));
-  // 任一求解輸入變更 → 舊結果過期（gate：集中失效，涵蓋程式化改值與 gear 傳播）
-  ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-adversarial'].forEach(id => $(id).addEventListener('change', invalidateResults));
+  // 任一求解輸入變更 → 舊結果過期（gate：集中失效，涵蓋程式化改值與 gear 傳播）＋保存選擇
+  SOLVE_OPT_IDS.forEach(id => $(id).addEventListener('change', () => { saveSolveOpts(); invalidateResults(); }));
   $('opt-target').addEventListener('input', () => {
     const el = $('opt-target'), max = +el.max || 0;
     if (max && +el.value > max) el.value = max; // 超配方品質上限即時回填 maxQ（求解本就 clamp，先讓 UI 誠實一致，ux-5）

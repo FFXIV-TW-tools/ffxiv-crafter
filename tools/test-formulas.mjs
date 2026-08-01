@@ -632,5 +632,121 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     JSON.stringify([CS2.label('potion'), CS2.get('potion')]), JSON.stringify(['', null]));
 }
 
+// ===== T18：app-quality-stages.js 品質階段層 =====
+// 換算錯的後果與「算錯巨集」同級：玩家照著求解、貼進遊戲卻差一格達不到門檻，且過程零錯誤訊號。
+{
+  const QS_SRC = fs.readFileSync(path.join(ROOT, 'app-quality-stages.js'), 'utf8');
+  const mk = () => {
+    const el = { options: [], value: '', textContent: '', hidden: false, selectedIndex: -1,
+      addEventListener() {}, append(...xs) { el.options.push(...xs); } };
+    Object.defineProperty(el, 'innerHTML', { get: () => '', set: () => { el.options.length = 0; } });
+    return el;
+  };
+  const els = {};
+  const $q = (id) => els[id] || (els[id] = mk());
+  const qs = { console, document: { getElementById: $q },
+    Option: function (text, value) { return { textContent: text, value: String(value), disabled: false }; } };
+  qs.globalThis = qs;
+  vm.createContext(qs);
+  vm.runInContext(QS_SRC, qs, { filename: 'app-quality-stages.js' });
+  const QS = qs.CraftStages;
+
+  // 換算（純函式）：兩種來源單位不同，混用會靜默給出錯誤目標
+  eq('T18 收藏品：收藏價值 ×10', QS._toQuality('collectable', 190, 99999), 1900);
+  eq('T18 收藏品：不得超過配方滿品質', QS._toQuality('collectable', 200, 1500), 1500);
+  eq('T18 宇宙任務：滿品質百分比', QS._toQuality('cosmic', 85, 14900), 12665);
+  // 進位方向是有意義的：floor 會落在門檻下方，求出來的手法剛好差一格
+  eq('T18 宇宙任務：百分比無條件進位（非捨去/四捨五入）', QS._toQuality('cosmic', 97, 101), 98);
+  eq('T18 門檻 0 ＝沒這一檔 → 0', QS._toQuality('cosmic', 0, 14900), 0);
+  eq('T18 未知來源不猜換算', QS._toQuality('mystery', 50, 14900), 0);
+
+  QS.setData({ 36199: { src: 'cosmic', stages: [50, 60, 85] }, 900: { src: 'collectable', stages: [0, 160, 200] } });
+  QS.setRecipe({ id: 12345 }, 5000);
+  eq('T18 配方無分階 → 階段欄整組隱藏', $q('target-stage-field').hidden, true);
+
+  QS.setRecipe({ id: 36199 }, 14900);
+  eq('T18 有分階 → 階段欄顯示', $q('target-stage-field').hidden, false);
+  eq('T18 選項＝滿品質＋三階＋自訂', $q('opt-target-stage').options.map((o) => o.value).join(','),
+    ',7450,8940,12665,custom');
+  eq('T18 提示列出來源與門檻原值', $q('target-stage-hint').textContent,
+    '宇宙探索任務 · 一階 50%／二階 60%／三階 85%');
+
+  // 某一檔為 0 → 不得列出（點了沒反應的選項比沒有更糟）
+  QS.setRecipe({ id: 900 }, 99999);
+  eq('T18 一階為 0 → 只列二/三階', $q('opt-target-stage').options.map((o) => o.textContent).join(','),
+    '滿品質（99999）,二階（1600）,三階（2000）,自訂');
+  // 階名要用 stages 的原始位置：對 filter 後的陣列取索引會把二階標成「一階」
+  eq('T18 一階為 0 → 提示的階名不得位移', $q('target-stage-hint').textContent,
+    '收藏品交易 · 二階 160／三階 200（收藏價值）');
+
+  QS.setRecipe({ id: 36199 }, 14900);
+  $q('opt-target').value = '8940';
+  QS.syncFromInput();
+  eq('T18 手打數字等於二階 → 下拉指到二階',
+    $q('opt-target-stage').options[$q('opt-target-stage').selectedIndex].value, '8940');
+  $q('opt-target').value = '9999';
+  QS.syncFromInput();
+  eq('T18 手打數字不等於任何一檔 → 顯示自訂',
+    $q('opt-target-stage').options[$q('opt-target-stage').selectedIndex].value, 'custom');
+  $q('opt-target').value = '';
+  QS.syncFromInput();
+  eq('T18 清空 → 回滿品質', $q('opt-target-stage').selectedIndex, 0);
+}
+
+// ===== T19：求解選項一律預設不勾 + 本機保存 =====
+// 為什麼要守：技能是玩家練到才有的（掌握 Lv65；專心致志/快速改革需專家之證），
+// 預設替他勾＝預設產出他按不出來的巨集。這條防有人日後把 checked 加回 index.html。
+{
+  const HTML19 = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const OPT_IDS = ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-adversarial'];
+  OPT_IDS.forEach(id => {
+    const tag = (HTML19.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`)) || [''])[0];
+    check(`T19 ${id} 預設不勾（index.html 無 checked）`, !!tag && !/\bchecked\b/.test(tag), `tag=${tag}`);
+  });
+
+  // 保存往返：獨立 context + 有實體的 localStorage（主 sandbox 的是 no-op stub）
+  const mkCtx = (store) => {
+    const els = {};
+    const el = () => ({ checked: false, value: '', innerHTML: '', textContent: '', hidden: true,
+      disabled: false, max: '', min: '', placeholder: '', dataset: {}, style: {},
+      classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, getAttribute: () => null,
+      addEventListener() {}, removeEventListener() {}, querySelectorAll: () => [], querySelector: () => null,
+      appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, focus() {}, scrollIntoView() {}, select() {} });
+    const ctx = {
+      console: { log() {}, warn() {}, error() {} },
+      document: { getElementById: (id) => els[id] || (els[id] = el()), querySelector: () => null,
+        querySelectorAll: () => [], createElement: el, body: el() },
+      location: { hostname: 'localhost', search: '' }, window: {},
+      localStorage: { getItem: (k) => (k in store ? store[k] : null),
+        setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } },
+      Worker: function () { this.postMessage = () => {}; this.terminate = () => {}; },
+      fetch: () => Promise.reject(new Error('test: no network')),
+      setTimeout, clearTimeout, setInterval, clearInterval, URLSearchParams,
+    };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t19.js' });
+    return ctx;
+  };
+
+  const store = {};
+  const a = mkCtx(store);
+  a.document.getElementById('opt-manip').checked = true;
+  a.document.getElementById('opt-backload').checked = true;
+  a.saveSolveOpts();
+  const b = mkCtx(store);                       // 新開一次頁
+  b.loadSolveOpts();
+  eq('T19 保存往返：勾選的選項重載後仍勾', b.document.getElementById('opt-manip').checked, true);
+  eq('T19 保存往返：未勾的仍未勾', b.document.getElementById('opt-heart').checked, false);
+  eq('T19 保存往返：第二群組也保存', b.document.getElementById('opt-backload').checked, true);
+
+  // 竄改防禦：非布林值不套用（退回 HTML 預設），不因 localStorage 被亂改就產出怪狀態
+  const bad = { 'ffxiv-crafter-solve-opts-v1': JSON.stringify({ 'opt-manip': 'yes', 'opt-qi': 1 }) };
+  const c = mkCtx(bad);
+  c.loadSolveOpts();
+  eq('T19 保存值非布林 → 不套用', c.document.getElementById('opt-manip').checked, false);
+  eq('T19 保存值為數字 → 不套用', c.document.getElementById('opt-qi').checked, false);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
