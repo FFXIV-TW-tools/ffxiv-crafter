@@ -124,6 +124,20 @@
           <h2 class="codex-h2 crafter-col-title">② 設定條件</h2>
           <div id="recipe-info" class="recipe-info"></div>
 
+          <!-- 等級同步（宇宙探索配方）：靜態骨架，CraftSync 只改 value/文字，不重建 DOM
+               （重建會在打字時吃掉游標，也會製造 CLS）。預設 hidden，只有會同步的配方才顯示。 -->
+          <div id="level-sync" class="crafter-lvsync codex-tint-panel codex-tint-panel--bar codex-tint-panel--highlight" hidden>
+            <div class="crafter-lvsync__head">🔻 <b>這個配方會依職業等級同步</b>
+              <span class="codex-small">宇宙探索任務配方 — 同一份配方在不同等級的難度／品質／耐久都不一樣</span></div>
+            <div class="crafter-lvsync__line">
+              <label class="codex-field__label" for="ls-level">套用等級</label>
+              <input id="ls-level" class="codex-input crafter-lvsync__input" type="number" min="1" max="100" inputmode="numeric"
+                data-help="留空＝跟隨「角色數值」裡填的等級｜要算別的等級就直接填數字，會本機保存">
+              <button id="ls-auto" type="button" class="codex-btn codex-btn--ghost" hidden>↩ 跟隨角色等級</button>
+            </div>
+            <div id="ls-note" class="codex-small crafter-lvsync__note"></div>
+          </div>
+
           <div class="cfg-card">
           <h3 class="codex-h3 cfg-card__title">素材與加成</h3>
           <p class="cfg-card__desc codex-small">HQ 素材、食物與藥水會提高起始品質與數值 — 不確定就保持預設。</p>
@@ -271,6 +285,7 @@
   <script src="app-browse.js"></script>
   <script src="app-consumable.js"></script>
   <script src="app-quality-stages.js"></script>
+  <script src="app-level-sync.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

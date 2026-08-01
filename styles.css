@@ -233,6 +233,13 @@ body {
 .ri-gear { font-size: var(--fs-small); }
 .ri-gear a { color: var(--accent); }
 
+/* ---- 等級同步（宇宙探索配方）---- */
+.crafter-lvsync { display: flex; flex-direction: column; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
+.crafter-lvsync__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2, 8px); }
+.crafter-lvsync__line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); }
+.crafter-lvsync__input { width: 6em; flex: 0 0 auto; }   /* 定寬：等級最多三位數，跟著容器伸縮只是噪音 */
+.crafter-lvsync__note { opacity: .9; }
+
 /* ---- 原料 + HQ ---- */
 .ingredients { margin-bottom: var(--space-3, 12px); }
 .ing-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2, 8px); }

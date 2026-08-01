@@ -756,5 +756,108 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T19 保存值為數字 → 不套用', c.document.getElementById('opt-qi').checked, false);
 }
 
+// ===== T20：app-level-sync.js 等級同步層（宇宙探索配方）=====
+// 算錯的後果與「算錯巨集」同級且零訊號：Lv70 拿 rlv690 的難度 4026（實際 658）→ 求解回「做不到」，
+// 或給一份貼進遊戲完全對不上的手法。identity（滿等不得改變任何東西）是這層最重要的護欄。
+{
+  const LS_SRC = fs.readFileSync(path.join(ROOT, 'app-level-sync.js'), 'utf8');
+  const HTML_SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const mkEl = () => ({ value: '', textContent: '', placeholder: '', hidden: false, addEventListener() {} });
+  const mkCtx = (store) => {
+    const els = {};
+    const ctx = {
+      console,
+      document: { getElementById: (id) => els[id] || (els[id] = mkEl()), activeElement: null },
+      localStorage: {
+        getItem: (k) => (k in store ? store[k] : null),
+        setItem: (k, v) => { store[k] = String(v); },
+      },
+    };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(LS_SRC, ctx, { filename: 'app-level-sync.js' });
+    ctx._els = els;
+    return ctx;
+  };
+
+  const RLVT = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/recipe_levels.json'), 'utf8'));
+  const SYNCMAP = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/level-sync.json'), 'utf8'));
+  const ctx = mkCtx({});
+  const LS = ctx.CraftSync;
+
+  // 基準 rlv＝該職業等級的最小 rlv。690/290 是實測值，不是推導出來的常數。
+  eq('T20 Lv100 的基準 rlv', LS._minRlvId(RLVT, 100), 690);
+  eq('T20 Lv70 的基準 rlv', LS._minRlvId(RLVT, 70), 290);
+  eq('T20 Lv60 的基準 rlv（60 級有多列，取最小）', LS._minRlvId(RLVT, 60), 150);
+  eq('T20 資料沒有的等級 → null（不硬湊相近的）', LS._minRlvId(RLVT, 101), null);
+
+  LS.setData(SYNCMAP);
+  const COSMIC = { id: 36165, rlv: 690, job: '木工' };
+  const NORMAL = { id: 12345, rlv: 640, job: '木工' };
+
+  eq('T20 不會同步的配方 → 不介入', LS.resolve(NORMAL, RLVT, 70), null);
+  eq('T20 Lv70 做宇宙配方 → 降到 rlv 290', LS.resolve(COSMIC, RLVT, 70).row.id, 290);
+  // identity：滿等時生效 rlv 必須就是配方存的那個 —— 這條同時也是「取最小 rlv」這個對照的依據
+  eq('T20 identity：Lv100 的生效 rlv == 配方原始 rlv', LS.resolve(COSMIC, RLVT, 100).row.id, COSMIC.rlv);
+  eq('T20 未填角色等級 → 不猜（回 null，沿用配方原始值）', LS.resolve(COSMIC, RLVT, 0), null);
+
+  // 手動覆寫優先於角色等級；清空回到跟隨
+  LS._setOverride(80);
+  eq('T20 手動指定優先於角色等級', LS.resolve(COSMIC, RLVT, 70).row.id, 430);
+  eq('T20 手動指定會標記為 manual', LS.resolve(COSMIC, RLVT, 70).manual, true);
+  LS._setOverride(150);
+  eq('T20 手動指定超過資料上限 → 收在上限（不外插出不存在的等級）',
+    LS.resolve(COSMIC, RLVT, 70).row.id, 690);
+  LS._setOverride(null);
+  eq('T20 清空手動值 → 回到跟隨角色等級', LS.resolve(COSMIC, RLVT, 70).row.id, 290);
+
+  // 不靜默換數字：同步後的說明必須寫出生效 rlv、三上限與配方原始值
+  LS.render(COSMIC, LS.resolve(COSMIC, RLVT, 70), 70,
+    { max_progress: 658, max_quality: 1728, max_durability: 40 });
+  const note = ctx._els['ls-note'].textContent;
+  eq('T20 說明寫出依據的等級與生效 rlv', /Lv 70.*rlv 290/.test(note), true);
+  eq('T20 說明寫出三上限', /658.*1728.*40/.test(note), true);
+  eq('T20 說明寫出配方原始值（讓玩家對得上遊戲畫面）', /原始.*Lv 100.*rlv 690/.test(note), true);
+  eq('T20 會同步的配方 → 顯示這一區', ctx._els['level-sync'].hidden, false);
+  LS.render(NORMAL, null, 70, null);
+  eq('T20 不會同步的配方 → 整區隱藏（不留一個永遠沒作用的輸入框）', ctx._els['level-sync'].hidden, true);
+
+  // 保存往返
+  const store = {};
+  const w = mkCtx(store);
+  w.CraftSync.init({ $: null, onChange() {} });
+  w._els['ls-level'].value = '70';
+  w._els['ls-level'].addEventListener = () => {};
+  w.CraftSync._setOverride(70);
+  w.CraftSync.setData(SYNCMAP);
+  // 直接走公開路徑保存：init 綁的是 DOM 事件，這裡用內部 setter + 再開一次頁驗證
+  vm.runInContext('localStorage.setItem("ffxiv-crafter-level-sync-v1", JSON.stringify({level:70}))', w);
+  const w2 = mkCtx(store);
+  w2.CraftSync.init({ $: null, onChange() {} });
+  w2.CraftSync.setData(SYNCMAP);
+  eq('T20 保存往返：手動等級重載後仍生效', w2.CraftSync.resolve(COSMIC, RLVT, 100).row.id, 290);
+
+  const bad = mkCtx({ 'ffxiv-crafter-level-sync-v1': JSON.stringify({ level: 'seventy' }) });
+  bad.CraftSync.init({ $: null, onChange() {} });
+  bad.CraftSync.setData(SYNCMAP);
+  eq('T20 保存值非合法等級 → 退回跟隨角色等級', bad.CraftSync.resolve(COSMIC, RLVT, 100).row.id, 690);
+
+  // 實資料不變量：**每一個**會同步的配方，其原始 rlv 都必須等於「資料所依據的最高等級」的基準 rlv。
+  // 這條把「等級→rlv＝取該等級最小 rlv」這個對照釘在真實資料上：上游改版讓對照失效時會直接紅。
+  const RECIPES = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/recipes.json'), 'utf8'));
+  const byId = new Map(RECIPES.map((r) => [String(r.id), r]));
+  const ids = Object.keys(SYNCMAP);
+  const orphan = ids.filter((id) => !byId.has(id));
+  const broken = ids.filter((id) => byId.has(id)
+    && LS._minRlvId(RLVT, SYNCMAP[id]) !== byId.get(id).rlv);
+  check(`T20 level-sync.json 有資料（現況 768，實測 ${ids.length}）`, ids.length >= 700);
+  eq('T20 同步清單裡沒有本站不存在的配方', orphan.length, 0);
+  eq('T20 每個同步配方的原始 rlv == 其最高等級的基準 rlv（identity 全量）', broken.length, 0);
+  eq('T20 index.html 有等級同步靜態骨架（不靠 JS 建 DOM，免 CLS 與游標遺失）',
+    /id="level-sync"[\s\S]*id="ls-level"[\s\S]*id="ls-note"/.test(HTML_SRC), true);
+  check('T20 index.html 載入 app-level-sync.js',
+    HTML_SRC.includes('<script src="app-level-sync.js"></script>'));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -5,6 +5,7 @@ _headers
 app-browse.js
 app-consumable.js
 app-flow.js
+app-level-sync.js
 app-quality-stages.js
 app-render.js
 app-solve.js

@@ -60,7 +60,7 @@ async function loadData() {
   // 七檔同一輪併發：meals/medicine 原本排第二輪 await，白等一個 RTT 只換 2.5KB（fetchOpt 自己吞錯，不會拖垮必要資料）
   // 品質階段同為選配：載不到只是少了「一階/二階/三階」快捷，目標品質仍可手打 → 不拖垮整站
   const fetchOptObj = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return {}; } };
-  const [recipes, rlv, actions, items, ingredients, meals, medicine, stages] = await Promise.all([
+  const [recipes, rlv, actions, items, ingredients, meals, medicine, stages, levelSync] = await Promise.all([
     fetchJson('data/recipes.json'),
     fetchJson('data/recipe_levels.json'),
     fetchJson('data/craft-actions.json'),
@@ -69,10 +69,12 @@ async function loadData() {
     fetchOpt('data/meals.json'),
     fetchOpt('data/medicine.json'),
     fetchOptObj('data/quality-stages.json'),
+    fetchOptObj('data/level-sync.json'),
   ]);
   RECIPES = recipes; RLV = rlv; ACTIONS = actions; ITEMS = items; INGREDIENTS = ingredients;
   globalThis.CraftConsumable?.setData?.(meals, medicine);
   globalThis.CraftStages?.setData?.(stages);
+  globalThis.CraftSync?.setData?.(levelSync);
   RINDEX = RECIPES.map(r => ({
     id: r.id, name: r.item_name || '', job: r.job || '', rlv: r.rlv,
     // 簡中名只進搜尋、不顯示（顯示一律繁中）：很多人記的是陸服名或直接從簡中攻略貼過來
@@ -143,7 +145,7 @@ function selectRecipe(id, fromList) {
   // 換配方 → 作廢飛行中的求解（世代守衛已擋住舊結果渲染，這裡是收 UI 狀態＋釋放 CPU）。
   // 放在兩個 return false 之後：選配方失敗時不該波及正在跑的求解。
   globalThis.CraftSolve?.invalidateInFlight?.();
-  selected = { recipe, rlv };
+  selected = { recipe, rlv, baseRlv: rlv };   // rlv 之後可能被等級同步換掉；baseRlv 永遠是配方原始那列
   openedFromList = !!fromList;   // 從製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入為 false
   // 收合配方表；返回控件＝右上「← 返回配方列表」鈕（唯一可點）。此處只放誠實的「當前位置」狀態，不做「配方瀏覽›」假 nav 麵包屑（死 span 誤導可點）。
   $('picker').hidden = true;
@@ -181,9 +183,15 @@ function recipeMaxes(recipe, rlv) {
   };
 }
 function refreshSelectedGear() {
-  const { recipe, rlv } = selected;
-  const { max_progress: maxP, max_quality: maxQ, max_durability: maxD } = recipeMaxes(recipe, rlv);
+  const { recipe } = selected;
   const g = gearFor(recipe.job);
+  // 等級同步（宇宙探索配方）：生效的 recipe level 可能不是配方存的那列 → 先解析，之後**顯示與求解都用它**
+  // （selected.rlv 是 computeSettings 的唯一入口，換在這裡就不會有第二條路徑漏掉同步）
+  const sync = globalThis.CraftSync?.resolve?.(recipe, RLV, g && Number(g.level));
+  const rlv = selected.rlv = (sync && sync.row) || selected.baseRlv;
+  const { max_progress: maxP, max_quality: maxQ, max_durability: maxD } = recipeMaxes(recipe, rlv);
+  globalThis.CraftSync?.render?.(recipe, sync, g && Number(g.level),
+    { max_progress: maxP, max_quality: maxQ, max_durability: maxD });
   // 套用狀況＝共用 .codex-tint-panel--bar（左緣色條資訊盒）：綠＝已套用、金＝缺數值並附補救入口
   const note = g
     ? `✅ 套用「${esc(g._src)}」數值：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${Number(g.level) || 100}${g.level ? '' : '（假設，未填等級）'}`
@@ -463,6 +471,12 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 品質階段層（app-quality-stages.js classic script）：**必須早於 loadData**——loadData 尾端 setData、
   // 且深連結路徑會在 init 之後立刻 selectRecipe → refreshSelectedGear → setRecipe，監聽器要先掛好
   globalThis.CraftStages?.init?.({ $, invalidateResults });
+  // 等級同步層（app-level-sync.js classic script）：手動指定等級 → 重算三上限並作廢舊巨集
+  // （生效 rlv 變了，先前那份手法是照別的難度算的）
+  globalThis.CraftSync?.init?.({
+    $,
+    onChange: () => { if (selected) refreshSelectedGear(); invalidateResults(); },
+  });
   // gear 只讀 localStorage（同步）→ 刻意早於 await：首次使用提示要在資料回來前就定案，
   // 否則等 fetch 完才 unhide 會把下方整段推開一次（CLS）
   loadGear();
