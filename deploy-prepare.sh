@@ -33,6 +33,16 @@ rm -f "$OUT"/pkg/*.d.ts "$OUT"/pkg/package.json "$OUT"/pkg/.gitignore
 # 頁尾直連 /LICENSE-APACHE-2.0.txt，故此檔必須上線（拿掉會讓授權連結 404 ＝ 等於沒交付）。
 cp LICENSE-APACHE-2.0.txt "$OUT"/
 
+# --- 壓縮：剝註解 + 壓縮區域變數名（一般網站的標準做法）---
+# 為什麼：無建置架構下「原始碼 == 部署產物」，於是註解也上線——實測含「對抗審 grok」
+# 「BACKLOG B-006 待 Owner 拍板」等內部決策脈絡。壓縮把它們一併剝掉。
+# 注意這**不是隱藏**：壓縮碼丟進 formatter 仍可讀，邏輯依然公開（所有前端碼都如此）。
+# 目的是對齊一般網站的常態，不是保密。刻意**不產 source map**（產了等於把原始碼還原回去）。
+# 版本 pin 住：不讓部署路徑吃到未預期的新版行為。
+for f in "$OUT"/*.js; do
+  npx --yes esbuild@0.28.1 "$f" --minify --charset=utf8 --target=es2022 --outfile="$f.min" >/dev/null 2>&1 && mv "$f.min" "$f"
+done
+
 # --- 驗收：確認沒有任何內部檔混進輸出（build 階段就擋，不等上線才發現）---
 LEAK=$(find "$OUT" -type f \( -name '*.md' -o -name '*.py' -o -name '*.ps1' -o -name '*.mjs' -o -name '*.rs' -o -name '*.toml' -o -name '*.lock' \) | head -20)
 if [ -n "$LEAK" ]; then
