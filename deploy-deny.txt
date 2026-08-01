@@ -1,0 +1,12 @@
+.gitignore
+AGENTS.md
+CHANGELOG.md
+CLAUDE.md
+README.md
+THIRD-PARTY-NOTICES.md
+deploy-prepare.sh
+docs
+tools
+wasm
+.agents
+.adversarial-reviews

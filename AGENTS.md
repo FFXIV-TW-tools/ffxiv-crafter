@@ -107,3 +107,13 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 8. 旁路（無 spec）cycle id＝`YYYY-MM-DD-<BACKLOG 編號>`，供 CHANGELOG 段標題／BACKLOG 完成式共用。
 9. 除錯先根因：動手修 bug 前必先根因調查；一次一假設；同 bug 修 2 次不過升能力階、3 次不過停手質疑架構回 Owner。
 10. 查歷史脈絡：先讀 `docs/LEDGER.md`（若有；生成檔勿手改）挑 cycle，**依決策實作前必開該 cycle spec 全文**並檢查更新的相關 cycle。
+
+### 🔒 部署面鐵則（2026-08-01，勿回退）
+
+本 repo 的 CF Pages 部署**不是「發佈 repo 根目錄」**，而是由 `deploy-prepare.sh` 依 `deploy-allow.txt` 產出 `_site/`。CF dashboard 必須設 Build command = `sh deploy-prepare.sh`、Build output directory = `_site`。
+
+- **為什麼**：CF Pages 無 build 步驟時把 repo 根整棵目錄當靜態資產上傳 → `AGENTS.md`／`docs/`／`tools/`／`tests/`／`worker/` 後端源碼全部變成該網域下可直接 GET 的公開檔（2026-08-01 實測 12/13 站中招）。**private repo 只保護「誰能 clone」，不保護「已部署的檔案誰能下載」**；`.gitignore`（檔是 tracked）／`_headers`（只加標頭）／`robots.txt`（只擋收錄不擋直取）都擋不到。
+- **允許清單而非排除清單**：頂層出現任何未列入 `deploy-allow.txt`／`deploy-deny.txt` 的項目 → **build 直接失敗**。新增內部資產的預設值是「不發佈」，不靠任何人記得。排除清單做不到（實測當天漏了 `worker/` 106 支 .ts 與 `_tools/`／`_cache/` 141 檔）。
+- **新增站台資產**（新頁面／新資料夾）→ 加進 `deploy-allow.txt`；**新增內部資產** → 加進 `deploy-deny.txt`。改完跑一次 `sh deploy-prepare.sh` 確認印出「✓ 部署輸出就緒」。
+- **腳本改動禁忌**：① 只能用 POSIX 語法（CF 容器的 `sh` 是 dash，`read -r -d ''` 之類 bashism 會靜默失敗、輸出 0 檔而 build 仍「成功」⇒ **整站 404**，2026-08-01 實際發生）② 根層檔名不可無條件 `mkdir "$OUT/${f%/*}"`（會建出「叫 index.html 的目錄」⇒ `/` 404）③ 不得移除出貨前驗收閘（輸出 <3 檔／缺 index.html／內部檔混入 → 非零 exit，CF 保留前一版）。
+- **部署後驗**：`curl -sI https://<repo>.pages.dev/AGENTS.md` → 回 `text/html` 正常（檔案不存在）；回 `text/markdown` = 紅燈。
