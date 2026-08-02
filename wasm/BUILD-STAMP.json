@@ -1,6 +1,1 @@
-{
-  "lib_rs": "21699b2d0c7ed25e8cff5c9ac79851a5e4610789b0b42d986de74a2fe0290cf7",
-  "cargo_lock": "377213ae8ddad40910aa8cacf9384e8e9c725e3bae9af602a6e0fc4caf2060bf",
-  "built_at": "2026-08-02",
-  "note": "本戳記為 2026-08-02 補建；未重編 WASM，pkg/ 與來源已查證同步。"
-}
+{"lib_rs":"689eaf116379b0e7f302847c4ab5dcda7258d5213aa9f16a07d3a50db9354e70","cargo_lock":"377213ae8ddad40910aa8cacf9384e8e9c725e3bae9af602a6e0fc4caf2060bf","built_at":"2026-08-02T16:01:05.5490858Z"}
