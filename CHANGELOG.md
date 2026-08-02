@@ -2,6 +2,43 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-02 — 抽 app-recipe.js：app.js 進 500 以內（cycle 2026-08-02-recipe-split）
+
+**為什麼**：上一批抽完 `app-gear.js` 後 app.js 仍 592 行（proxy 委派本身佔行數）。本批抽
+「配方詳情狀態機」——`selectRecipe`／`showPicker`／`refreshGearNote`／`refreshSelectedGear`／
+`renderIngredients`／`updateInitial` → `app-recipe.js`（216 行）。**app.js 592 → 424，閘門達標。**
+
+### 狀態刻意不搬（這是本批最重要的設計決定）
+
+`tools/test-formulas.mjs` 的 T25 用 `vm.runInContext('computedInitial' / 'selected.rlv', ctx)`
+直接讀全域、並用 `RECIPES = …` 注入資料。若把狀態一起搬走，就會變成
+**「模組與 app.js 共用六個可變全域」**——那不是封裝，只是換個檔案放，而且要再開六個全域例外。
+
+改成**狀態全留 app.js，模組走注入的 getter/setter**（`getSelected`／`setSelected`／
+`getComputedInitial`／`setComputedInitial`／`getRecipes`…，同 `app-browse.js` 已驗證的形狀）。
+上一批 `app-gear.js` 把 `gearsets` 留在 IIFE 外，是被既有測試逼出來的**例外，不是範本**。
+`recipeMaxes` 留在 app.js（公式面、與 `computeSettings` 共用，AGENTS 明訂不得兩處重算）。
+
+### Verified
+
+- 四道機械閘：`test-formulas` 239 → **240**／`check-actions` 35=35 ＋ pkg 戳記同步／
+  `node --check` 全 12 支／`deploy-prepare.sh` 31 → **32 檔**。
+- **搬移忠實度逐字比對**：把拆分前後的 `selectRecipe`／`refreshGearNote` 抽出來 diff，
+  差異**全部只是機械性加 `deps.` 前綴**，結構、順序、條件零改動。
+  兩個特別容易失手的位置也確認保留：`invalidateInFlight()` 仍在兩個 `return false` **之後**
+  （選配方失敗時不該波及正在跑的求解）、等級同步的「先存後套回並收斂到新上限」整段未動。
+- 瀏覽器實測：配方詳情／等級同步／返回列表→重選配方／HQ 素材與初始品質／
+  改角色數值後目標品質 9000 與 HQ 數量 2 都保留／求解 22 步完成／零 console error。
+
+### 順帶補上一條沒人守的迴歸（239 → 240）
+
+驗收時用突變測試發現：**把 `selectRecipe` 裡的 `invalidateInFlight()` 整行刪掉，239 條全綠**。
+T13 只驗了 `CraftSolve.invalidateInFlight` **本身**，沒有任何測試驗 `selectRecipe` 真的會呼叫它——
+而 T13 存在的理由正是「換配方後晚回的舊結果會渲染在新配方標題下，玩家可能複製到錯綁巨集」。
+這是既有缺口（非本次造成），但重構剛好把那行搬進新檔，之後弄丟更不會有訊號 → 補進 T25，負對照驗過。
+
+> 執行＝委派 codex `gpt-5.6-luna`（xhigh），一次過；新增的迴歸測試與 stub 修正由 CC 補。
+
 ## 2026-08-02 — 抽 app-gear.js（拆分閘門定案的最後一批，cycle 2026-08-02-gear-split）
 
 **為什麼**（B-002 定案）：`app.js` 640 行、已越過 500 行拆分閘門。Owner 拍板的順序是

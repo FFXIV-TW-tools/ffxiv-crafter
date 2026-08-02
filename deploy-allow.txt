@@ -8,6 +8,7 @@ app-flow.js
 app-gear.js
 app-level-sync.js
 app-quality-stages.js
+app-recipe.js
 app-render.js
 app-solve.js
 app.js

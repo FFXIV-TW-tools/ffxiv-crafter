@@ -12,6 +12,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..');
 const APP_SRC = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
 const GEAR_SRC = fs.readFileSync(path.join(ROOT, 'app-gear.js'), 'utf8');
+const RECIPE_SRC = fs.readFileSync(path.join(ROOT, 'app-recipe.js'), 'utf8');
 const RENDER_SRC = fs.readFileSync(path.join(ROOT, 'app-render.js'), 'utf8'); // 結果渲染層（hqPercent 純函式住此）
 const CSS_SRC = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');       // T17 首載空間預留（CLS）規則哨兵
 const HANDWRITTEN_JS = ['app.js', 'app-flow.js', 'app-render.js', 'app-solve.js', 'app-browse.js',
@@ -49,6 +50,7 @@ const sandbox = {
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(GEAR_SRC, sandbox, { filename: 'app-gear.js' });
+vm.runInContext(RECIPE_SRC, sandbox, { filename: 'app-recipe.js' });
 vm.runInContext(RENDER_SRC, sandbox, { filename: 'app-render.js' }); // 先定義 globalThis.CraftRender（hqPercent 純函式、不需 init）
 vm.runInContext(
   APP_SRC + '\n;globalThis.__t = { computeSettings, recipeMaxes, effectiveStats, esc, mbItem, mbCraft, selectRecipe, hqPercent: globalThis.CraftRender.hqPercent };',
@@ -204,6 +206,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     ctx.globalThis = ctx;
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t23.js' });
+    vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t23.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t23.js' });
     return ctx;
   };
@@ -247,6 +250,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     ctx.globalThis = ctx;
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t24.js' });
+    vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t24.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t24.js' });
     return ctx;
   };
@@ -306,6 +310,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 // ===== T25：角色數值更新不得遺失成果；等級同步改變 rlv 時同步重算三上限 =====
 {
   const LS_SRC = fs.readFileSync(path.join(ROOT, 'app-level-sync.js'), 'utf8');
+  let invalidated = 0;
   const mkT25Ctx = ({ recipe, rlvTable, syncMap = null, level }) => {
     const els = {}, store = { 'ffxiv-crafter-gearsets-v1': JSON.stringify({ 木工: { level, cms: 4048, ctrl: 3980, cp: 600 } }) };
     const makeEl = () => {
@@ -330,10 +335,14 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       Worker: function () {}, fetch: () => Promise.reject(new Error('test: no network')),
       setTimeout, clearTimeout, setInterval, clearInterval, URLSearchParams,
       CraftFlow: { setTargetMode() {}, update() {} },
+      // 換配方必須作廢飛行中的求解（見下方 T25 最後一條）：這個 stub 記錄呼叫次數
+      // app.js init 會先呼叫 init/newWorker，stub 缺任一個就會在更早處拋錯（CraftRecipe.init 就跑不到）
+      CraftSolve: { init() {}, newWorker() {}, invalidateInFlight() { invalidated++; return false; } },
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t25.js' });
+    vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t25.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t25.mjs' });
     vm.runInContext(`RECIPES = ${JSON.stringify([recipe])}; RLV = ${JSON.stringify(rlvTable)}; ITEMS = {"42":{"name":"測試素材","can_be_hq":true,"level":100}}; INGREDIENTS = {"${recipe.id}":[[42,2]]};`, ctx);
     if (syncMap) {
@@ -375,6 +384,15 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eqObj('T25 改角色等級 → 難度/品質/耐久三上限跟著 rlv 變', synced.ctx.recipeMaxes(syncRecipe, activeRlv),
     { max_progress: 700, max_quality: 700, max_durability: 30 });
   eq('T25 生效 rlv 改變 → 目標品質保留但收在新品質上限', syncedTarget.value, '700');
+  // 換配方 → 必須作廢飛行中的求解。T13 只驗了 CraftSolve.invalidateInFlight 本身，
+  // **沒有任何測試驗 selectRecipe 真的會呼叫它** —— 2026-08-02 抽 app-recipe.js 時用突變測試發現
+  // （把那一行刪掉，239 條全綠）。少了它：舊配方的手法會渲染在新配方標題下，玩家可能複製到錯綁巨集。
+  {
+    const before = invalidated;
+    stable.ctx.selectRecipe(1);
+    eq('T25 換配方 → 作廢飛行中的求解（selectRecipe 必須呼叫 invalidateInFlight）',
+      invalidated, before + 1);
+  }
   eq('T25 生效 rlv 改變 → HQ 數量保留', synced.ingredients._inputs[0].value, '1');
 }
 
@@ -485,6 +503,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     ctx.globalThis = ctx;
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-gear-load.js' });
+    vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-gear-load.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-gear-load.mjs' });
     ctx.loadGear();
     return { ctx, warnings, toasts };
@@ -1239,6 +1258,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     ctx.globalThis = ctx;
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t19.js' });
+    vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t19.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t19.js' });
     return ctx;
   };
