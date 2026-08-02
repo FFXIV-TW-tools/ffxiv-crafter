@@ -1,5 +1,7 @@
 # Rust build（pkg/ 是 wasm-pack 輸出 → 要 commit，CF Pages 不編 Rust）
 wasm/target/
+tools/sim-diff/target/
+tools/sim-diff/golden.json
 
 # Python
 __pycache__/

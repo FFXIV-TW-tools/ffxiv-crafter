@@ -66,12 +66,18 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 ```bash
 node --check app.js app-recipe.js app-gear.js app-flow.js app-render.js app-solve.js app-browse.js app-consumable.js app-quality-stages.js app-level-sync.js crafting-list.js worker.js   # JS 語法
 node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機 + T15 食藥選擇層與保存 + T16 簡中搜尋 + T17 首屏 CLS 預留（239 passed）
-py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）
+py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）＋ pkg/ 同步戳記 ＋ sim-diff 與 wasm 釘同一個 raphael tag
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一 + 神速技巧耐久/路徑/步數三條（5 passed）
 ```
 
 - **上游 raphael 把「工匠的神速技巧」的耐久寫死 10，遊戲實際是 0**（2026-08-03 差分審計；`raphael-sim/src/actions.rs` 的 `impl ActionImpl for TrainedEye`，上游 `main` 至今未修，**升版救不了**）。判準＝日文客戶端文案：**每個**會消耗耐久的技能都寫「耐久を消費して」（連預設 10 的「加工」也寫），而「匠の早業」整段沒有耐久字眼；對照組「匠の神業」(Trained Finesse, 0) 寫的是「耐久を消費せず」。英文文案只標非預設值，**不能拿來判**（我第一次就是這樣誤判要翻案）。Teamcraft `trained-eye.ts` 與 Tnze `ffxiv-crafting` 亦為 0。
   **修法刻意不動上游原始碼**（頁尾與 `THIRD-PARTY-NOTICES.md` 聲明「以未修改原始碼編譯」，一改就啟動 Apache-2.0 §4(b) 修改標示義務），兩處都收在 `wasm/src/lib.rs`：① `replay()` 用完神速技巧後把 10 點補回（不只顯示，坯料製作的「耐久不足效率減半」判定也吃這個值）② `solve_input()` 把神速技巧那條路拆成子問題（神速技巧只能第 1 步用且直接把品質補到目標 ⇒ 最佳解＝神速技巧 ＋「滿耐久、CP−250、只衝進展」的最佳解），子問題須拿掉同為「僅第 1 步可用」的堅信／閒靜。實測 rlv640 緊繃配方 **17 步→14 步**（17 步要貼兩段巨集）。**上游哪天修好了，`trained_eye_plan_is_not_padded_by_upstream_durability_bug` 會轉紅——那是移除本 workaround 的信號，不是壞事。**
+- **動 `wasm/`（改綁定或換 raphael 版本）→ 另跑引擎差分閘**（不進每次 commit 的 pre-commit，太慢）：
+  ```bash
+  cd tools/sim-diff && cargo run --release          # 約 1 分鐘，~96 萬次施放；清單外的新分歧 → exit 1
+  cargo run --release --bin js-golden > golden.json && node compare-js.mjs ../.. golden.json
+  ```
+  它拿 **raphael-sim（我們線上跑的）vs Tnze `ffxiv-crafting`（BestCraft 用的，零共用程式碼）** 兩顆獨立引擎隨機走訪對打，逐步比對進展／品質／耐久／CP 與技能合法性；第二條再把我方 JS 的 `base_progress`／`base_quality`／`hqPercent` 對 Tnze 產的 golden 對帳。**已知差異寫在 `src/main.rs` 的 `ALLOWED` 清單且每條附理由**——清單外一律失敗，**要加新條目前必須先查遊戲客戶端判誰對，不要為了讓閘變綠而加**。清單裡的條目某輪沒出現也會印警告（多半代表上游修好了 → 該移除我方 workaround）。兩份 Cargo.toml 的 raphael tag 必須相同，由 `check-actions.py` 機械守（版本漂開＝這張網測的不是線上那顆＝假保護，且零錯誤訊號）。
 - **改 `wasm/src/lib.rs`** → 跑 `cargo test`（host target 可跑，見上）；**重建 WASM 產物**一律走 `powershell tools\build-wasm.ps1`（需 nightly + wasm-pack + wasm32 target），`pkg/` 要一起 commit。**別直接跑裸 `wasm-pack`**：Rust 把 panic 的原始碼路徑編進二進位，crate 住在 `%USERPROFILE%\.cargo\` → 產物會帶建置者的 Windows 帳號名，而 `pkg/*.wasm` 是公開可下載的（瀏覽器必須抓它才能跑）。腳本用 `--remap-path-prefix` 把家目錄改寫成 `~`，並在編完驗收「產物不含建置者路徑」。
 - **改 `.js` / `.css`** → **無 cachebust 步驟**（不像 ranking；index.html 靜態引用無 `?v=`，`_headers` 的 `must-revalidate` 負責重驗）。
 - **手動 smoke**（改 UI / render / 求解路徑後）：`py -3.11 tools/serve.py`（no-cache dev server，預設 :8809；勿用裸 `python -m http.server`——缺 no-cache 會拿到瀏覽器快取舊版）於 repo 根 → 需 **portal svc :8774** 提供 codex CDN（`svc start portal`）→ 開 `http://localhost:8809/` → 選配方 → 填角色數值 → 求解 → 複製巨集。零 console error。

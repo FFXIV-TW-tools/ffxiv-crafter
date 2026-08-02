@@ -58,7 +58,8 @@
   - **今天沒有使用者可見損害**（`stellar_steady_hand_charges` 寫死 0 ⇒ 這 4 個技能永不出現在巨集裡），但台服一上 7.4 就會是對外錯字。
   - **要做的**：(a) monorepo 側把 `tc_verified` 改回 0 並用国服名機轉（或等台服解包有了再轉正）(b) crafter 側同步 `FALLBACK_TC` (c) 台服上 7.4 後才談要不要接這個技能（屆時 charges 值 **⚠ 三源不一致**：raphael 等級 90／3 charges、Tnze 一次、我們 db 寫 Lv100 —— 那時要以台服客戶端為準重查，別照抄）。來源: 差分審計 2026-08-03（查「群星穩定是什麼」時連帶發現）
 - [ ] **B-019** (P3, chore) 【建議 中｜延遲風險 低｜執行風險 中（引擎換版＝公式面回歸風險）｜副作用 無】評估升 raphael v0.26.2 → v0.28.6 — 上游 release note 明寫含 **7.55 與台服 7.2 遊戲資料**。升版**不會**修掉 B-017 的神速技巧耐久（上游 `main` 至今仍寫 10，已查證）。升之前先跑本輪的差分測試 crate 當回歸網（見下），並確認 `pkg/` 體積與 `check-actions.py` 的 35 個 Action 變體不變。來源: 差分審計 2026-08-03
-- [ ] **B-020** (P3, test) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】差分測試 crate 是否收進 repo 當常設閘 — 本輪把 raphael-sim 與 Tnze `ffxiv-crafting` 擺進同一個 crate 對打（958,495 次施放零分歧，唯一分歧＝神速技巧耐久），現放在 `~/_claude_scratch/crafter-sim-diff/`（**不在 repo，換機即失**）。收進來的好處＝上游換版或我方動公式時自動抓漂移（正是 B-019 需要的網）；代價＝多一個 Rust 依賴（`ffxiv-crafting` 7.4.5，crates.io）與一次約 1 分鐘的 `cargo run --release`，不適合掛進每次 commit 的 pre-commit，比較適合當「動 wasm/ 才跑」的閘。**待 shawn 拍板**。來源: 差分審計 2026-08-03
+- [x] **B-020** (P3, test) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】差分測試 crate 是否收進 repo 當常設閘 — 本輪把 raphael-sim 與 Tnze `ffxiv-crafting` 擺進同一個 crate 對打（958,495 次施放零分歧，唯一分歧＝神速技巧耐久），現放在 `~/_claude_scratch/crafter-sim-diff/`（**不在 repo，換機即失**）。收進來的好處＝上游換版或我方動公式時自動抓漂移（正是 B-019 需要的網）；代價＝多一個 Rust 依賴（`ffxiv-crafting` 7.4.5，crates.io）與一次約 1 分鐘的 `cargo run --release`，不適合掛進每次 commit 的 pre-commit，比較適合當「動 wasm/ 才跑」的閘。**待 shawn 拍板**。來源: 差分審計 2026-08-03
+  - **✅ 已完成 2026-08-03**（Owner 核可「可以收進去當測試標準」）：落 `tools/sim-diff/`（main.rs 323 行＋js-golden.rs＋compare-js.mjs），用法寫進 AGENTS「開發注意」。**從一次性腳本升級成閘**的三件事：① 已知差異寫成 `ALLOWED` 常數、每條附為什麼可以放行，清單外一律 `exit 1` ② 清單裡的條目某輪**沒出現**也會印警告（多半代表上游修好了 → 該移除我方 workaround，例如神速技巧那條）③ 兩份 Cargo.toml 的 raphael tag 必須相同，由 `check-actions.py` 新增的 `check_simdiff_pin()` 機械守（負對照驗過：漂移 exit 1、同版 exit 0）——版本漂開就是「綠燈但測的不是線上那顆」的假保護，且零錯誤訊號。
 
 ## 已完成（保留紀錄）
 

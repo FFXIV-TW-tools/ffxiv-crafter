@@ -91,6 +91,40 @@ def check_build_stamp():
     return True
 
 
+def check_simdiff_pin():
+    """tools/sim-diff 必須釘住與 wasm/ 相同的 raphael tag。
+
+    差分測試的價值全在「測的是線上實際跑的那顆引擎」——兩邊版本一旦漂開，
+    那張網就是假保護（綠燈但測的是別的東西），而且不會有任何錯誤訊號。
+    """
+    # 兩份 Cargo.toml 的依賴**別名不同**（wasm 用 raphael-simulator / sim-diff 用 raphael-sim），
+    # 故不依賴別名：抓所有提到 raphael 的依賴行上的 tag，同檔內須一致。
+    pat = re.compile(r'^\s*[\w-]+\s*=\s*\{[^}]*raphael[^}]*tag\s*=\s*"([^"]+)"', re.M)
+    pairs = []
+    for label, path in (("wasm", os.path.join(ROOT, "wasm", "Cargo.toml")),
+                        ("tools/sim-diff", os.path.join(ROOT, "tools", "sim-diff", "Cargo.toml"))):
+        try:
+            src = open(path, encoding="utf-8").read()
+        except OSError as exc:
+            print("→ 讀不到 %s：%s" % (path, exc), file=sys.stderr)
+            return False
+        tags = set(pat.findall(src))
+        if not tags:
+            print("✗ %s/Cargo.toml 找不到 raphael 依賴的 tag" % label, file=sys.stderr)
+            return False
+        if len(tags) > 1:
+            print("✗ %s/Cargo.toml 內部 raphael tag 就不一致：%s" % (label, sorted(tags)), file=sys.stderr)
+            return False
+        pairs.append((label, tags.pop()))
+    if pairs[0][1] != pairs[1][1]:
+        print("✗ raphael 版本漂移：%s=%s / %s=%s" % (pairs[0][0], pairs[0][1], pairs[1][0], pairs[1][1]),
+              file=sys.stderr)
+        print("→ 差分測試必須跟線上同版，否則是假保護；請同步兩份 Cargo.toml", file=sys.stderr)
+        return False
+    print("✓ sim-diff 與 wasm 釘同一個 raphael tag（%s）" % pairs[0][1])
+    return True
+
+
 def check_icons(data):
     """icon 健全性：不得為空、不得是 game_ref 的「無圖示」佔位圖。"""
     bad_null = sorted(k for k, v in data.items() if not (v or {}).get("icon"))
@@ -121,7 +155,8 @@ def main():
     if actions_ok:
         print("✓ action-set 一致：%d 個 Action 變體 == craft-actions.json 鍵（icon 全數有效）" % len(lib))
     sync_ok = check_build_stamp()
-    if actions_ok and sync_ok:
+    pin_ok = check_simdiff_pin()
+    if actions_ok and sync_ok and pin_ok:
         return 0
     if not actions_ok:
         if missing:

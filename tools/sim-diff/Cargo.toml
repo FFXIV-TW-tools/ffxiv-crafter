@@ -1,0 +1,17 @@
+[package]
+name = "crafter-sim-diff"
+version = "0.1.0"
+edition = "2021"
+publish = false
+default-run = "crafter-sim-diff"
+
+# 兩顆**獨立實作**的 FFXIV 製作模擬器對打，用來抓「我們用的引擎跟遊戲不一致」：
+#   A = raphael-sim   ＝ ffxiv-crafter 線上實際在跑的引擎（pkg/ 就是編它）
+#   B = ffxiv-crafting ＝ BestCraft(Tnze) 用的引擎，與 raphael 無任何共用程式碼
+# 兩邊在同一條規則上給不同答案 ⇒ 至少有一邊錯，再去查遊戲客戶端判誰對。
+#
+# ⚠ raphael 的 tag 必須與 ../../wasm/Cargo.toml 相同，否則這張網測的不是線上跑的那顆。
+#    此不變量由 tools/check-actions.py 機械守。
+[dependencies]
+raphael-sim = { git = "https://github.com/KonaeAkira/raphael-rs.git", package = "raphael-sim", tag = "v0.26.2" }
+ffxiv-crafting = "7.4.5"
