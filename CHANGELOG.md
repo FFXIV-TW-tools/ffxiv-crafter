@@ -2,6 +2,44 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-02 — 抽 app-gear.js（拆分閘門定案的最後一批，cycle 2026-08-02-gear-split）
+
+**為什麼**（B-002 定案）：`app.js` 640 行、已越過 500 行拆分閘門。Owner 拍板的順序是
+「行為修復先做完，最後單獨一批拆」——理由是重構與行為修復混在同一個 diff 裡，
+委派驗收無法歸因（看不出某行是修 bug 還是搬家）。本批就是那一批，**零行為變更**。
+
+### Changed
+
+- 抽 `app-gear.js`（96 行，classic script `globalThis.CraftGear`）：`gearsets` 狀態、
+  `loadGear`／`saveGear`、`gearValid`／`gearFor`／`anyGear`、`renderGearsets`、`onGearInput`。
+  沿用既有的 classic-script + deps 注入 pattern（同 app-render／app-solve／app-browse），
+  **app.js 保留同名 proxy** → 既有呼叫點與事件綁定零改。app.js **640 → 592**。
+- `onGearInput` 的事件鏈順序由注入的 `afterInput` 逐字保留：
+  `saveGear → updateHint → refreshGearNote（若已選配方）→ invalidateResults → CraftFlow.update`。
+
+### 為什麼 `GEAR_KEY`／`gearsets` 留在 IIFE 外（其他層都是私有狀態）
+
+`tools/test-formulas.mjs` 的 T6 sec-A2 用 `vm.runInContext('gearsets', ctx)` **直接讀全域識別字**
+驗「壞掉的 localStorage 值要被重置成空物件」。搬進私有作用域會讓那兩條斷言 ReferenceError。
+要收進去就得同時改那兩條測試的取值方式——可以做，但別在「順手整理」時不小心做。已寫進檔頭。
+
+### Verified
+
+- 四道機械閘：`test-formulas` **239 passed（數字不變）**／`check-actions` 35=35 ＋ pkg 戳記同步／
+  `node --check` 全 11 支／`deploy-prepare.sh` 30 → **31 檔**。
+- **測試檔的 diff 只有 sandbox 載入方式**（6 處 `vm.runInContext(GEAR_SRC, …)`），
+  斷言期望值一字未改——這是純重構的判準，改了期望值就代表行為變了。
+- **CC 突變測試**：改 `app-gear.js` 的等級 clamp 下界 → 仍打紅**同樣 7 條** T24 斷言
+  ⇒ 測試契約完整穿過拆分，proxy 沒有讓行為驗證失效。
+- 瀏覽器實測：角色數值表 9 列由 CraftGear 繪出、填值即保存、首次提示收起、
+  等級 150 → clamp 回 100（穿過 proxy）、切回求解頁套用註記與等級同步都正確、求解 2 步完成、零 console error。
+
+> **app.js 仍 592 行（>500）**：proxy 委派本身要佔行數，單靠這一批到不了 500 以下。
+> 下一個候選是把 `selectRecipe`／`showPicker`／`refreshSelectedGear`／`refreshGearNote`
+> 這組「配方詳情狀態機」抽成 `app-recipe.js`（約 130 行），待 Owner 拍板。
+
+> 執行＝委派 codex `gpt-5.6-luna`（xhigh），一次過。
+
 ## 2026-08-02 — 文件與 memory 同步（cycle 2026-08-02-B015-docs-sync）
 
 **為什麼**（B-015 / 健檢批次 6，排最後因為行數與測試數要等前五批定案）：文件宣告的數字與指令

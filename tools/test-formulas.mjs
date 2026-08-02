@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..');
 const APP_SRC = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+const GEAR_SRC = fs.readFileSync(path.join(ROOT, 'app-gear.js'), 'utf8');
 const RENDER_SRC = fs.readFileSync(path.join(ROOT, 'app-render.js'), 'utf8'); // 結果渲染層（hqPercent 純函式住此）
 const CSS_SRC = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');       // T17 首載空間預留（CLS）規則哨兵
 const HANDWRITTEN_JS = ['app.js', 'app-flow.js', 'app-render.js', 'app-solve.js', 'app-browse.js',
@@ -47,6 +48,7 @@ const sandbox = {
 };
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
+vm.runInContext(GEAR_SRC, sandbox, { filename: 'app-gear.js' });
 vm.runInContext(RENDER_SRC, sandbox, { filename: 'app-render.js' }); // 先定義 globalThis.CraftRender（hqPercent 純函式、不需 init）
 vm.runInContext(
   APP_SRC + '\n;globalThis.__t = { computeSettings, recipeMaxes, effectiveStats, esc, mbItem, mbCraft, selectRecipe, hqPercent: globalThis.CraftRender.hqPercent };',
@@ -201,6 +203,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t23.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t23.js' });
     return ctx;
   };
@@ -243,6 +246,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t24.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t24.js' });
     return ctx;
   };
@@ -329,6 +333,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t25.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t25.mjs' });
     vm.runInContext(`RECIPES = ${JSON.stringify([recipe])}; RLV = ${JSON.stringify(rlvTable)}; ITEMS = {"42":{"name":"測試素材","can_be_hq":true,"level":100}}; INGREDIENTS = {"${recipe.id}":[[42,2]]};`, ctx);
     if (syncMap) {
@@ -479,6 +484,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-gear-load.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-gear-load.mjs' });
     ctx.loadGear();
     return { ctx, warnings, toasts };
@@ -1232,6 +1238,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t19.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t19.js' });
     return ctx;
   };

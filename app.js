@@ -32,7 +32,6 @@ const JOB_ICON = {
   '金工': '/i/062000/062111.png', '皮革': '/i/062000/062112.png', '裁縫': '/i/062000/062113.png',
   '鍊金': '/i/062000/062114.png', '烹調': '/i/062000/062115.png',
 };
-const GEAR_KEY = 'ffxiv-crafter-gearsets-v1';
 // 結果欄空狀態（.codex-empty 內容）：說清楚「這裡會出現什麼」＋附一顆可直接按下去的 CTA
 // （設計系統 §功能頁引導標準 驗收線 1；主 CTA 仍是設定欄那顆 --primary，此處用 ghost 不搶主 CTA 唯一性）。
 const PH_HTML =
@@ -45,7 +44,6 @@ const PH_HTML =
 const NAME_COLLATOR = new Intl.Collator('zh-Hant'); // 預建 collator，避免每次比較重建（快於逐次 localeCompare(...,'zh-Hant')）
 
 let RECIPES = [], RLV = {}, ACTIONS = {}, RINDEX = [], ITEMS = {}, INGREDIENTS = {};
-let gearsets = {};      // { 職業: {level,cms,ctrl,cp} }
 let selected = null;    // { recipe, rlv }
 let openedFromList = false; // 由製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入則不顯示（避免幽靈導覽）
 let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
@@ -85,70 +83,15 @@ async function loadData() {
   }));
 }
 
-// ---------- 角色數值（localStorage）----------
-function loadGear() {
-  try {
-    const raw = localStorage.getItem(GEAR_KEY);
-    if (raw == null) { gearsets = {}; return; } // 首次使用：沒有保存值不是錯誤
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new TypeError('角色數值資料不是物件');
-    gearsets = parsed;
-  } catch (e) {
-    gearsets = {};
-    console.warn('[crafter] 角色數值讀取失敗，已重置:', e);
-    if (!gearLoadWarned) { gearLoadWarned = true; toast('角色數值讀取失敗，已重置', 'warn'); }
-  }
-}
-let gearLoadWarned = false;
-let gearSaveWarned = false;
-function saveGear() {
-  try { localStorage.setItem(GEAR_KEY, JSON.stringify(gearsets)); }
-  catch (e) {                                   // 無痕/私密模式或配額滿：至少 warn（禁靜默吞），並一次性提醒玩家設定不會保存
-    console.warn('[crafter] 角色數值儲存失敗（可能是無痕模式）:', e);
-    if (!gearSaveWarned) { gearSaveWarned = true; toast('無法保存角色數值（可能是無痕/私密模式），本次設定重整後會遺失', 'warn'); }
-  }
-}
-function gearValid(g) { return !!(g && g.cms > 0 && g.ctrl > 0 && g.cp > 0); }
-function gearFor(job) {                       // 該職有效 → 用；否則用「預設」；都無 → null
-  if (gearValid(gearsets[job])) return { ...gearsets[job], _src: job };
-  if (gearValid(gearsets['預設'])) return { ...gearsets['預設'], _src: '預設' };
-  return null;
-}
-function anyGear() { return DOH.concat('預設').some(j => gearValid(gearsets[j])); }
-
-function renderGearsets() {
-  const rows = ['預設', ...DOH];
-  const cell = (job, f, ph) => {
-    const v = (gearsets[job] && gearsets[job][f] != null) ? (Number(gearsets[job][f]) || '') : ''; // 強制數字 → 堵 localStorage 竄改的 self-XSS sink（非數字/0 → 空，顯示 placeholder）
-    return `<td><input class="codex-input gear-in" data-job="${esc(job)}" data-f="${f}" type="number" min="0" inputmode="numeric" value="${v}" placeholder="${ph || ''}"></td>`;
-  };
-  const jico = (job) => JOB_ICON[job]
-    ? `<img class="gj-ico" src="${iconUrl(JOB_ICON[job])}" alt="" loading="lazy">`
-    : '<span class="gj-ico gj-ico--empty" aria-hidden="true"></span>'; // 預設列無職業 icon → 等寬佔位讓職名對齊
-  $('gearsets').innerHTML = `
-    <table class="gear-table">
-      <thead><tr><th>職業</th><th>等級</th><th>作業精度</th><th>加工精度</th><th>CP</th></tr></thead>
-      <tbody>${rows.map(job =>
-        `<tr><th class="gj${job === '預設' ? ' gj-default' : ''}">${jico(job)}${esc(job)}</th>${cell(job, 'level', '100')}${cell(job, 'cms', '工藝')}${cell(job, 'ctrl', '加工')}${cell(job, 'cp', 'CP')}</tr>`).join('')}</tbody>
-    </table>`;
-  $('gearsets').querySelectorAll('.gear-in').forEach(inp => inp.addEventListener('input', onGearInput));
-}
-function onGearInput(e) {
-  const { job, f } = e.target.dataset;
-  const raw = e.target.value;
-  let value = +raw || 0;
-  if (f === 'level') {
-    const clamped = Math.min(100, Math.max(0, value));
-    // 0 是「未填」：清空要保留空白，顯式輸入 0 也正規化回 placeholder。
-    if (clamped !== value || (clamped === 0 && String(raw).trim() !== '')) e.target.value = clamped || '';
-    value = clamped;
-  }
-  (gearsets[job] = gearsets[job] || {})[f] = value;
-  saveGear(); updateHint();
-  if (selected) refreshGearNote();
-  invalidateResults(); // 改角色數值 → 舊巨集過期
-  globalThis.CraftFlow?.update?.(); // 填完數值 → ② 由「無法進行」轉「進行中」（invalidateResults 無結果時會早退，故此處明呼）
-}
+// ---------- 角色數值（localStorage，已抽到 app-gear.js：globalThis.CraftGear）----------
+// proxy：既有呼叫點 / 事件綁定沿用同名，實體在 CraftGear（init 注入依賴：DOM/工具/職業資料/輸入後回呼）。
+function loadGear() { return globalThis.CraftGear.loadGear(); }
+function saveGear() { return globalThis.CraftGear.saveGear(); }
+function gearFor(job) { return globalThis.CraftGear.gearFor(job); }
+function gearValid(g) { return globalThis.CraftGear.gearValid(g); }
+function anyGear() { return globalThis.CraftGear.anyGear(); }
+function renderGearsets() { return globalThis.CraftGear.renderGearsets(); }
+function onGearInput(e) { return globalThis.CraftGear.onGearInput(e); }
 
 // ---------- 職業 chips + 配方表（已抽到 app-browse.js：globalThis.CraftBrowse；jobFilter 為該層私有狀態）----------
 // proxy：既有呼叫點 / 事件綁定 / CraftList onChange 沿用同名，實體在 CraftBrowse（init 注入依賴：getter 取 live RINDEX/selected）。
@@ -534,6 +477,15 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     globalThis.CraftSolve.init({ $, toast, PH_HTML, getSelected: () => selected, gearFor, computeSettings, switchTab });
     globalThis.CraftSolve.newWorker();
   }
+  // 角色數值層（app-gear.js classic script）：注入依賴後才讀 localStorage/繪表；輸入後回呼維持原 app.js 事件鏈順序
+  if (!globalThis.CraftGear) throw new Error('app-gear.js 未載入（部署不完整）');
+  globalThis.CraftGear.init({ $, esc, toast, iconUrl, DOH, JOB_ICON,
+    afterInput: () => {
+      updateHint();
+      if (selected) refreshGearNote();
+      invalidateResults(); // 改角色數值 → 舊巨集過期
+      globalThis.CraftFlow?.update?.(); // 填完數值 → ② 由「無法進行」轉「進行中」（invalidateResults 無結果時會早退，故此處明呼）
+    } });
   // 食物/藥水選擇層（app-consumable.js classic script）：**必須早於 loadData**——loadData 尾端會 setData 繪按鈕，
   // 且本層 init 才會把保存值套回 HQ / 專家之證 checkbox（保存值要先就位，後續公式與摘要才讀得到）
   if (!globalThis.CraftConsumable) throw new Error('app-consumable.js 未載入（部署不完整）');
