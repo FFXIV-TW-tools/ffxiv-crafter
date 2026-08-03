@@ -9,7 +9,7 @@ function iconUrl(p) {
 // 跨工具深連結：到 marketboard 看材料樹/行情/成本（dev 走 :8774 統一外部站，prod 走 pages.dev）
 const MARKETBOARD_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8774/ffxiv-tw-marketboard/'
-  : 'https://ffxiv-tw-marketboard.pages.dev/';
+  : 'https://market.xivtc.com/';
 // marketboard 深連結 helper（DRY：base 一處；item_id≠recipe id 分清）。named target 共用分頁、刻意不加 rel=noopener＝生態內互跳慣例（見 renderMacro 註解；全 repo noopener 慣例待 Owner 拍板＝BACKLOG B-006）。
 const mbUrl = (route, id) => { const n = Number(id); return Number.isFinite(n) && n > 0 ? `${MARKETBOARD_BASE}#/${route}/${n}` : '#'; }; // 型別收斂+防壞連結（非正整數→'#'，禁 #/item/undefined）
 const mbItem = (iid) => mbUrl('item', iid);       // 查價 / 歷史 / 來源
@@ -17,7 +17,7 @@ const mbCraft = (itemId) => mbUrl('craft', itemId); // BOM 樹 / 每材料價 / 
 // 跨工具深連結：求解巨集帶到 macro-builder 匯入（?import= 收端契約見 external/_NEW-TOOL.md；波次 2）
 const MACRO_BUILDER_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8774/ffxiv-tw-macro-builder/'
-  : 'https://ffxiv-tw-macro-builder.pages.dev/';
+  : 'https://macro.xivtc.com/';
 // base64url（UTF-8 安全：中文必先 TextEncoder 轉 bytes，不能直接 btoa）
 function b64urlEncode(s) {
   const bytes = new TextEncoder().encode(s);
