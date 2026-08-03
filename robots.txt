@@ -27,4 +27,4 @@ Disallow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://ffxiv-crafter.pages.dev/sitemap.xml
+Sitemap: https://crafter.xivtc.com/sitemap.xml

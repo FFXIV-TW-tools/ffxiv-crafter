@@ -2,7 +2,7 @@
 
 FFXIV 繁中服製作（DoH）求解器 + 模擬器。輸入配方 + 角色數值 → 算最佳製作手法 → 顯示手法序列 + 逐步走查 + 一鍵複製遊戲巨集。
 
-**Pages URL**：<https://ffxiv-crafter.pages.dev/>（已上線）
+**Pages URL**：<https://crafter.xivtc.com/>（已上線）
 
 ## 架構
 
