@@ -56,7 +56,7 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 
 ## ✅ VERIFY（改動後跑，未過不算完成）
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="240" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="243" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
@@ -65,13 +65,12 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 
 ```bash
 node --check app.js app-recipe.js app-gear.js app-flow.js app-render.js app-solve.js app-browse.js app-consumable.js app-quality-stages.js app-level-sync.js crafting-list.js worker.js   # JS 語法
-node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機 + T15 食藥選擇層與保存 + T16 簡中搜尋 + T17 首屏 CLS 預留（239 passed）
+node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機 + T15 食藥選擇層與保存 + T16 簡中搜尋 + T17 首屏 CLS 預留 + T29 DOH/JOB_ICON 不變量（243 passed）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）＋ pkg/ 同步戳記 ＋ sim-diff 與 wasm 釘同一個 raphael tag
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一 + 神速技巧耐久/路徑/步數三條（5 passed）
 ```
 
-- **上游 raphael 把「工匠的神速技巧」的耐久寫死 10，遊戲實際是 0**（2026-08-03 差分審計；`raphael-sim/src/actions.rs` 的 `impl ActionImpl for TrainedEye`，上游 `main` 至今未修，**升版救不了**）。判準＝日文客戶端文案：**每個**會消耗耐久的技能都寫「耐久を消費して」（連預設 10 的「加工」也寫），而「匠の早業」整段沒有耐久字眼；對照組「匠の神業」(Trained Finesse, 0) 寫的是「耐久を消費せず」。英文文案只標非預設值，**不能拿來判**（我第一次就是這樣誤判要翻案）。Teamcraft `trained-eye.ts` 與 Tnze `ffxiv-crafting` 亦為 0。
-  **修法刻意不動上游原始碼**（頁尾與 `THIRD-PARTY-NOTICES.md` 聲明「以未修改原始碼編譯」，一改就啟動 Apache-2.0 §4(b) 修改標示義務），兩處都收在 `wasm/src/lib.rs`：① `replay()` 用完神速技巧後把 10 點補回（不只顯示，坯料製作的「耐久不足效率減半」判定也吃這個值）② `solve_input()` 把神速技巧那條路拆成子問題（神速技巧只能第 1 步用且直接把品質補到目標 ⇒ 最佳解＝神速技巧 ＋「滿耐久、CP−250、只衝進展」的最佳解），子問題須拿掉同為「僅第 1 步可用」的堅信／閒靜。實測 rlv640 緊繃配方 **17 步→14 步**（17 步要貼兩段巨集）。**上游哪天修好了，`trained_eye_plan_is_not_padded_by_upstream_durability_bug` 會轉紅——那是移除本 workaround 的信號，不是壞事。**
+- **上游 raphael 把「工匠的神速技巧」的耐久寫死 10，遊戲實際是 0**：**升版救不了**（上游 main 至今仍是 10）。我方在 `wasm/src/lib.rs` 補償且**不動 raphael 原始碼**（保住「以未修改原始碼編譯」聲明）：① `replay()` 事後補回 10 點 ② `solve_input()` 把神速技巧那條路拆成「神速技巧 ＋ 滿耐久/CP−250/只衝進展」的子問題。**上游哪天修好，`trained_eye_plan_is_not_padded_by_upstream_durability_bug` 會轉紅＝該移除 workaround。** → 判準（日文客戶端文案）與量測見 [`docs/lessons.md`](docs/lessons.md)
 - **動 `wasm/`（改綁定或換 raphael 版本）→ 另跑引擎差分閘**（不進每次 commit 的 pre-commit，太慢）：
   ```bash
   cd tools/sim-diff && cargo run --release          # 約 1 分鐘，~96 萬次施放；清單外的新分歧 → exit 1
@@ -87,28 +86,22 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 
 ## 🛠 開發注意（踩坑 / 教訓）
 
-- **技能 icon 取列策略勿改回 `ORDER BY id LIMIT 1`**（2026-07-27）：CraftAction sheet 同一技能有 8 個職業版本，**外加一批 `ClassJobLevel=1` 的未使用佔位列，Icon 一律是 `000786`（灰底紅斜線「無圖示」圖）且 id 最小**。取最小 id ＝ 7 個技能拿到佔位圖、看起來像「已停用技能」且不會報錯。正解＝排除 `000786` → `class_job_level` DESC → id ASC；`check-actions.py` 已加不變量機械守。只改技能對照時用 `py -3.11 tools/build-data.py --actions-only`（免重刷 4.1MB 配方資料）。**職業專屬 icon 固定木工版**（做金工配方也顯示木工工具）＝**Owner 2026-07-27 裁示的最終取捨**：技能名稱一致、只是圖示因職業略有差異，不影響使用，不值得為此改資料模型（B-008 已否決，勿再提案）。**紅線只有一條——不得出現佔位「刪除號」圖**（`000786`），已由 `check-actions.py` 不變量機械守。
-- **食物/藥水下拉是自繪 listbox，不是 `<select>`**（2026-07-28）：需求要在選項裡顯示 icon＋物品品級＋功效，`<option>` 只吃純文字 → `app-consumable.js` 自建 `role=listbox`。**按鈕上的 Enter/Space 不要自己處理**——瀏覽器本來就會把它轉成 click，兩邊都做會「開了又關」（實測踩到）；keydown 只接 ↑↓ 開選單。選項的 icon/品級來自 `data/meals.json`・`medicine.json` 的 `icon`／`level` 欄，由 `tools/build-data.py --consumables-only` 以**繁中名對 item_lookup** 補上（124/124 全中；`level` 已驗證 == `items.level_item`＝物品品級，勿另算）。
+> **可執行的規則全在本節**（每 session 自動載入）；「怎麼發現的、錯了會怎樣」等敘事已搬 [`docs/lessons.md`](docs/lessons.md)（2026-08-03，DEVLOOP R7 20KB 護欄）。標了「→ 敘事見」的條目，動那一區前建議一併讀。
+
+- **技能 icon 取列策略勿改回 `ORDER BY id LIMIT 1`**：正解＝排除佔位圖 `000786` → `class_job_level` DESC → id ASC（`check-actions.py` 有不變量守）。只改技能對照用 `py -3.11 tools/build-data.py --actions-only`。**職業專屬 icon 固定木工版是 Owner 裁示的取捨，B-008 已否決勿再提案**；紅線只有「不得出現佔位刪除號圖」。→ 敘事見 [`docs/lessons.md`](docs/lessons.md)
+- **食物/藥水下拉是自繪 listbox 不是 `<select>`**：**按鈕上的 Enter/Space 不要自己處理**（瀏覽器已轉成 click，兩邊都做會開了又關），keydown 只接 ↑↓。icon/品級來自 `meals.json`／`medicine.json`，由 `build-data.py --consumables-only` 補。→ 敘事見 [`docs/lessons.md`](docs/lessons.md)
 - **這一區的設定是本地保存的**（`ffxiv-crafter-consumables-v1`）：食物／藥水／兩個 HQ 勾／專家之證／`<details>` 展開狀態全存。新增這一區的輸入項要一併進 `state` 並在 `init` 套回 DOM，否則會出現「畫面有值但重整就跑掉」的半套狀態。`setData` 會清掉資料改版後已不存在的保存品項（不留幽靈選擇）。
 - **icon 一律走 xivapi v2 asset CDN**（2026-07-16）：v1 `xivapi.com/i/...` 圖庫停更、7.5 新 icon 404 → `app.js` `iconUrl()` 把 data 層 v1 路徑轉 v2 URL（權威寫法＝marketboard `modules/icon.js`）；新增 icon 出口勿再直拼 v1 網域，`_headers` CSP img-src 已鎖 `v2.xivapi.com`。
 - **配方資料源＝tnze zh-CN（7.5 跟版）＋item_lookup 繁中化**（2026-07-16）：zh-TW 源停更 7.1 勿換回；重建流程＝best-craft `scripts/build-static-data.py`（刪 static-data 快取強制重爬）→ 本 repo `tools/build-data.py`。舊逐色染劑配方 200 筆是遊戲 7.5 改版移除（通用染劑 38254–38261 取代），勿當缺漏回補。
 - **expert（高難度）配方靜態巨集僅供參考**：536 個 expert 配方在遊戲內為隨機製作狀態，靜態 Normal 巨集無法保證完成 → render 已加中性「試算完成 ⚠」+ 警語（**勿移除、勿改回無條件「✓ 可完成」金徽**）。
 - **求解計時＝軟提示不殺 worker**（`solveClock` interval，每秒更新已耗時）：求解跑在 worker、主執行緒空閒故計數不凍結；≥60s 升級「可取消」提示但**不殺** worker（正常長求解仍在跑，UI 文案「可能數十秒」）；`stopSolveClock()` 掛在 onWorkerMsg / cancelSolve / onerror（別讓成功後計數殘留）。
 - **「現在該做什麼」的唯一真相＝`app-flow.js` 的 `flowState()`**（2026-07-27 引導改造）：步驟軸／「下一步」文案／CTA 就緒提示／`pick-panel` 收合／`work.is-idle` 全由它一次算出，**勿在各層自己寫步驟文案或自行 toggle 這些 class**。新增會改變流程位置的事件（新分頁／新輸入）→ 呼叫 `globalThis.CraftFlow?.update?.()`（一律選擇性呼叫，測試 sandbox 缺本層不炸）。
-- **首屏「等 fetch 才長內容」的區塊一律要預留高度**（2026-07-29 CLS 修）：field CLS P75 0.225 的來源是 `#pick-panel` 空殼→實體內容 **+588px**。三種手法各有適用：①內容是**確定的**（流程軸冷啟動態）→ 直接把 `flowHtml({})` 輸出寫進 index.html，JS 同字串覆寫（T17 守漂移）；②內容**筆數不定**（chips／翻頁器）→ `#picker.is-loading` 分段 `min-height`，首次 `renderTable()` 後卸下（**失敗路徑也要卸**，否則空井留著）；③**佔位塊自撐**（`.recipe-loading` min-height 60vh == `.recipe-table` max-height），innerHTML 一換即消失，最省事。新增首屏區塊時照這三類挑一種，**別再留空殼**。量測方法＝同源 iframe 固定寬度載入本站，比對「清空成載入態 vs 實際內容」的高度差（可逐 px 掃出窄屏折行斷點；本機 window 無法被自動化縮放）。
-- **`hidden` 屬性設了不等於收得起來，`el.hidden` 也驗不出來**（2026-08-02 實際出包）：UA 的 `[hidden]{display:none}` 優先權最低，本地寫一條 `.x{display:flex}` 就蓋掉它 → JS 設 `el.hidden = true` 完全沒作用、元素照樣顯示。等級同步面板就是這樣**每個配方都顯示**，而我的瀏覽器測試查的是 `el.hidden`（值確實是 `true`）所以全綠。**驗這類收合一律看 `getComputedStyle(el).display` 或 `getBoundingClientRect().height`，不要查 `.hidden` 屬性。**新增「靠 hidden 收合」的區塊時同步補 `[hidden]` 守衛——已由 T21 機械掃描守住（styles.css 現有 7 條守衛，這坑在本 repo 反覆出現）。
-- **宇宙探索配方的數值不是資料裡那個**（2026-08-01 B-016）：`Recipe.MaxAdjustableJobLevel=100` 的 768 個配方（8 職 × 96）存的 rlv 一律 690＝**Lv100 版本**。判它「真的會變」而不是「固定的高階配方」的依據是 `WKSMissionUnit`：**同一個 recipe id 同時掛在 LevelGroup 1/2/3**（三個不同等級級距的任務共用一列配方）且 `IsSynced=1`；反例對照＝LevelGroup 4/5/6 用各自專屬的高 rlv（701–775）配方，那些的 `MaxAdjustableJobLevel` 就是 0。修前 Lv70 玩家看到難度 4026（實際 658，**六倍**）→ 求解回「做不到」或給一份貼進遊戲完全對不上的巨集，**全程零錯誤訊號**。
+- **首屏「等 fetch 才長內容」的區塊一律要預留高度**（CLS）：三選一 —— ①內容確定→靜態寫進 index.html（T17 守）②筆數不定→`.is-loading` 分段 `min-height`（**失敗路徑也要卸**）③佔位塊自撐（min-height == 內容 max-height）。**別再留空殼。** → 量測手法與由來見 [`docs/lessons.md`](docs/lessons.md)
+- **`hidden` 設了不等於收得起來**：UA 的 `[hidden]{display:none}` 優先權最低，本地一條 `display:flex` 就蓋掉。**驗收合一律看 `getComputedStyle(el).display` 或 `getBoundingClientRect().height`，不要查 `.hidden` 屬性**；新增靠 hidden 收合的區塊要補 `[hidden]` 守衛（T21 機械掃描）。→ 實際出包經過見 [`docs/lessons.md`](docs/lessons.md)
+- **宇宙探索配方的數值不是資料裡那個**：那 768 個配方存的 rlv 一律 690（Lv100 版），實際會依角色等級同步 —— 判準是 `Recipe.MaxAdjustableJobLevel`，**不是 rlv 的形狀**。修前 Lv70 玩家看到六倍難度且**全程零錯誤訊號**。→ 判準推導見 [`docs/lessons.md`](docs/lessons.md)
 - **等級→rlv 的對照是「取該職業等級的最小 rlv」，不是猜的**：資料裡可調整配方存的 rlv 正好就是 Lv100 的最小 rlv（690）——代入最高等級會還原成原值。這條 identity 已用**實資料全量**釘進 T20（768 筆逐筆比對），上游改版讓對照失效會直接紅。**不要拿任務的 LevelGroup 反推等級**（該欄沒有對應的等級表，datamining 也沒有 `WKS*LevelGroup` sheet）。
 - **這一區的等級是本地保存的**（`ffxiv-crafter-level-sync-v1`）：留空＝跟隨「角色數值」的等級，填數字＝手動指定並保存。輸入框在使用者聚焦時**不得被 refreshSelectedGear 覆寫**（每次重繪都會走到，硬寫會吃掉游標與半打的數字）——同理整個 `#level-sync` 是 index.html 靜態骨架，JS 只改 value/文字，不重建 DOM。
-- **下拉／浮層的窄屏溢出，只有實測才算數**（2026-08-02 B-011 2-3）：食藥 listbox 原本 `width: max(100%, 400px)`，
-在 ≤430px 手機必然溢出（固定最小寬 > 可用寬）。**健檢報告當時判「800–1018px 中間寬度會溢出」是錯的**——
-實測 800/900 完全正常。修法也踩了兩次坑：加 `@media { left: auto; right: 0 }` 把右溢出換成**左**溢出
-（選單比按鈕寬，右緣對齊就往左長出去），且打壞原本正常的 800/900；改用 `calc(100vw - 常數)` 去扣包裝器偏移也不行
-——**那個偏移本身會隨選單寬度變動**（選單太寬→整頁水平溢出→偏移量從 97px 變成 59px，等於在追一個會動的目標）。
-定案＝窄屏（≤700px）讓 `.cfg-line` 標籤獨佔一行、控制項與選單 `width: 100%`，由版面自己保證落在容器內，不用任何魔術常數。
-**量測手法（改這一區必重跑）**：同源 iframe 定寬載入本站（`tmp/width-probe.html` 的形式），逐一設 1400/1018/900/800/430/390/360，
-展開選單後量 `getBoundingClientRect()`，驗 `left >= 0`、`right <= 視窗寬`、末列選項完全落在視窗內。
-`tools/test-formulas.mjs` 的 T26 只擋「已知會壞的形狀」（無上界最小寬／缺窄屏規則），**CSS 文字比對驗不了 layout**。
+- **下拉／浮層的窄屏溢出，只有實測才算數**：定案＝窄屏（≤700px）讓 `.cfg-line` 標籤獨佔一行、控制項與選單 `width: 100%`，**不用任何魔術常數**（試過 `left:auto;right:0` 會換成左溢出、`calc(100vw - 常數)` 的偏移量本身會隨選單寬度變動）。**改這一區必重跑量測**：同源 iframe 定寬載入本站，逐一設 1400/1018/900/800/430/390/360，展開選單後驗 `left>=0`、`right<=視窗寬`。T26 只擋「已知會壞的形狀」，**CSS 文字比對驗不了 layout**。→ 兩次修錯的經過見 [`docs/lessons.md`](docs/lessons.md)
 - **hover 說明一律 `data-help`，禁原生 `title`**（設計系統鐵則；2026-07-27 已把全 repo 19 處 title 清乾淨）：新增提示走 `data-help="…"`（`｜`／`。` 分行），圖示鈕另補 `aria-label`；`window.FFXIVHelp.setup()` 在 app.js init 呼叫一次（冪等）。
 - **表格一律 `table-layout: fixed` + 百分比欄寬**（配方表 `.rt` / 角色數值 `.gear-table`，2026-07-27）：欄寬與內容脫鉤才不會在篩選/換頁時跳動（📊 表格佈局穩定鐵則）。**列內可能插徽章的儲存格要預留 `min-height`**（`.rt-nmline` 22px）——否則有徽章的列比別列高一截。掃視靠斑馬紋、分隔線淡化到 55%，別再加回每列實線。
 - **求解選項的說明是常駐文字不是 hover**（`.crafter-opt__desc`）：勾選類開關逐項要有一行說明；停用時**不隱藏控制**，改暗掉 + `.crafter-why` 寫出原因（`#adv-why` 高難度 / `#target-why` NQ 模式 / `#solve-btn[aria-disabled]` 缺角色數值）。

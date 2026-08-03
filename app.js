@@ -25,6 +25,11 @@ function b64urlEncode(s) {
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
+// ⚠ **刻意 local hardcode，不是漏 sync**（B-001，Owner 2026-08-03 拍板）：
+// monorepo 的職業權威源 `data/item_dict/jobs.json` 只散布 **21 個戰鬥職**，不含 8 個製作職
+// （`tools/sync-ffxiv-constants.ps1` 的散布範圍就是那 21 職）⇒ 這兩份沒有上游可對。
+// 月稽核／AUTO-SYNC 掃描看到這裡請跳過。真正防漂移的是 test-formulas.mjs 的 T29 不變量：
+// DOH 必須恰好等於 recipes.json 出現過的 job 集合，且 JOB_ICON 的鍵必須與 DOH 一致。
 const DOH = ['木工', '鍛造', '甲冑', '金工', '皮革', '裁縫', '鍊金', '烹調']; // 8 DoH（= recipe.job 值，依製作職業列序）
 // DoH 職業 icon：classjob_id 8–15 → icon_id 62100+id（同 jobs.json framed icon 模式）
 const JOB_ICON = {

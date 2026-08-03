@@ -39,9 +39,11 @@ VARIANT_EN = {
     "StellarSteadyHand": "Stellar Steady Hand", "RapidSynthesis": "Rapid Synthesis",
     "HastyTouch": "Hasty Touch", "DaringTouch": "Daring Touch",
 }
-# game_ref 缺漏時的最後安全網（2026-07-16 起 game_ref 已補 46843 群星穩定 → 正常對到 35/35、本表閒置；
-# 僅當 game_ref 重建倒退時接手，勿刪）
-FALLBACK_TC = {"StellarSteadyHand": "群星穩定"}
+# game_ref 缺漏時的最後安全網（2026-07-16 起 game_ref 已補 46843 → 正常對到 35/35、本表閒置；
+# 僅當 game_ref 重建倒退時接手，勿刪）。
+# ⚠ 名字必須與 game_ref 的 SUPPLEMENT_CRAFT_ACTIONS 同步：46843 是**宇宙探索（月球）專用**技能、
+#   **台服尚未開放**，故只能用国服名的機轉「宇宙穩手」，不得自造（2026-08-03 修：原為自造的「群星穩定」）。
+FALLBACK_TC = {"StellarSteadyHand": "宇宙穩手"}
 
 
 # CraftAction sheet 對同一技能有多列（8 個 DoH 職業各一份），另有一批 ClassJobLevel=1 的**未使用佔位列**，

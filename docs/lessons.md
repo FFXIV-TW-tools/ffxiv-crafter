@@ -1,0 +1,42 @@
+# 踩坑教訓庫 — ffxiv-crafter
+
+> 從 `AGENTS.md`「開發注意」搬出的**敘事**（怎麼發現的、錯了會怎樣）。
+> **可執行的規則本身留在 AGENTS.md**，那裡每 session 自動載入；本檔按需查閱。
+> 搬移理由＝AGENTS.md 超過 DEVLOOP R7 的 20KB 護欄（2026-08-03，Owner 拍板「敘事搬索引」）。
+
+## 技能 icon 取列策略
+
+**技能 icon 取列策略勿改回 `ORDER BY id LIMIT 1`**（2026-07-27）：CraftAction sheet 同一技能有 8 個職業版本，**外加一批 `ClassJobLevel=1` 的未使用佔位列，Icon 一律是 `000786`（灰底紅斜線「無圖示」圖）且 id 最小**。取最小 id ＝ 7 個技能拿到佔位圖、看起來像「已停用技能」且不會報錯。正解＝排除 `000786` → `class_job_level` DESC → id ASC；`check-actions.py` 已加不變量機械守。只改技能對照時用 `py -3.11 tools/build-data.py --actions-only`（免重刷 4.1MB 配方資料）。**職業專屬 icon 固定木工版**（做金工配方也顯示木工工具）＝**Owner 2026-07-27 裁示的最終取捨**：技能名稱一致、只是圖示因職業略有差異，不影響使用，不值得為此改資料模型（B-008 已否決，勿再提案）。**紅線只有一條——不得出現佔位「刪除號」圖**（`000786`），已由 `check-actions.py` 不變量機械守。
+
+## 食物/藥水下拉是自繪 listbox
+
+**食物/藥水下拉是自繪 listbox，不是 `<select>`**（2026-07-28）：需求要在選項裡顯示 icon＋物品品級＋功效，`<option>` 只吃純文字 → `app-consumable.js` 自建 `role=listbox`。**按鈕上的 Enter/Space 不要自己處理**——瀏覽器本來就會把它轉成 click，兩邊都做會「開了又關」（實測踩到）；keydown 只接 ↑↓ 開選單。選項的 icon/品級來自 `data/meals.json`・`medicine.json` 的 `icon`／`level` 欄，由 `tools/build-data.py --consumables-only` 以**繁中名對 item_lookup** 補上（124/124 全中；`level` 已驗證 == `items.level_item`＝物品品級，勿另算）。
+
+## 首屏 CLS：等 fetch 才長內容的區塊要預留高度
+
+**首屏「等 fetch 才長內容」的區塊一律要預留高度**（2026-07-29 CLS 修）：field CLS P75 0.225 的來源是 `#pick-panel` 空殼→實體內容 **+588px**。三種手法各有適用：①內容是**確定的**（流程軸冷啟動態）→ 直接把 `flowHtml({})` 輸出寫進 index.html，JS 同字串覆寫（T17 守漂移）；②內容**筆數不定**（chips／翻頁器）→ `#picker.is-loading` 分段 `min-height`，首次 `renderTable()` 後卸下（**失敗路徑也要卸**，否則空井留著）；③**佔位塊自撐**（`.recipe-loading` min-height 60vh == `.recipe-table` max-height），innerHTML 一換即消失，最省事。新增首屏區塊時照這三類挑一種，**別再留空殼**。量測方法＝同源 iframe 固定寬度載入本站，比對「清空成載入態 vs 實際內容」的高度差（可逐 px 掃出窄屏折行斷點；本機 window 無法被自動化縮放）。
+
+## `hidden` 設了不等於收得起來
+
+**`hidden` 屬性設了不等於收得起來，`el.hidden` 也驗不出來**（2026-08-02 實際出包）：UA 的 `[hidden]{display:none}` 優先權最低，本地寫一條 `.x{display:flex}` 就蓋掉它 → JS 設 `el.hidden = true` 完全沒作用、元素照樣顯示。等級同步面板就是這樣**每個配方都顯示**，而我的瀏覽器測試查的是 `el.hidden`（值確實是 `true`）所以全綠。**驗這類收合一律看 `getComputedStyle(el).display` 或 `getBoundingClientRect().height`，不要查 `.hidden` 屬性。**新增「靠 hidden 收合」的區塊時同步補 `[hidden]` 守衛——已由 T21 機械掃描守住（styles.css 現有 7 條守衛，這坑在本 repo 反覆出現）。
+
+## 宇宙探索配方的數值不是資料裡那個
+
+**宇宙探索配方的數值不是資料裡那個**（2026-08-01 B-016）：`Recipe.MaxAdjustableJobLevel=100` 的 768 個配方（8 職 × 96）存的 rlv 一律 690＝**Lv100 版本**。判它「真的會變」而不是「固定的高階配方」的依據是 `WKSMissionUnit`：**同一個 recipe id 同時掛在 LevelGroup 1/2/3**（三個不同等級級距的任務共用一列配方）且 `IsSynced=1`；反例對照＝LevelGroup 4/5/6 用各自專屬的高 rlv（701–775）配方，那些的 `MaxAdjustableJobLevel` 就是 0。修前 Lv70 玩家看到難度 4026（實際 658，**六倍**）→ 求解回「做不到」或給一份貼進遊戲完全對不上的巨集，**全程零錯誤訊號**。
+
+## 工匠的神速技巧：上游把耐久寫死 10
+
+**上游 raphael 把「工匠的神速技巧」的耐久寫死 10，遊戲實際是 0**（2026-08-03 差分審計；`raphael-sim/src/actions.rs` 的 `impl ActionImpl for TrainedEye`，上游 `main` 至今未修，**升版救不了**）。判準＝日文客戶端文案：**每個**會消耗耐久的技能都寫「耐久を消費して」（連預設 10 的「加工」也寫），而「匠の早業」整段沒有耐久字眼；對照組「匠の神業」(Trained Finesse, 0) 寫的是「耐久を消費せず」。英文文案只標非預設值，**不能拿來判**（我第一次就是這樣誤判要翻案）。Teamcraft `trained-eye.ts` 與 Tnze `ffxiv-crafting` 亦為 0。
+  **修法刻意不動上游原始碼**（頁尾與 `THIRD-PARTY-NOTICES.md` 聲明「以未修改原始碼編譯」，一改就啟動 Apache-2.0 §4(b) 修改標示義務），兩處都收在 `wasm/src/lib.rs`：① `replay()` 用完神速技巧後把 10 點補回（不只顯示，坯料製作的「耐久不足效率減半」判定也吃這個值）② `solve_input()` 把神速技巧那條路拆成子問題（神速技巧只能第 1 步用且直接把品質補到目標 ⇒ 最佳解＝神速技巧 ＋「滿耐久、CP−250、只衝進展」的最佳解），子問題須拿掉同為「僅第 1 步可用」的堅信／閒靜。實測 rlv640 緊繃配方 **17 步→14 步**（17 步要貼兩段巨集）。**上游哪天修好了，`trained_eye_plan_is_not_padded_by_upstream_durability_bug` 會轉紅——那是移除本 workaround 的信號，不是壞事。**
+
+## 下拉／浮層的窄屏溢出，只有實測才算數
+
+**下拉／浮層的窄屏溢出，只有實測才算數**（2026-08-02 B-011 2-3）：食藥 listbox 原本 `width: max(100%, 400px)`，
+在 ≤430px 手機必然溢出（固定最小寬 > 可用寬）。**健檢報告當時判「800–1018px 中間寬度會溢出」是錯的**——
+實測 800/900 完全正常。修法也踩了兩次坑：加 `@media { left: auto; right: 0 }` 把右溢出換成**左**溢出
+（選單比按鈕寬，右緣對齊就往左長出去），且打壞原本正常的 800/900；改用 `calc(100vw - 常數)` 去扣包裝器偏移也不行
+——**那個偏移本身會隨選單寬度變動**（選單太寬→整頁水平溢出→偏移量從 97px 變成 59px，等於在追一個會動的目標）。
+定案＝窄屏（≤700px）讓 `.cfg-line` 標籤獨佔一行、控制項與選單 `width: 100%`，由版面自己保證落在容器內，不用任何魔術常數。
+**量測手法（改這一區必重跑）**：同源 iframe 定寬載入本站（`tmp/width-probe.html` 的形式），逐一設 1400/1018/900/800/430/390/360，
+展開選單後量 `getBoundingClientRect()`，驗 `left >= 0`、`right <= 視窗寬`、末列選項完全落在視窗內。
+`tools/test-formulas.mjs` 的 T26 只擋「已知會壞的形狀」（無上界最小寬／缺窄屏規則），**CSS 文字比對驗不了 layout**。

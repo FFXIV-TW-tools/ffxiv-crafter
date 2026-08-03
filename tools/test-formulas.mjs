@@ -53,7 +53,7 @@ vm.runInContext(GEAR_SRC, sandbox, { filename: 'app-gear.js' });
 vm.runInContext(RECIPE_SRC, sandbox, { filename: 'app-recipe.js' });
 vm.runInContext(RENDER_SRC, sandbox, { filename: 'app-render.js' }); // 先定義 globalThis.CraftRender（hqPercent 純函式、不需 init）
 vm.runInContext(
-  APP_SRC + '\n;globalThis.__t = { computeSettings, recipeMaxes, effectiveStats, esc, mbItem, mbCraft, selectRecipe, hqPercent: globalThis.CraftRender.hqPercent };',
+  APP_SRC + '\n;globalThis.__t = { computeSettings, recipeMaxes, effectiveStats, esc, mbItem, mbCraft, selectRecipe, DOH, JOB_ICON, hqPercent: globalThis.CraftRender.hqPercent };',
   sandbox, { filename: 'crafter-app.js' });
 const T = sandbox.__t;
 
@@ -1415,6 +1415,20 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check(`T21 哨兵本身有效：掃到帶 hidden 的選擇器（實測 ${sels.size} 個）`, sels.size >= 20);
   eq('T21 帶 hidden 的元素若被本地 CSS 指定 display，必須有 [hidden] 守衛',
     unguarded.join(' '), '');
+}
+
+// ===== T29：DOH / JOB_ICON 是刻意的 local hardcode（B-001）——用不變量取代上游 sync =====
+// jobs.json 只散布 21 個戰鬥職、不含製作職 ⇒ 這兩份沒有權威源可對。防漂移改用「對得起實際資料」：
+// 遊戲加/改製作職，或有人手滑改壞任一份，這裡就會紅。
+{
+  const recipes = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'recipes.json'), 'utf8'));
+  const rows = Array.isArray(recipes) ? recipes : (recipes.recipes || Object.values(recipes));
+  const jobsInData = [...new Set(rows.map((r) => r.job))].sort();
+  const doh = [...T.DOH].sort();
+  eq('T29 DOH == recipes.json 實際出現的所有職業', doh.join('|'), jobsInData.join('|'));
+  eq('T29 JOB_ICON 的鍵集合 == DOH', Object.keys(T.JOB_ICON).sort().join('|'), doh.join('|'));
+  check('T29 JOB_ICON 每個值都是 icon 路徑',
+    Object.values(T.JOB_ICON).every((v) => /^\/i\/\d{6}\/\d{6}\.png$/.test(v)));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
