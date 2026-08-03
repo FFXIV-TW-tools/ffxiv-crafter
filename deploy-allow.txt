@@ -2,6 +2,7 @@ LICENSE
 LICENSE-APACHE-2.0.txt
 LICENSE-MIT.txt
 _headers
+_routes.json
 app-browse.js
 app-consumable.js
 app-flow.js
@@ -15,6 +16,7 @@ app.js
 crafting-list.js
 data
 favicon-192.png
+functions
 index.html
 pkg
 robots.txt

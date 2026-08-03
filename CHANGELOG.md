@@ -2,6 +2,24 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-03 — 舊網址交接頁（monorepo B-048 Task 4，第 5 站）
+
+**為什麼**：本站已掛上 `crafter.xivtc.com`，但手上是舊 `*.pages.dev` 書籤的使用者不會知道，也不會把跨工具身份（UUID）帶過去。
+
+**為什麼不是 301**：301 在**邊緣執行、早於任何 JS** ⇒ 舊 origin 完全沒機會讀 `localStorage` 裡的 UUID。純 301 會讓使用者靜默失去雲端身份。所以必須回一頁極簡 HTML、由 client 讀 LS 後自行組目標 URL——這也是為什麼目標 URL 不能在 server 端組完就送：**`#fragment` 永遠不會送到伺服器**。
+
+### Added
+
+- `functions/_middleware.js`（**四個條件同時成立才攔**：`GET`／`Accept` 含 `text/html`／host 精確等於 production 舊 host——字串全等，順帶讓 CF preview 子網域天然放行）
+- `_routes.json`（**完整枚舉**，刻意不用 `/*`：那會讓每個 CSS/JS/圖片請求都變成一次 Functions invocation）
+- `tests/route-manifest.json`（攔截路徑唯一事實源）＋ `tests/handoff.test.mjs`（四個攔截條件各有正負案例）
+- `deploy-allow.txt` 加 `functions`／`_routes.json`；`deploy-deny.txt` 加 `tests`（fail-closed，漏了 build 直接失敗）
+
+### Notes
+
+- 本站為**單頁站**，manifest＝`["/", "/index.html"]`。`/index.html` 必須顯式列入——實測它**不會** 308 到 `/`（其餘 `.html` 深鏈會，被 308 後由無副檔名形式接手，交接照樣發生）。
+- middleware 由樣板產生，**除兩個常數外與其餘 12 站逐字節相同**，由 monorepo 交接頁一致性哨兵把關（斷言的是逐字節相同，不是「條件有沒有在」——後者抓不到語意被改寫）。
+
 ## 2026-08-03 — B-006 結案：生態內互跳慣例成文、本地 `[hidden]` interim 移除
 
 **(a) noopener（Owner 選 A：維持不加，但要成文）**：工具間深連結用 named target 且刻意不加

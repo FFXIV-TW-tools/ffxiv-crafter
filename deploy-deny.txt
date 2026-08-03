@@ -1,4 +1,9 @@
+.adversarial-reviews
+.agents
 .gitignore
+.pytest_cache
+.venv
+.wrangler
 AGENTS.md
 CHANGELOG.md
 CLAUDE.md
@@ -6,12 +11,8 @@ README.md
 THIRD-PARTY-NOTICES.md
 deploy-prepare.sh
 docs
-tools
-wasm
-.agents
-.adversarial-reviews
-.wrangler
-.venv
-.pytest_cache
 node_modules
 package-lock.json
+tests
+tools
+wasm
