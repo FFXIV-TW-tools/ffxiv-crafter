@@ -4,10 +4,10 @@
 /* 圖示一律不可拖曳：<img> 預設可拖曳，點技能時微滑會觸發瀏覽器原生拖曳殘影（半透明圖示浮在游標旁，曾被誤判為版面 bug）。 */
 .codex-container img { -webkit-user-drag: none; user-select: none; }
 
-/* [hidden] 守衛：.codex-btn 的 display:inline-flex 蓋過 UA [hidden]{display:none} → 帶 hidden 的按鈕仍顯示。
-   收窄到本工具具體按鈕 ID（**不覆寫共用 .codex-btn 根 selector**，避免與 portal 未來規則衝突／全域改所有 CDN 按鈕行為）。
-   ★TODO：portal header.css 宜全域補 .codex-btn[hidden]（同 badge 既有鐵則）＝BACKLOG B-006，屆時刪本地。 */
-#change-recipe[hidden], #cancel-btn[hidden], #solve-btn[hidden], #solve-retry-btn[hidden], #back-to-list[hidden] { display: none; }
+/* `.codex-btn[hidden]` 的守衛已由 portal `header.css` 全域提供（`.codex-btn/.codex-chip/.codex-icon-btn`），
+   本工具原本收窄到 5 個按鈕 ID 的 interim 已於 2026-08-03 移除（B-006 結案）。
+   新增「靠 hidden 收合」的元素時：**是 codex 元件 → 不用做任何事**；是本工具自己的 class 且本地 CSS
+   指定了非 none 的 display → 必須在本檔補 `[hidden]` 守衛（T21 機械掃描會擋）。 */
 
 body {
   margin: 0;

@@ -2,6 +2,20 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-03 — B-006 結案：生態內互跳慣例成文、本地 `[hidden]` interim 移除
+
+**(a) noopener（Owner 選 A：維持不加，但要成文）**：工具間深連結用 named target 且刻意不加
+`rel="noopener"`（加了會切斷 `window.opener`，named 分頁重用的體感就壞了）。風險可接受的前提是
+**目標全是同 org 自家子域 ＋ 收端寫入動作一律有確認 modal**；連非自家網域仍必須加。
+理由寫進 portal `_DESIGN-SYSTEM.md` 新段〈🔗 生態內互跳〉——**成文的目的是止血**，
+這項被外審重複點名過，之後引用該段即可。
+
+**(b) `[hidden]` 守衛（Owner 選 A）**：portal `header.css` 的全域守衛
+（`.codex-btn/.codex-chip/.codex-icon-btn[hidden]`）**早已存在**，故本 repo 收窄到 5 個按鈕 ID 的
+interim 移除，改留一行指引：**是 codex 元件就不用做事；自寫 class 且本地設了非 none 的 display 才要補**。
+**實測驗過**（這正是「hidden 設了不等於收得起來」那個坑）：5 個按鈕逐一 `getComputedStyle` ——
+顯示時 flex/inline-flex、設 hidden 後全部 none。T21 哨兵仍綠。
+
 ## 2026-08-03 — 清 backlog：B-001 不變量、B-003 否決、AGENTS 敘事搬 docs
 
 **B-001 DOH/JOB_ICON 權威源（Owner 選 A）**：這兩份是**刻意的 local hardcode**——monorepo 的
