@@ -3,6 +3,10 @@
 > 提案清單（B-NNN，append-only 編號）。**不經 Owner 核可不得自主實作**。來源標註便於回溯。
 > 完成打勾保留原句、尾巴追加 `✓ 完成於 cycle <id>`；否決用刪除線並留一行原因。格式見 DEVLOOP §4.2（四軸快篩）。
 
+- [ ] ~~**B-021** (P2, perf) 開頁資料改 lazy load + IndexedDB（抄 bis `app-core.js:419`）~~ — **否決 2026-08-05，前提是測錯的**。提案時說「開頁併發抓 7.3MB」，但那是 `decodedBodySize`＝**解壓後供解析的量**，不是下載量。CF 有 brotli，實測線上實際傳輸：`recipes.json` 4180KB→**196KB**、`items.json` 2190KB→**312KB**、`ingredients.json` 680KB→**99KB**，合計 ~607KB 且三支在同一輪 `Promise.all` 平行；主執行緒 `JSON.parse` 實測 **7 / 4 / 7 ＝ 18ms**。整頁 DCL 683ms、load 795ms、總傳輸 621KB。⇒ 抄 bis 那套等於為「最多一兩百毫秒的冷啟動下載」加一整套 IDB 快取＋失效＋版本比對，加在一個運作正常的載入路徑上，不划算。**唯一勉強成立的殘餘是 `ingredients.json`（99KB，只有開配方看 BOM 才需要）純延後、免 IDB——99KB 與 7ms，同樣不值得動。** ⚠️ 給後人：量頻寬要看 `transferSize` 或 `curl --compressed`，`decodedBodySize` 會讓這裡看起來大 12 倍。相關跨站盤點＝portal B-065。來源: 2026-08-05 跨站效能盤點
+
+- [ ] ~~**B-022** (P3, perf) 加 `<link rel="modulepreload">` 展平 module 瀑布（同 market B-081 / cosmic B-025 / sightseeing B-002）~~ — **否決 2026-08-05：本站沒有 module 瀑布可展平**。實地跑生成器產出 **0 條**：前端入口 `app.js` 雖是 `type="module"` 但**零相對 import**，10 支相依（`app-flow`／`app-gear`／`app-recipe`…）全走 classic `<script>` 全域載入。先前 grep 到的 7 支 ES module 檔全在後端（`functions/`／`worker.js`／`pkg/crafter_wasm.js`）。已把試作的生成器與哨兵撤回，不留無作用的機械。
+
 - [x] **B-001** (P3, data) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】DOH/JOB_ICON 權威源決策 — `app.js` DOH/JOB_ICON hardcode 無 AUTO-SYNC marker（`jobs.json` 僅 21 戰鬥職、不含 8 製作職）。選項：(a) 加註解「刻意 local」免月稽核誤報、(b) 加不變量 `Set(DOH)==recipes.job distinct`、(c) 納入某 sync 腳本。**待 shawn 選向**——(a)+(b) 低成本零風險、(c) 需先有製作職權威源。來源: 健檢 2026-07-04（DATA-2＝CQ-04）
   - **✅ 完成 2026-08-03（Owner 選 (a)+(b)）**：`jobs.json` 只散布 21 個戰鬥職、不含 8 個製作職 ⇒ 這兩份**沒有上游可對**，
     (c) 納 sync 腳本不成立。改法＝在 `app.js` 註明「刻意 local、月稽核請跳過」，並用 **T29 不變量**取代 sync：
