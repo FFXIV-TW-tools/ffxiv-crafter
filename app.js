@@ -6,7 +6,7 @@ function iconUrl(p) {
   const m = /^\/i\/(\d{6})\/(\d{6})\.png$/.exec(p || '');
   return m ? `https://v2.xivapi.com/api/asset/ui/icon/${m[1]}/${m[2]}_hr1.tex?format=png` : '';
 }
-// 跨工具深連結：到 marketboard 看材料樹/行情/成本（dev 走 :8774 統一外部站，prod 走 pages.dev）
+// 跨工具深連結：到 marketboard 看材料樹/行情/成本（dev 走 :8774 統一外部站，prod 走 market.xivtc.com）
 const MARKETBOARD_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8774/ffxiv-tw-marketboard/'
   : 'https://market.xivtc.com/';
