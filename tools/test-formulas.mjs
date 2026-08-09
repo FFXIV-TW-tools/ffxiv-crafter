@@ -74,10 +74,12 @@ const rlv640 = {
 };
 const recipe100 = { difficulty_factor: 100, quality_factor: 100, durability_factor: 100, is_expert: false };
 const gear = { level: 90, cms: 4048, ctrl: 3980, cp: 600 };
+const gearSpec = { ...gear, specialist: true };   // 同一角色但該職業持有專家之證
 
-// 設 computeSettings 讀的所有 DOM 輸入（求解選項 / 消耗品 / 專家之證），求純函式決定性
-function setInputs({ specialist = false, mode = 'quality', target = '', manip = true, heart = false, qi = false, backload = false, adv = false } = {}) {
-  getEl('specialist').checked = specialist;
+// 設 computeSettings 讀的所有 DOM 輸入（求解選項 / 消耗品），求純函式決定性。
+// 專家之證**不在此列**：2026-08-09 起它是「角色數值」分頁裡該職業的狀態，由 gear.specialist 帶入
+// （gearFor 附上），故測法＝換 gear fixture，不是撥 DOM 開關。
+function setInputs({ mode = 'quality', target = '', manip = true, heart = false, qi = false, backload = false, adv = false } = {}) {
   getEl('food').value = ''; getEl('potion').value = '';       // 無食藥（FOOD/POTION 因 loadData 失敗為空 → getConsumable 回 null）
   getEl('opt-manip').checked = manip; getEl('opt-heart').checked = heart; getEl('opt-qi').checked = qi;
   getEl('opt-backload').checked = backload; getEl('opt-adversarial').checked = adv;
@@ -105,16 +107,16 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 
 // ===== T2：M1 專家之證 → 作業/加工 +20、CP +15（本輪修復；金鎖）=====
 {
-  setInputs({ specialist: true });
-  const s = T.computeSettings(recipe100, rlv640, gear);
+  setInputs({});
+  const s = T.computeSettings(recipe100, rlv640, gearSpec);
   eq('T2 專家之證 CP +15（max_cp 600→615）', s.max_cp, 615);
   eq('T2 專家之證 作業 +20（base_progress 250→251）', s.base_progress, 251);
   eq('T2 專家之證 加工 +20（base_quality 266→267）', s.base_quality, 267);
   // effectiveStats 直驗 +20/+20/+15
-  eqObj('T2 effectiveStats(+20/+20/+15)', T.effectiveStats(gear), { cms: 4068, ctrl: 4000, cp: 615 });
+  eqObj('T2 effectiveStats(+20/+20/+15)', T.effectiveStats(gearSpec), { cms: 4068, ctrl: 4000, cp: 615 });
 }
 {
-  setInputs({ specialist: false });
+  setInputs({});
   eqObj('T2b effectiveStats 無專家＝原值', T.effectiveStats(gear), { cms: 4048, ctrl: 3980, cp: 600 });
 }
 
@@ -124,7 +126,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   let fixture = { food: null, potion: null };
   sandbox.CraftConsumable = { get: (kind) => fixture[kind] || null };
   try {
-    setInputs({ specialist: false });
+    setInputs({});
     fixture = { food: { cm: 7, cm_max: 999 }, potion: null };
     eqObj('T22 百分比加成取 floor', T.effectiveStats(gear),
       { cms: 4048 + Math.floor(4048 * 7 / 100), ctrl: 3980, cp: 600 });
@@ -137,9 +139,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     eqObj('T22 食物與藥水都以原始 base 計算', T.effectiveStats(gear),
       { cms: 4048 + Math.floor(4048 * 3 / 100) + Math.floor(4048 * 4 / 100), ctrl: 3980, cp: 600 });
 
-    setInputs({ specialist: true });
     fixture = { food: { cm: 10, cm_max: 999, ct: 10, ct_max: 999, cp: 10, cp_max: 999 }, potion: null };
-    eqObj('T22 專家之證先疊入食藥加成 base', T.effectiveStats(gear),
+    eqObj('T22 專家之證先疊入食藥加成 base', T.effectiveStats(gearSpec),
       {
         cms: 4068 + Math.floor(4068 * 10 / 100),
         ctrl: 4000 + Math.floor(4000 * 10 / 100),
@@ -175,13 +176,12 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 // ===== T23：專心致志／快速改革必須隨專家之證 gate =====
 // 沒有 Soul of the Crafter 就沒有這兩個技能；公式層必須是最後一道防線，不能只靠 UI disabled。
 {
-  setInputs({ specialist: false, heart: true, qi: true });
+  setInputs({ heart: true, qi: true });
   const noSpecialist = T.computeSettings(recipe100, rlv640, gear);
   eq('T23 無專家之證 → 專心致志強制關', noSpecialist.use_heart_and_soul, false);
   eq('T23 無專家之證 → 快速改革強制關', noSpecialist.use_quick_innovation, false);
 
-  setInputs({ specialist: true, heart: true, qi: true });
-  const specialist = T.computeSettings(recipe100, rlv640, gear);
+  const specialist = T.computeSettings(recipe100, rlv640, gearSpec);
   eq('T23 有專家之證 → 專心致志可用', specialist.use_heart_and_soul, true);
   eq('T23 有專家之證 → 快速改革可用', specialist.use_quick_innovation, true);
 
@@ -1132,7 +1132,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T15 選單依物品品級高→低排序', JSON.stringify(CS.names('food')), JSON.stringify(['高品級料理', '低品級料理']));
   eq('T15 未選時 get 回 null、label 為空', JSON.stringify([CS.get('food'), CS.label('food')]), JSON.stringify([null, '']));
 
-  // 保存往返：寫入 → 新 sandbox 重載 → 選擇/HQ/專家之證/展開狀態都要回來（重開瀏覽器不遺失）
+  // 保存往返：寫入 → 新 sandbox 重載 → 選擇/HQ/展開狀態都要回來（重開瀏覽器不遺失）
+  // specialist 刻意留在舊格式裡：2026-08-09 搬去 gearsets 後，殘留欄位必須被忽略而非炸掉
   store['ffxiv-crafter-consumables-v1'] = JSON.stringify({ food: '高品級料理', potion: '強化藥', foodHq: false, potionHq: true, specialist: true, open: false });
   const cs2 = { console, document: { getElementById: $, addEventListener() {} },
     localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } } };
@@ -1145,7 +1146,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T15 重載後回復選擇（食物）', CS2.label('food'), '高品級料理');
   eq('T15 重載後回復 HQ 勾選狀態（食物 NQ / 藥水 HQ）',
     JSON.stringify([$('food-hq').checked, $('potion-hq').checked]), JSON.stringify([false, true]));
-  eq('T15 重載後回復專家之證與展開狀態', JSON.stringify([$('specialist').checked, $('consumable-block').open]), JSON.stringify([true, false]));
+  eq('T15 重載後回復展開狀態', $('consumable-block').open, false);
+  eq('T15 舊保存值殘留的 specialist 欄位被忽略（已搬到角色數值）', $('specialist').checked, false);
   eq('T15 HQ 未勾 → get 回 NQ 版本（加成較低）', CS2.get('food').cp, 21);
   $('food-hq').checked = true;
   eq('T15 HQ 勾選 → get 回 HQ 版本', CS2.get('food').cp, 26);
@@ -1429,6 +1431,103 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T29 JOB_ICON 的鍵集合 == DOH', Object.keys(T.JOB_ICON).sort().join('|'), doh.join('|'));
   check('T29 JOB_ICON 每個值都是 icon 路徑',
     Object.values(T.JOB_ICON).every((v) => /^\/i\/\d{6}\/\d{6}\.png$/.test(v)));
+}
+
+
+// ===== T30：專家之證＝逐職業的角色狀態（上限 3；2026-08-09 從「素材與加成」搬到「角色數值」）=====
+// 為什麼要測：遊戲一個角色同時最多持有 3 個專家之證。上限若沒守住，玩家會替 8 個職業全勾，
+// 求解器照樣算得出漂亮巨集 —— 而那份巨集他在遊戲裡按不出來（專心致志／快速改革根本沒有），
+// 且過程零錯誤訊號。另一半是 fallback：某職沒填數值時走「預設」數值，但**證是綁職業的**，
+// 不能跟著 fallback 一起變成「預設」那格（沒有那格）。
+{
+  const mkSpecCtx = (store) => {
+    const els = {};
+    const el = () => ({ checked: false, value: '', innerHTML: '', textContent: '', hidden: true,
+      disabled: false, max: '', min: '', placeholder: '', dataset: {}, style: {},
+      classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, getAttribute: () => null,
+      addEventListener() {}, removeEventListener() {}, querySelectorAll: () => [], querySelector: () => null,
+      appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, focus() {}, scrollIntoView() {}, select() {} });
+    const ctx = {
+      // app.js 的 init 會因缺 CraftConsumable 而早炸（本測只需 CraftGear，那之前已 init 完）→ 吞掉那行噪音
+      console: { log: console.log, warn() {}, error() {} },
+      document: { getElementById: (id) => els[id] || (els[id] = el()), querySelector: () => null,
+        querySelectorAll: () => [], createElement: el, body: el() },
+      location: { hostname: 'localhost', search: '' },
+      window: { FFXIVToast: { show() {} } },   // toast 走 codex 版 → 不落 alert 分支
+      localStorage: { getItem: (k) => (k in store ? store[k] : null),
+        setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } },
+      Worker: function () { this.postMessage = () => {}; this.terminate = () => {}; },
+      fetch: () => Promise.reject(new Error('test: no network')),
+      setTimeout, clearTimeout, setInterval, clearInterval, URLSearchParams,
+    };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t30.js' });
+    vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t30.js' });
+    vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t30.js' });
+    ctx.loadGear();
+    return ctx;
+  };
+  const toggle = (ctx, job, on) => {
+    const target = { checked: on, dataset: { job } };
+    ctx.CraftGear.onSpecialistToggle({ target });
+    return target;   // 超過上限時 handler 會把 checked 改回 false → 由呼叫端斷言
+  };
+
+  const store = { 'ffxiv-crafter-gearsets-v1': JSON.stringify({
+    '預設': { level: 100, cms: 4000, ctrl: 3900, cp: 600 },
+    '木工': { level: 100, cms: 4048, ctrl: 3980, cp: 620 },
+  }) };
+  const ctx = mkSpecCtx(store);
+
+  toggle(ctx, '木工', true); toggle(ctx, '鍛造', true); toggle(ctx, '甲冑', true);
+  eq('T30 勾 3 個職業 → 計數 3', ctx.CraftGear.specialistCount(), 3);
+  eq('T30 上限常數＝遊戲的 3', ctx.CraftGear.SPEC_MAX, 3);
+
+  const fourth = toggle(ctx, '金工', true);
+  eq('T30 第 4 個被擋下（勾選回退）', fourth.checked, false);
+  eq('T30 第 4 個不進保存', ctx.CraftGear.specialistFor('金工'), false);
+  eq('T30 被擋下後計數維持 3', ctx.CraftGear.specialistCount(), 3);
+
+  eq('T30 保存到 gearsets（重開瀏覽器不遺失）',
+    JSON.parse(store['ffxiv-crafter-gearsets-v1'])['木工'].specialist, true);
+  eq('T30 保存不動到數值欄',
+    JSON.parse(store['ffxiv-crafter-gearsets-v1'])['木工'].cms, 4048);
+
+  // 有自己數值的職業
+  eq('T30 gearFor 帶出該職業的專家之證', ctx.gearFor('木工').specialist, true);
+  // 沒有自己數值的職業 → 數值走「預設」，但證仍看自己那格
+  const gSmith = ctx.gearFor('鍛造');
+  eq('T30 數值走 fallback「預設」', gSmith._src, '預設');
+  eq('T30 證不跟著 fallback 走（鍛造有證）', gSmith.specialist, true);
+  eq('T30 沒勾的職業＝無證（即使同樣走預設數值）', ctx.gearFor('皮革').specialist, false);
+
+  // 公式端：證是唯一 gate（UI disabled 不算數）
+  const rlvT = { id: 640, class_job_level: 90, difficulty: 4400, quality: 9000, durability: 70,
+    progress_divider: 130, quality_divider: 115, progress_modifier: 80, quality_modifier: 70 };
+  ctx.document.getElementById('opt-heart').checked = true;
+  ctx.document.getElementById('opt-qi').checked = true;
+  eq('T30 有證的職業 → 專心致志可用',
+    ctx.computeSettings(recipe100, rlvT, ctx.gearFor('木工')).use_heart_and_soul, true);
+  eq('T30 無證的職業 → 快速改革強制關',
+    ctx.computeSettings(recipe100, rlvT, ctx.gearFor('皮革')).use_quick_innovation, false);
+  eq('T30 有證的職業 → 數值 +20/+20/+15',
+    JSON.stringify(ctx.effectiveStats(ctx.gearFor('木工'))), JSON.stringify({ cms: 4068, ctrl: 4000, cp: 635 }));
+
+  // 取消一個就空出一格（上限是「同時持有」，不是「一輩子只能勾 3 次」）
+  toggle(ctx, '木工', false);
+  eq('T30 取消後計數 2', ctx.CraftGear.specialistCount(), 2);
+  const refilled = toggle(ctx, '金工', true);
+  eq('T30 空出一格後可再勾別的職業', refilled.checked, true);
+  eq('T30 補勾後計數回到 3', ctx.CraftGear.specialistCount(), 3);
+
+  // 「預設」不是職業（是數值 fallback）→ 不得佔用上限；壞掉的保存值也不能把計數灌爆
+  const store2 = { 'ffxiv-crafter-gearsets-v1': JSON.stringify({
+    '預設': { level: 100, cms: 4000, ctrl: 3900, cp: 600, specialist: true },
+    '木工': { cms: 1, ctrl: 1, cp: 1, specialist: true },
+  }) };
+  const ctx2 = mkSpecCtx(store2);
+  eq('T30 「預設」的 specialist 不計入上限', ctx2.CraftGear.specialistCount(), 1);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

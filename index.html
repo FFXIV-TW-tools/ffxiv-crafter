@@ -191,7 +191,7 @@
           <p class="cfg-card__desc codex-small">HQ 素材、食物與藥水會提高起始品質與數值 — 不確定就保持預設。</p>
           <details class="consumable-block" id="consumable-block" open>
             <summary>
-              <span class="codex-small">🍖 食物 / 藥水 / 專家之證</span>
+              <span class="codex-small">🍖 食物 / 藥水</span>
               <span id="consumable-sum" class="crafter-sum codex-small">未使用</span>
             </summary>
             <div class="consumables">
@@ -207,7 +207,6 @@
                   <ul id="potion-menu" class="crafter-cons__menu" role="listbox" aria-labelledby="potion-label" hidden></ul>
                 </div>
                 <label class="opt"><input type="checkbox" id="potion-hq" checked> HQ</label></div>
-              <label class="opt"><input type="checkbox" id="specialist"> 專家之證（作業 +20・加工 +20・CP +15）</label>
               <div id="eff-stats" class="eff-stats codex-small"></div>
             </div>
           </details>
@@ -246,12 +245,12 @@
                 <span class="crafter-opt__desc codex-small">施放後 8 步內每步回復 5 點耐久。<b>需 Lv 65 並完成解鎖任務</b>——到等級不代表就有。耗 CP，CP 吃緊時可關掉。</span></span></label>
               <label class="crafter-opt"><input type="checkbox" id="opt-heart">
                 <span class="crafter-opt__body"><span class="crafter-opt__name">專心致志</span>
-                <span class="crafter-opt__desc codex-small">整場一次，無視製作狀態（球色）強制讓下一個技能生效。需專家之證。</span>
-                <span id="heart-why" class="crafter-why codex-small" hidden>需先勾選上方的「專家之證」，沒有專家之證的角色沒有這個技能。</span></span></label>
+                <span class="crafter-opt__desc codex-small">整場一次，無視製作狀態（球色）強制讓下一個技能生效。需該職業持有專家之證。</span>
+                <span id="heart-why" class="crafter-why codex-small" hidden>此配方職業未持有專家之證 — 到「角色數值」分頁勾選該職業的專家之證才有這個技能。</span></span></label>
               <label class="crafter-opt"><input type="checkbox" id="opt-qi">
                 <span class="crafter-opt__body"><span class="crafter-opt__name">快速改革</span>
-                <span class="crafter-opt__desc codex-small">整場一次，免 CP 直接獲得一層「改革」效果。需專家之證。</span>
-                <span id="qi-why" class="crafter-why codex-small" hidden>需先勾選上方的「專家之證」，沒有專家之證的角色沒有這個技能。</span></span></label>
+                <span class="crafter-opt__desc codex-small">整場一次，免 CP 直接獲得一層「改革」效果。需該職業持有專家之證。</span>
+                <span id="qi-why" class="crafter-why codex-small" hidden>此配方職業未持有專家之證 — 到「角色數值」分頁勾選該職業的專家之證才有這個技能。</span></span></label>
             </div>
           </div>
           <div class="opt-group">
@@ -308,7 +307,7 @@
       <section class="codex-tablet codex-tablet--cyan panel">
         <span class="codex-hud"></span>
         <h2 class="codex-h2">角色數值 — 各製作職業裝備</h2>
-        <p class="codex-body hint">填每個職業的 <b>作業精度 / 加工精度 / CP / 等級</b>。求解時依配方職業<b>自動套用</b>；某職留空用「<b>預設</b>」。資料只存本機。</p>
+        <p class="codex-body hint">填每個職業的 <b>作業精度 / 加工精度 / CP / 等級</b>。求解時依配方職業<b>自動套用</b>；某職留空用「<b>預設</b>」。右欄勾<b>專家之證</b>（遊戲上限 3 個）會一併加成作業 +20・加工 +20・CP +15 並解鎖專心致志／快速改革。資料只存本機。</p>
         <div class="gearsets" id="gearsets"></div>
       </section>
     </div>

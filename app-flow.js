@@ -84,7 +84,6 @@
     const food = label('food'), potion = label('potion');
     if (food) parts.push('食物 ' + food + ($('food-hq').checked ? '（HQ）' : ''));
     if (potion) parts.push('藥水 ' + potion + ($('potion-hq').checked ? '（HQ）' : ''));
-    if ($('specialist').checked) parts.push('專家之證');
     $('consumable-sum').textContent = parts.length ? parts.join('・') : '未使用';
   }
 

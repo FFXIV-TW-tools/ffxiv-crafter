@@ -75,8 +75,10 @@
       updateInitial(recipe, maxQ);
       return;
     }
+    // 專家之證已移到「角色數值」分頁（每職一份、上限 3）→ 這行是求解頁唯一看得到它的地方，必須寫出來
+    const spec = g && g.specialist ? ' · <b>專家之證 ✔</b>' : '';
     const note = g
-      ? `✅ 套用「${deps.esc(g._src)}」數值：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${Number(g.level) || 100}${g.level ? '' : '（假設，未填等級）'}`
+      ? `✅ 套用「${deps.esc(g._src)}」數值：作業 ${g.cms} · 加工 ${g.ctrl} · CP ${g.cp} · Lv ${Number(g.level) || 100}${g.level ? '' : '（假設，未填等級）'}${spec}`
       : `⚠ 尚未設定「${deps.esc(recipe.job)}」數值 — <a href="#" id="goto-stats">去填角色數值 →</a>`;
     const noteEl = deps.$('gear-note');
     if (noteEl) {
@@ -84,6 +86,8 @@
       noteEl.innerHTML = note;
     }
     const gl = deps.$('goto-stats'); if (gl) gl.onclick = (e) => { e.preventDefault(); deps.switchTab('stats', true); };
+    // 專家之證是該職業的角色狀態 → 換配方或改角色數值都可能翻轉「專心致志／快速改革」可不可用
+    deps.refreshSpecialistGate();
     deps.updateEff();
     // 缺角色數值時不用 disabled，保留可聚焦的補救入口；只更新 gear 實際影響的 aria 狀態。
     deps.$('solve-btn').setAttribute('aria-disabled', g ? 'false' : 'true');
@@ -199,7 +203,7 @@
   const REQUIRED = ['$', 'esc', 'iconUrl', 'toast', 'PH_HTML', 'JOB_ICON', 'mbItem', 'mbCraft', 'recipeMaxes', 'switchTab',
     'renderTable', 'getRecipes', 'getRlvTable', 'getItems', 'getIngredients', 'getSelected', 'setSelected',
     'getComputedInitial', 'setComputedInitial', 'getOpenedFromList', 'setOpenedFromList', 'invalidateResults',
-    'updateEff', 'gearFor'];
+    'updateEff', 'gearFor', 'refreshSpecialistGate'];
   globalThis.CraftRecipe = {
     init(d) {
       const miss = REQUIRED.filter(k => d == null || d[k] == null);

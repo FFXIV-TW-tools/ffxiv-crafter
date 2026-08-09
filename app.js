@@ -135,9 +135,11 @@ function applyConsumables(baseCms, baseCtrl, baseCp) {
   }
   return { cms, ctrl, cp };
 }
-// 食藥/專家之證任一變更 → 實際數值、摘要、舊結果失效（三者永遠同步，勿在別處只做其中一項）
+// 食藥任一變更 → 實際數值、摘要、舊結果失效（三者永遠同步，勿在別處只做其中一項）
+// 專家之證＝「角色數值」分頁裡該職業的狀態（CraftGear），不是這一區的開關 → 閘的來源是選中配方的職業
 function refreshSpecialistGate() {
-  const enabled = $('specialist').checked;
+  const g = selected ? gearFor(selected.recipe.job) : null;
+  const enabled = !!(g && g.specialist);
   $('opt-heart').disabled = !enabled;
   $('opt-qi').disabled = !enabled;
   $('heart-why').hidden = enabled;
@@ -147,9 +149,9 @@ function refreshSpecialistGate() {
     $('opt-qi').checked = false;
   }
 }
-function onConsumableChange() { refreshSpecialistGate(); updateEff(); globalThis.CraftFlow?.updateConsumableSummary?.(); invalidateResults(); }
+function onConsumableChange() { updateEff(); globalThis.CraftFlow?.updateConsumableSummary?.(); invalidateResults(); }
 function effectiveStats(gear) {
-  const spec = $('specialist').checked;
+  const spec = !!gear.specialist;               // 該職業是否持有專家之證（角色數值分頁設定，gearFor 帶進來）
   const sp = spec ? 20 : 0;                    // 專家之證：作業 +20・加工 +20
   return applyConsumables(gear.cms + sp, gear.ctrl + sp, gear.cp + (spec ? 15 : 0)); // 專家之證：CP +15（Soul of the Crafter 專家狀態加成）
 }
@@ -158,7 +160,7 @@ function updateEff() {
   const g = gearFor(selected.recipe.job);
   if (!g) { $('eff-stats').textContent = ''; return; }
   const e = effectiveStats(g);
-  const buffed = (e.cms !== g.cms || e.ctrl !== g.ctrl || e.cp !== g.cp || $('specialist').checked);
+  const buffed = (e.cms !== g.cms || e.ctrl !== g.ctrl || e.cp !== g.cp); // 專家之證必然改動數值 → 不需另外判旗標
   $('eff-stats').innerHTML = buffed ? `實際數值：作業 <b>${e.cms}</b> · 加工 <b>${e.ctrl}</b> · CP <b>${e.cp}</b>` : '';
 }
 function updateInitial(recipe, maxQ) { return globalThis.CraftRecipe.updateInitial(recipe, maxQ); }
@@ -179,8 +181,8 @@ function computeSettings(recipe, rlv, gear) {
     max_cp: eff.cp, max_durability, max_progress, max_quality,
     base_progress: bp, base_quality: bq, job_level: level,
     use_manipulation: $('opt-manip').checked,
-    use_heart_and_soul: $('opt-heart').checked && $('specialist').checked,
-    use_quick_innovation: $('opt-qi').checked && $('specialist').checked,
+    use_heart_and_soul: $('opt-heart').checked && !!gear.specialist,
+    use_quick_innovation: $('opt-qi').checked && !!gear.specialist,
     use_trained_eye: !recipe.is_expert && level >= rlv.class_job_level + 10, // 自動（出等級即可）
     adversarial: $('opt-adversarial').checked && !recipe.is_expert, // 高難度配方引擎不支援，強制關
 
@@ -322,7 +324,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     getSelected: () => selected, setSelected: (v) => { selected = v; },
     getComputedInitial: () => computedInitial, setComputedInitial: (v) => { computedInitial = v; },
     getOpenedFromList: () => openedFromList, setOpenedFromList: (v) => { openedFromList = v; },
-    invalidateResults, updateEff, gearFor });
+    invalidateResults, updateEff, gearFor, refreshSpecialistGate });
   // 食物/藥水選擇層（app-consumable.js classic script）：**必須早於 loadData**——loadData 尾端會 setData 繪按鈕，
   // 且本層 init 才會把保存值套回 HQ / 專家之證 checkbox（保存值要先就位，後續公式與摘要才讀得到）
   if (!globalThis.CraftConsumable) throw new Error('app-consumable.js 未載入（部署不完整）');
@@ -371,8 +373,8 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     else toast('此配方沒有第 ' + dlStage + ' 階品質門檻，已改用滿品質', 'warn');
   }
   globalThis.CraftFlow.updateConsumableSummary();
-  // HQ 勾選 / 專家之證仍是原生 checkbox；食物/藥水本體是 CraftConsumable 的自繪選單（無 change 事件 → 走 onChange 回呼）
-  ['food-hq', 'potion-hq', 'specialist'].forEach(id => $(id).addEventListener('change', onConsumableChange));
+  // HQ 勾選仍是原生 checkbox；食物/藥水本體是 CraftConsumable 的自繪選單（無 change 事件 → 走 onChange 回呼）
+  ['food-hq', 'potion-hq'].forEach(id => $(id).addEventListener('change', onConsumableChange));
   // 任一求解輸入變更 → 舊結果過期（gate：集中失效，涵蓋程式化改值與 gear 傳播）＋保存選擇
   SOLVE_OPT_IDS.forEach(id => $(id).addEventListener('change', () => { saveSolveOpts(); invalidateResults(); }));
   $('opt-target').addEventListener('input', () => {

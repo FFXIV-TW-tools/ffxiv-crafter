@@ -1,14 +1,15 @@
 // app-consumable.js — 食物 / 藥水 選擇層（classic script，發佈 globalThis.CraftConsumable）。
 // 為什麼不是原生 <select>：需求要在選項列裡顯示 icon + 物品品級 + 功效（+CP 21%（≤76）），
 // <option> 只能放純文字 → 自建 listbox（ARIA combobox 按鈕 + role=listbox）。
-// 同時負責這一區的本地保存（食物/藥水/HQ/專家之證/展開狀態），重開瀏覽器不遺失。
+// 同時負責這一區的本地保存（食物/藥水/HQ/展開狀態），重開瀏覽器不遺失。
+// 專家之證不在這裡：它是「角色狀態」而非消耗品，且每職一份（上限 3）→ 住 app-gear.js 的 gearsets。
 (function () {
   const KEY = 'ffxiv-crafter-consumables-v1';
   const KINDS = { food: { hqId: 'food-hq', btnId: 'food-btn', menuId: 'food-menu', label: '食物' },
                   potion: { hqId: 'potion-hq', btnId: 'potion-btn', menuId: 'potion-menu', label: '藥水' } };
   let deps = null;
   const MAP = { food: {}, potion: {} };          // 繁中名 → { nq, hq }
-  const state = { food: '', potion: '', foodHq: true, potionHq: true, specialist: false, open: true };
+  const state = { food: '', potion: '', foodHq: true, potionHq: true, open: true };
   let openKind = null;                            // 目前展開的選單（同時只一個）
   let saveWarned = false;
 
@@ -18,7 +19,7 @@
       const raw = JSON.parse(localStorage.getItem(KEY));
       if (raw && typeof raw === 'object') {
         for (const k of ['food', 'potion']) if (typeof raw[k] === 'string') state[k] = raw[k];
-        for (const k of ['foodHq', 'potionHq', 'specialist', 'open']) if (typeof raw[k] === 'boolean') state[k] = raw[k];
+        for (const k of ['foodHq', 'potionHq', 'open']) if (typeof raw[k] === 'boolean') state[k] = raw[k];
       }
     } catch (e) { console.warn('[crafter] 食藥設定讀取失敗，用預設值:', e); }
   }
@@ -143,7 +144,6 @@
     const { $ } = deps;
     $('food-hq').checked = state.foodHq;
     $('potion-hq').checked = state.potionHq;
-    $('specialist').checked = state.specialist;
     const block = $('consumable-block');
     if (block) {
       block.open = state.open;
@@ -169,7 +169,6 @@
         if (openKind === kind) renderMenu(kind);   // 開著時同步選項顯示的 HQ 數值
       });
     }
-    $('specialist').addEventListener('change', () => { state.specialist = $('specialist').checked; save(); });
     document.addEventListener('click', (e) => {           // 點外部收合（點在自己的按鈕/選單上不收）
       if (!openKind) return;
       if (e.target.closest('#' + KINDS[openKind].menuId) || e.target.closest('#' + KINDS[openKind].btnId)) return;
