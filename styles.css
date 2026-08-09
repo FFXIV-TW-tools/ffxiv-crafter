@@ -588,6 +588,9 @@ body {
   color: var(--color-success, #7dd87d); cursor: help; white-space: nowrap; }
 /* 需 HQ ＝品名後直接貼遊戲內的 HQ icon（assets/hq.png，與 marketboard 同一張），不另開標籤；
    未知＝同一張圖淡化＋問號（仍要標，不假裝知道） */
-.crafter-qt-hq { width: 14px; height: 14px; margin-left: 3px; vertical-align: -0.15em; cursor: help; }
+/* 白色（Owner 2026-08-09）：原圖是銅色漩渦，在深底的品名旁偏暗；轉成純白剪影＝遊戲內品名後
+   那顆 HQ 標記的樣子，也不跟旁邊的金色數量/徽章打架。filter 而非另存一張圖：同一份 asset 不分岔。 */
+.crafter-qt-hq { width: 14px; height: 14px; margin-left: 3px; vertical-align: -0.15em; cursor: help;
+  filter: brightness(0) invert(1); }
 .crafter-qt-hq--unknown { color: var(--color-warn); font-weight: var(--fw-bold, 700); cursor: help; }
 .crafter-qt-hq--unknown .crafter-qt-hq { opacity: .5; }
