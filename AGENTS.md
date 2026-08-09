@@ -44,6 +44,7 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 | `THIRD-PARTY-NOTICES.md`／`LICENSE-APACHE-2.0.txt`／`LICENSE-MIT.txt` | 散布 `pkg/*.wasm`（二進位衍生作品）的授權義務：Apache-2.0 §4(a) 要交付 License 副本、MIT 要附著作權宣告——頁尾只寫授權名稱不算。**`LICENSE-APACHE-2.0.txt` 隨站部署、頁尾直連 `/LICENSE-APACHE-2.0.txt`**（Owner 裁示：repo 未公開前不從頁面連 GitHub，會 404）；MIT 全文與 notices 先只存 repo，**轉公開時頁尾要補 notices 連結**。**SE 版權聲明刻意不放頁尾**（2026-07-28 Owner 裁示：全站大量使用官方 icon，只在求解器頁尾補一行反而不成體系；要做就是整個 portal 生態一起處理）。notices 由 `tools/build-notices.py` 自 `wasm/Cargo.lock` 產生，**改 wasm 依賴後必須重跑並一起 commit** |
 | `app-quality-stages.js` | 品質階段層（classic script `globalThis.CraftStages`）：配方的三段品質門檻 → 目標品質。**兩種來源單位不同，換算只有這裡一份**——收藏品＝值×10；宇宙任務＝`ceil(滿品質×值/100)`（進位方向有意義，floor 會差一格達不到門檻）。某檔為 0 不列該檔、整個配方無資料就收起整組欄位 |
 | `app-level-sync.js` | 等級同步層（classic script `globalThis.CraftSync`）：宇宙探索配方**同一列資料掛在多個等級級距的任務上**（`WKSMissionUnit` 的 LevelGroup 1/2/3 共用同一 recipe id、`IsSynced=1`），存的 rlv 690 是「Lv100 版本」。`resolve()` 依角色等級（或手動指定，本機保存 `ffxiv-crafter-level-sync-v1`）解出生效的 recipe level 列，`refreshSelectedGear` 把它寫回 `selected.rlv` → 顯示與求解共用。**等級→rlv 的對照只有這裡一份**＝取該職業等級的最小 rlv（identity：代入最高等級會還原成配方原始 rlv，T20 全量釘住）。**不靜默換數字**：生效 rlv、三上限與配方原始值都寫在畫面上 |
+| `assets/` | `hq.png`（遊戲內 HQ 圖，複製自 marketboard `assets/hq.png`——兩站共用同一張，不自畫）|
 | `data/` | recipes / items / ingredients / recipe_levels / craft-actions / meals / medicine / **quality-stages** / **level-sync** / **job-quests** / **vendors** JSON（`tools/build-data.py` 產，來自 monorepo item_dict + game_ref） |
 | `tools/` | `build-data.py`（產 data/；`--actions-only` 只重刷技能對照、`--consumables-only` 只補食藥 icon、`--quests-only` 只重刷職業任務）、`fetch-quest-qty.py`（抓社群試算表的**交付數量＋商人地點/單價＋地名縮寫對照** → `tools/job-quest-qty.json`，偶爾手動跑）、`check-actions.py`（action-set 與 `pkg/`／`wasm/src` 同步不變量閘）、`build-wasm.ps1`（重建 `pkg/` 並更新 `wasm/BUILD-STAMP.json`）、`build-notices.py`（第三方授權聲明）、`serve.py`（本地預覽）、`test-formulas.mjs`（前端純函式 golden 測試） |
 | `_headers` | CF Pages 安全標頭（CSP 完整分域）+ 快取策略（.js/.css/pkg/ 與 `/data/*` `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
@@ -116,8 +117,9 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
   且 Lv1–19 完全沒有標記、Lv20 起才出現，與遊戲機制吻合。
 - **職業任務分頁的資料有兩個來源，責任分清楚**：任務／交付物／職業對照＝**台服解包**（權威）；
   交付數量與商人地點/單價＝**社群試算表**（`tools/job-quest-qty.json`）。
-  **要交 HQ ＝品名後綴 `✦`**（玩家一眼認得的遊戲符號），不另開標籤——標籤多一個就多一層辨識成本；
-  不確定的用 `✦?` 轉警示色（仍要標，不能默默當成不用）。
+  **要交 HQ ＝品名後直接貼 `assets/hq.png`**（遊戲內那顆銅色漩渦，**與 marketboard 同一張圖**，
+  該站 `price_view`／`shop_table` 用的就是它）——玩家在遊戲裡認的是這個圖，**不要自創符號**（✦ 之類）
+  也不要另開標籤；不確定的用同一張圖淡化＋`?`（仍要標，不能默默當成不用）。
   **要交 HQ 的那一格不顯示商人**（商人不賣 HQ：寫「有賣」是誤導、寫「只賣 NQ」是廢話）；
   **沒有座標 ≠ 沒有商人**——「武具商」「雜用商人」這類通用商人資料裡常只有名字（實測楓木方盾），
   照樣要列，只是把帶座標的排前面。用 `if n.zone` 過濾會讓 247 件掉到 172 件而畫面說「查不到」。

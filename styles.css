@@ -586,8 +586,8 @@ body {
 /* 商人徽章：解包說「NPC 有賣」才出；地點/單價是社群資料，寫在 data-help 裡不擠版面 */
 .crafter-qt-tag--shop { background: color-mix(in srgb, var(--color-success, #7dd87d) 16%, transparent);
   color: var(--color-success, #7dd87d); cursor: help; white-space: nowrap; }
-/* 需 HQ ＝品名後綴一個 HQ 符號（金色，同 HQ 素材的視覺語彙），不另開標籤佔位置；
-   ✦? ＝本站不確定要不要 HQ，用同一套符號加問號並轉警示色 */
-.crafter-qt-hq { margin-left: 3px; color: var(--color-gold, #ffd166); font-weight: var(--fw-bold, 700);
-  cursor: help; }
-.crafter-qt-hq--unknown { color: var(--color-warn); }
+/* 需 HQ ＝品名後直接貼遊戲內的 HQ icon（assets/hq.png，與 marketboard 同一張），不另開標籤；
+   未知＝同一張圖淡化＋問號（仍要標，不假裝知道） */
+.crafter-qt-hq { width: 14px; height: 14px; margin-left: 3px; vertical-align: -0.15em; cursor: help; }
+.crafter-qt-hq--unknown { color: var(--color-warn); font-weight: var(--fw-bold, 700); cursor: help; }
+.crafter-qt-hq--unknown .crafter-qt-hq { opacity: .5; }
