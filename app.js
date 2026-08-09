@@ -65,7 +65,7 @@ async function loadData() {
   // 七檔同一輪併發：meals/medicine 原本排第二輪 await，白等一個 RTT 只換 2.5KB（fetchOpt 自己吞錯，不會拖垮必要資料）
   // 品質階段同為選配：載不到只是少了「一階/二階/三階」快捷，目標品質仍可手打 → 不拖垮整站
   const fetchOptObj = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return {}; } };
-  const [recipes, rlv, actions, items, ingredients, meals, medicine, stages, levelSync, quests] = await Promise.all([
+  const [recipes, rlv, actions, items, ingredients, meals, medicine, stages, levelSync, quests, vendors] = await Promise.all([
     fetchJson('data/recipes.json'),
     fetchJson('data/recipe_levels.json'),
     fetchJson('data/craft-actions.json'),
@@ -76,6 +76,7 @@ async function loadData() {
     fetchOptObj('data/quality-stages.json'),
     fetchOptObj('data/level-sync.json'),
     fetchOpt('data/job-quests.json'),
+    fetchOptObj('data/vendors.json'),
   ]);
   RECIPES = recipes; RLV = rlv; ACTIONS = actions; ITEMS = items; INGREDIENTS = ingredients;
   globalThis.CraftConsumable?.setData?.(meals, medicine);
@@ -96,6 +97,7 @@ async function loadData() {
   }));
   // **必須在兩份配方索引建好之後**：職業任務的素材展開要靠它們判斷「這件東西做得出來嗎」，
   // 早一步呼叫的話整份清單會靜默變成「全部非製作」（畫面正常、只是全錯）。
+  globalThis.CraftQuests?.setVendors?.(vendors);   // 先給商人資料，setData 一次繪到位（省一次重繪）
   globalThis.CraftQuests?.setData?.(quests);
 }
 

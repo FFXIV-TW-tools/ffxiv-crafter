@@ -1615,5 +1615,37 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   }
 }
 
+
+// ===== T32：商人資訊的兩個來源必須分清楚（解包說有賣才出徽章）=====
+// 「哪裡買得到」有兩個來源：is_gil_shop（解包，權威）與試算表的地點/單價（社群整理）。
+// 混在一起的後果是**叫玩家跑去一個沒有商人的地方** —— 走一趟才發現，畫面上完全看不出來。
+{
+  const QSRC = fs.readFileSync(path.join(ROOT, 'app-quests.js'), 'utf8');
+  const c2 = { console, document: { getElementById: () => null }, localStorage: { getItem: () => null, setItem() {} } };
+  c2.globalThis = c2;
+  vm.createContext(c2);
+  vm.runInContext(QSRC, c2, { filename: 'app-quests-t32.js' });
+  const Q = c2.CraftQuests;
+  Q.init({ $: () => null, esc: (s) => String(s), iconUrl: () => '', toast() {}, mbItem: () => '#',
+    selectRecipe: () => true, switchTab() {}, getItems: () => ({}), getIngredients: () => ({}),
+    getRecipesById: () => ({}), getRecipeByItem: () => ({}) });
+  Q.setVendors({ 1: { shop: 1, loc: '西薩納蘭-銅鈴銅山', npc: '沙都礦石商', price: 18 }, 2: { shop: 1 } });
+
+  const full = Q.vendorHtml(1), bare = Q.vendorHtml(2), none = Q.vendorHtml(3);
+  check('T32 沒有商人資料的物品不出徽章', none === '');
+  check('T32 有地點/單價時寫出地點、商人與單價', /西薩納蘭-銅鈴銅山/.test(full) && /沙都礦石商/.test(full) && /18 G/.test(full));
+  check('T32 地點資料標明是社群整理（不冒充解包）', /社群整理/.test(full));
+  check('T32 只知道「有賣」但不知道在哪 → 誠實說沒有販售地點資料',
+    /商人有賣/.test(bare) && !/G/.test(bare.replace(/[^A-Za-z]/g, '')) && /沒有這件的販售地點資料/.test(bare));
+
+  // 資料檔不變量：vendors.json 只收「解包說有賣」的，且有 loc 的必然也有 shop
+  const v = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'vendors.json'), 'utf8'));
+  const rows = Object.values(v);
+  check('T32 vendors.json 每筆都是「解包確認有 NPC 賣」', rows.length > 0 && rows.every((e) => e.shop === 1));
+  check('T32 有單價的必定有地點（不給一個買不到地方的價格）', rows.every((e) => !e.price || e.loc));
+  check('T32 地名已還原成全名（不留「北黑」這種只有原作者看得懂的縮寫）',
+    rows.every((e) => !e.loc || e.loc.length < 2 || !/^(北黑|中黑|南黑|東黑|低拉|中拉|西拉|東拉|高拉|外拉|西薩|中薩|東薩|南薩|北薩|庫中|庫西|德山|德谷|德海)-/.test(e.loc)));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

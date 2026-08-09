@@ -583,3 +583,6 @@ body {
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-warn) 40%, var(--color-border));
   border-radius: var(--radius-sm, 6px); }
+/* 商人徽章：解包說「NPC 有賣」才出；地點/單價是社群資料，寫在 data-help 裡不擠版面 */
+.crafter-qt-tag--shop { background: color-mix(in srgb, var(--color-success, #7dd87d) 16%, transparent);
+  color: var(--color-success, #7dd87d); cursor: help; white-space: nowrap; }

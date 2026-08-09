@@ -260,6 +260,81 @@ def write_job_quests():
           % (qty_hit, qty_miss))
 
 
+def write_vendors(quests_path):
+    """vendors.json：職業任務會用到的物品 → 「有沒有 NPC 賣」＋（若查得到）在哪買、多少錢。
+
+    **兩個來源、責任分清楚**：
+      `shop`（有沒有商人賣）＝**解包** `item_lookup.is_gil_shop`，權威、全覆蓋。
+      `loc`/`npc`/`price`（在哪買、跟誰買、單價）＝**社群試算表**，只有部分物品有，UI 要標明來源。
+    解包說沒有 NPC 賣、但試算表寫了價格的，**以解包為準**（不顯示商人）並在建置時印出來
+    ——那種條目要嘛是試算表筆誤、要嘛是遊戲改版，總之不該讓玩家跑一趟空的。
+    範圍限「職業任務交付物 ＋ 它們配方展開到底的所有素材」：全量 is_gil_shop 有上萬筆，
+    對這個分頁沒用，只會讓玩家多下載幾百 KB。
+    """
+    jobs = json.load(open(quests_path, encoding="utf-8"))
+    recipes = json.load(open(os.path.join(OUT, "recipes.json"), encoding="utf-8"))
+    ing = json.load(open(os.path.join(OUT, "ingredients.json"), encoding="utf-8"))
+    by_item = {}
+    for r in recipes:
+        if r.get("item_id"):
+            by_item.setdefault(int(r["item_id"]), r)
+    need, stack, seen_recipe = set(), [], set()
+    for j in jobs:
+        for q in j["quests"]:
+            for it in q["items"]:
+                stack.append(int(it["id"]))
+    while stack:                                        # 展開到底層（只為蒐集 id，不算數量）
+        iid = stack.pop()
+        if iid in need:
+            continue
+        need.add(iid)
+        r = by_item.get(iid)
+        if not r or r["id"] in seen_recipe:
+            continue
+        seen_recipe.add(r["id"])
+        for sub, _ in ing.get(str(r["id"]), []):
+            stack.append(int(sub))
+    hints, areas = {}, {}
+    qty_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "job-quest-qty.json")
+    if os.path.exists(qty_path):
+        src = json.load(open(qty_path, encoding="utf-8"))
+        hints, areas = src.get("vendors", {}), src.get("areas", {})
+    con = sqlite3.connect(ITEM_LOOKUP)
+    hint_by_id = {}
+    for name, v in hints.items():
+        rid_ = resolve_item_id(con, name)
+        if rid_ is not None:
+            hint_by_id[rid_] = v
+    out, conflict = {}, []
+    for iid in sorted(need):
+        row = con.execute("SELECT is_gil_shop, price_mid FROM items WHERE id=?", (iid,)).fetchone()
+        shop = bool(row and row[0])
+        hint = hint_by_id.get(iid)
+        if hint and not shop:
+            conflict.append(iid)
+            hint = None                                 # 解包說沒得買 → 不給地點（寧可少講，不要叫人白跑）
+        if not shop and not hint:
+            continue
+        e = {"shop": 1}
+        if hint:
+            # 地名還原：試算表為排版把地名縮成兩字（「北黑-私語北」），縮寫只有原作者看得懂
+            # → 用它自己首頁那張對照表展開（對照也是抓來的，不在這裡自建）。
+            loc = hint.get("loc") or ""
+            for abbr, full in sorted(areas.items(), key=lambda kv: -len(kv[0])):
+                loc = loc.replace(abbr, full)
+            if loc: e["loc"] = loc
+            if hint.get("npc"): e["npc"] = hint["npc"]
+            if hint.get("price"): e["price"] = hint["price"]
+        out[str(iid)] = e
+    con.close()
+    with open(os.path.join(OUT, "vendors.json"), "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+    withloc = sum(1 for v in out.values() if "loc" in v)
+    print("✓ vendors.json：職業任務相關物品 %d 件，其中 %d 件 NPC 有賣、%d 件另有地點/單價"
+          "（試算表說有賣但解包說沒有的 %d 件已剔除：%s）"
+          % (len(need), len(out), withloc, len(conflict), conflict or "無"))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     # 只補食藥 icon 時不必重刷 3.5MB 配方資料
@@ -268,6 +343,7 @@ def main():
         return
     if "--quests-only" in sys.argv:                    # 只重刷職業任務（不動 3.5MB 配方資料）
         write_job_quests()
+        write_vendors(os.path.join(OUT, "job-quests.json"))
         return
 
     if not os.path.exists(GAME_REF):
@@ -342,6 +418,7 @@ def main():
     write_quality_stages(recipes)
     write_level_sync(recipes)
     write_job_quests()
+    write_vendors(os.path.join(OUT, "job-quests.json"))
 
 
 def write_level_sync(recipes):

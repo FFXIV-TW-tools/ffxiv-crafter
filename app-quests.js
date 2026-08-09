@@ -15,6 +15,9 @@
   // 交付物（尤其採集職的魚）不一定在 items.json 裡（那份只收配方相關物品）→ 用本資料自帶的名稱/圖補上，
   // 否則素材彙總會出現「#4874」這種只有 id 的列。
   const NAME_BY_ID = new Map();
+  // item id → { shop:1, loc?, npc?, price? }：`shop` 來自解包 is_gil_shop（權威、全覆蓋），
+  // loc/npc/price 來自社群試算表（部分覆蓋）→ 說明文字要標明哪一半是社群資料。
+  let VENDORS = {};
   const state = { job: '', done: [], hideDone: false };
   let doneSet = new Set();
   let saveWarned = false;
@@ -110,8 +113,11 @@
     const qty = it.qty
       ? `<b class="crafter-qt-item__qty">×${it.qty}</b>`
       : '<span class="crafter-qt-item__qty crafter-qt-item__qty--unknown codex-xs" data-help="遊戲資料裡沒有可信的數量欄位，社群資料也對不上這件物品的名稱｜彙總時以 1 份估算">數量未知</span>';
+    const tag = it.recipe != null
+      ? '<span class="codex-xs crafter-qt-tag">可製作</span>'
+      : '<span class="codex-xs crafter-qt-tag crafter-qt-tag--gather">非製作</span>';
     return `<div class="crafter-qt-item">${ico}<span class="crafter-qt-item__name">${esc(it.name)}</span>${qty}` +
-      `<span class="crafter-qt-item__src">${it.recipe != null ? '<span class="codex-xs crafter-qt-tag">可製作</span>' : '<span class="codex-xs crafter-qt-tag crafter-qt-tag--gather">非製作</span>'}${src}</span></div>`;
+      `<span class="crafter-qt-item__src">${tag}${vendorHtml(it.id)}${src}</span></div>`;
   }
 
   function questsHtml(v) {
@@ -143,7 +149,7 @@
       const it = ITEMS[String(iid)] || NAME_BY_ID.get(iid) || {};
       const ico = it.icon ? `<img class="ing-ico" src="${iconUrl(it.icon)}" alt="" loading="lazy">` : '';
       return `<a class="crafter-qt-mat" href="${mbItem(iid)}" target="ffxiv-marketboard" data-help="到市場板查價格與來源。共用同一分頁。">` +
-        `${ico}<span class="crafter-qt-mat__name">${esc(it.name || ('#' + iid))}</span><b class="crafter-qt-mat__n">×${n}</b></a>`;
+        `${ico}<span class="crafter-qt-mat__name">${esc(it.name || ('#' + iid))}</span>${vendorHtml(iid)}<b class="crafter-qt-mat__n">×${n}</b></a>`;
     };
     const note = unknown
       ? `<div class="crafter-qt-mats__note codex-small">⚠ 其中 <b>${unknown}</b> 件交付物的數量未知，已以「1 份」估算 — 實際可能更多，請自行加量。</div>`
@@ -169,8 +175,10 @@
 
   function render() {
     const { $ } = deps;
+    const body = $('quest-body');
+    if (!body) return;                 // 分頁骨架不在（測試 sandbox / 部署不完整）→ 靜靜不畫，不炸掉整個 init
     const cur = current();
-    if (!cur) { $('quest-body').innerHTML = '<div class="codex-empty">（職業任務資料未載入）</div>'; return; }
+    if (!cur) { body.innerHTML = '<div class="codex-empty">（職業任務資料未載入）</div>'; return; }
     state.job = cur.job;
     $('quest-body').innerHTML = questsHtml(view(cur, doneSet, state.hideDone));
     refreshSummary();
@@ -206,6 +214,21 @@
       hide.addEventListener('change', () => { state.hideDone = hide.checked; save(); render(); });
     }
   }
+  function setVendors(map) { VENDORS = (map && typeof map === 'object') ? map : {}; render(); }
+
+  // 「這件東西買得到嗎、在哪買」：只有解包說 NPC 有賣才出徽章；地點/單價有才附上（沒有就只講買得到）
+  function vendorHtml(itemId) {
+    const v = VENDORS[String(itemId)];
+    if (!v) return '';
+    const where = [v.loc, v.npc].filter(Boolean).join(' · ');
+    const price = v.price ? `${v.price} G` : '';
+    const detail = [where, price].filter(Boolean).join('｜');
+    const help = detail
+      ? `NPC 商人有賣｜${detail}｜地點與單價為社群整理，價格可能隨版本變動`
+      : 'NPC 商人有賣（本站沒有這件的販售地點資料）';
+    return `<span class="codex-xs crafter-qt-tag crafter-qt-tag--shop" data-help="${deps.esc(help)}">🏪 ${deps.esc(price || '商人有賣')}</span>`;
+  }
+
   function setData(rows) {
     DATA = Array.isArray(rows) ? rows : [];
     NAME_BY_ID.clear();
@@ -214,5 +237,5 @@
     render();
   }
 
-  globalThis.CraftQuests = { init, setData, expandMats, view };
+  globalThis.CraftQuests = { init, setData, setVendors, vendorHtml, expandMats, view };
 })();
