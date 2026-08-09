@@ -222,19 +222,20 @@
   }
   function setVendors(map) { VENDORS = (map && typeof map === 'object') ? map : {}; render(); }
 
-  // 「這件東西買得到嗎、在哪買」：只有解包說 NPC 有賣才出徽章；地點/單價有才附上（沒有就只講買得到）。
+  // 「這件東西買得到嗎、在哪買」：資料來自解包（gil_shop_npc → 價格＋販售 NPC 的名字/稱號/座標）。
   // ⚠ needHq：**商人賣的是 NQ**。任務要求 HQ 時說「商人有賣」等於叫人買一堆交不掉的東西
   //   （買了才發現不能交，而畫面上完全看不出來）→ 改成「只賣 NQ」並寫清楚要自己做。
   //   needHq 為 null＝本站不知道要不要 HQ，也要照實講，不能默默當成不用。
   function vendorHtml(itemId, needHq) {
     const v = VENDORS[String(itemId)];
     if (!v) return '';
-    const where = [v.loc, v.npc].filter(Boolean).join(' · ');
     const price = v.price ? `${v.price} G` : '';
-    const detail = [where, price].filter(Boolean).join('｜');
-    const base = detail
-      ? `NPC 商人有賣｜${detail}｜地點與單價為社群整理，價格可能隨版本變動`
-      : 'NPC 商人有賣（本站沒有這件的販售地點資料）';
+    // 一件東西常有十幾個通用商人 → 只寫前幾個帶座標的，其餘用「另有 N 處」帶過（不塞一長串）
+    const where = (v.npcs || []).map((n) =>
+      `${n.zone}${(n.x != null && n.y != null) ? ` (${n.x}, ${n.y})` : ''} ${n.npc}${n.title ? `〔${n.title}〕` : ''}`);
+    if (v.more) where.push(`另有 ${v.more} 處`);
+    const base = ['NPC 商人有賣', price, ...where].filter(Boolean).join('｜')
+      + (where.length ? '' : '｜本站沒有這件的販售地點資料');
     if (needHq === true) {
       return `<span class="codex-xs crafter-qt-tag crafter-qt-tag--nq" data-help="${deps.esc(
         '這件任務要交 HQ，而商人賣的是 NQ — 買來的不能直接交，要自己做出 HQ（或採到 HQ）｜' + base)}">🏪 只賣 NQ</span>`;

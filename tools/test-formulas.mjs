@@ -1629,22 +1629,27 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   Q.init({ $: () => null, esc: (s) => String(s), iconUrl: () => '', toast() {}, mbItem: () => '#',
     selectRecipe: () => true, switchTab() {}, getItems: () => ({}), getIngredients: () => ({}),
     getRecipesById: () => ({}), getRecipeByItem: () => ({}) });
-  Q.setVendors({ 1: { shop: 1, loc: '西薩納蘭-銅鈴銅山', npc: '沙都礦石商', price: 18 }, 2: { shop: 1 } });
+  Q.setVendors({
+    1: { shop: 1, price: 18, npcs: [{ npc: '斯姆爾維布', title: '行會供應商', zone: '烏爾達哈現世回廊', x: 10.6, y: 9.6 }], more: 5 },
+    2: { shop: 1 },
+  });
 
   const full = Q.vendorHtml(1), bare = Q.vendorHtml(2), none = Q.vendorHtml(3);
   check('T32 沒有商人資料的物品不出徽章', none === '');
-  check('T32 有地點/單價時寫出地點、商人與單價', /西薩納蘭-銅鈴銅山/.test(full) && /沙都礦石商/.test(full) && /18 G/.test(full));
-  check('T32 地點資料標明是社群整理（不冒充解包）', /社群整理/.test(full));
+  check('T32 有販售地點時寫出地名、座標、NPC 與單價',
+    /烏爾達哈現世回廊/.test(full) && /10\.6, 9\.6/.test(full) && /斯姆爾維布/.test(full) && /18 G/.test(full));
+  check('T32 NPC 太多時用「另有 N 處」帶過，不塞一長串', /另有 5 處/.test(full));
   check('T32 只知道「有賣」但不知道在哪 → 誠實說沒有販售地點資料',
-    /商人有賣/.test(bare) && !/G/.test(bare.replace(/[^A-Za-z]/g, '')) && /沒有這件的販售地點資料/.test(bare));
+    /商人有賣/.test(bare) && /沒有這件的販售地點資料/.test(bare));
 
-  // 資料檔不變量：vendors.json 只收「解包說有賣」的，且有 loc 的必然也有 shop
+  // 資料檔不變量：vendors.json 每筆都是解包確認有賣；帶 NPC 的必須有地名（沒地名的地點資訊沒用）
   const v = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'vendors.json'), 'utf8'));
   const rows = Object.values(v);
   check('T32 vendors.json 每筆都是「解包確認有 NPC 賣」', rows.length > 0 && rows.every((e) => e.shop === 1));
-  check('T32 有單價的必定有地點（不給一個買不到地方的價格）', rows.every((e) => !e.price || e.loc));
-  check('T32 地名已還原成全名（不留「北黑」這種只有原作者看得懂的縮寫）',
-    rows.every((e) => !e.loc || e.loc.length < 2 || !/^(北黑|中黑|南黑|東黑|低拉|中拉|西拉|東拉|高拉|外拉|西薩|中薩|東薩|南薩|北薩|庫中|庫西|德山|德谷|德海)-/.test(e.loc)));
+  check('T32 每個 NPC 都帶地名（沒地名的販售點對玩家沒用）',
+    rows.every((e) => !e.npcs || e.npcs.every((n) => n.zone && n.npc)));
+  check('T32 販售地點覆蓋率沒有倒退（現況 172 件，之前靠社群資料只有 38 件）',
+    rows.filter((e) => e.npcs && e.npcs.length).length >= 150);
 }
 
 

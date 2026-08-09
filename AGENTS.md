@@ -78,7 +78,7 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 
 ```bash
 node --check app.js app-recipe.js app-gear.js app-flow.js app-render.js app-solve.js app-browse.js app-consumable.js app-quality-stages.js app-level-sync.js crafting-list.js worker.js   # JS 語法
-node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機 + T15 食藥選擇層與保存 + T16 簡中搜尋 + T17 首屏 CLS 預留 + T29 DOH/JOB_ICON 不變量 + T30 專家之證逐職上限 3 + T31 職業任務素材展開 + T32 商人資訊來源分流 + T33 需 HQ 不得說買得到（297 passed）
+node tools/test-formulas.mjs           # 前端純函式 golden：computeSettings（spec §4 值）/ hqPercent 斷點 / recipeMaxes + 專家之證 CP+15 + sec A1/A2 哨兵 + T7 清單彙總 + T8 mbItem/mbCraft URL 契約 + T9 selectRecipe 回傳 + T10 清單 add/has/count/上限誠實 + T11 app-browse 瀏覽層契約 + T12 buildShoplistCsv 送端契約 + T14 flowState 流程狀態機 + T15 食藥選擇層與保存 + T16 簡中搜尋 + T17 首屏 CLS 預留 + T29 DOH/JOB_ICON 不變量 + T30 專家之證逐職上限 3 + T31 職業任務素材展開 + T32 商人資訊來源分流 + T33 需 HQ 不得說買得到（297 passed；T32 已改為解包商人資料形狀）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）＋ pkg/ 同步戳記 ＋ sim-diff 與 wasm 釘同一個 raphael tag
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一 + 神速技巧耐久/路徑/步數三條（5 passed）
 ```
@@ -116,8 +116,10 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
   且 Lv1–19 完全沒有標記、Lv20 起才出現，與遊戲機制吻合。
 - **職業任務分頁的資料有兩個來源，責任分清楚**：任務／交付物／職業對照＝**台服解包**（權威）；
   交付數量與商人地點/單價＝**社群試算表**（`tools/job-quest-qty.json`）。
-  **「這件東西有沒有 NPC 賣」一律看解包 `item_lookup.is_gil_shop`**——試算表說有賣但解包說沒有的，
-  建置時剔除並印出來（實測 1 件）。社群名對回 item id 走 `name_tc`→`name_sc`→OpenCC t2s 後 `name_sc`，
+  **商人資訊完全走解包**＝monorepo item_dict 的 `gil_shop_npc.json`（價格＋NPC 名/稱號/繁中地名/座標，
+  與 marketboard 同源；該站的 `renderGilShopCard` 用的是同一份資料的烤製版）。
+  **不要再從社群試算表補商人**——那份只有 38 筆且只有縮寫地名，`gil_shop_npc` 涵蓋 172 件且價格與
+  `price_mid` 逐筆一致；留兩份就是留一份會漂移的。社群名對回 item id 走 `name_tc`→`name_sc`→OpenCC t2s 後 `name_sc`，
   **id 相符才採用**；顯示一律用解包的台服名（灰機是簡中，名稱常是「把簡中繁化」而非台服正名）。
   地名縮寫（「北黑」）用試算表自己首頁的對照表還原成全名，不自建。T31／T32 守。
 - **這一區的設定是本地保存的**（`ffxiv-crafter-consumables-v1`）：食物／藥水／兩個 HQ 勾／`<details>` 展開狀態全存。新增這一區的輸入項要一併進 `state` 並在 `init` 套回 DOM，否則會出現「畫面有值但重整就跑掉」的半套狀態。`setData` 會清掉資料改版後已不存在的保存品項（不留幽靈選擇）。

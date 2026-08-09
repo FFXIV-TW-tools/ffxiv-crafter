@@ -267,19 +267,26 @@ def write_job_quests():
 
 
 def write_vendors(quests_path):
-    """vendors.json：職業任務會用到的物品 → 「有沒有 NPC 賣」＋（若查得到）在哪買、多少錢。
+    """vendors.json：職業任務會用到的物品 → 有沒有 NPC 賣、多少錢、跟誰買（含地圖座標）。
 
-    **兩個來源、責任分清楚**：
-      `shop`（有沒有商人賣）＝**解包** `item_lookup.is_gil_shop`，權威、全覆蓋。
-      `loc`/`npc`/`price`（在哪買、跟誰買、單價）＝**社群試算表**，只有部分物品有，UI 要標明來源。
-    解包說沒有 NPC 賣、但試算表寫了價格的，**以解包為準**（不顯示商人）並在建置時印出來
-    ——那種條目要嘛是試算表筆誤、要嘛是遊戲改版，總之不該讓玩家跑一趟空的。
-    範圍限「職業任務交付物 ＋ 它們配方展開到底的所有素材」：全量 is_gil_shop 有上萬筆，
-    對這個分頁沒用，只會讓玩家多下載幾百 KB。
+    **權威＝monorepo `data/item_dict/gil_shop_npc.json`**（解包產出：5642 件商品 → 價格 ＋ 販售 NPC
+    的名字/稱號/地圖座標/繁中地名）。DRY 鐵則：禁在這裡自建商人表，也**不要**再從社群試算表補
+    ——那份只有 38 筆、且只有縮寫地名；本檔涵蓋 96%（247/256）且價格與 `item_lookup.price_mid` 逐筆一致。
+    留兩份就是留一份會漂移的。
+
+    `is_gil_shop` 仍是「有沒有得買」的判準（全覆蓋）；查得到 NPC 的再附上「在哪買」。
+    NPC 常有十幾個（通用商人各城都有）→ 只留**帶座標**的前 3 個，其餘用數量帶過。
+    範圍限「職業任務交付物 ＋ 它們配方展開到底的所有素材」：全量有上萬筆，對這個分頁沒用。
     """
     jobs = json.load(open(quests_path, encoding="utf-8"))
     recipes = json.load(open(os.path.join(OUT, "recipes.json"), encoding="utf-8"))
     ing = json.load(open(os.path.join(OUT, "ingredients.json"), encoding="utf-8"))
+    shop_npc = {}
+    shop_path = os.path.join(ROOT, "data", "item_dict", "gil_shop_npc.json")
+    if os.path.exists(shop_path):
+        shop_npc = json.load(open(shop_path, encoding="utf-8"))
+    else:
+        print("⚠ 缺 gil_shop_npc.json → 只能標「有沒有得買」，沒有販售地點", file=sys.stderr)
     by_item = {}
     for r in recipes:
         if r.get("item_id"):
@@ -300,45 +307,30 @@ def write_vendors(quests_path):
         seen_recipe.add(r["id"])
         for sub, _ in ing.get(str(r["id"]), []):
             stack.append(int(sub))
-    hints, areas = {}, {}
-    qty_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "job-quest-qty.json")
-    if os.path.exists(qty_path):
-        src = json.load(open(qty_path, encoding="utf-8"))
-        hints, areas = src.get("vendors", {}), src.get("areas", {})
     con = sqlite3.connect(ITEM_LOOKUP)
-    hint_by_id = {}
-    for name, v in hints.items():
-        rid_ = resolve_item_id(con, name)
-        if rid_ is not None:
-            hint_by_id[rid_] = v
-    out, conflict = {}, []
+    out, withnpc = {}, 0
     for iid in sorted(need):
         row = con.execute("SELECT is_gil_shop, price_mid FROM items WHERE id=?", (iid,)).fetchone()
-        shop = bool(row and row[0])
-        hint = hint_by_id.get(iid)
-        if hint and not shop:
-            conflict.append(iid)
-            hint = None                                 # 解包說沒得買 → 不給地點（寧可少講，不要叫人白跑）
-        if not shop and not hint:
+        entry = shop_npc.get(str(iid))
+        if not (row and row[0]) and not entry:
             continue
         e = {"shop": 1}
-        if hint:
-            # 地名還原：試算表為排版把地名縮成兩字（「北黑-私語北」），縮寫只有原作者看得懂
-            # → 用它自己首頁那張對照表展開（對照也是抓來的，不在這裡自建）。
-            loc = hint.get("loc") or ""
-            for abbr, full in sorted(areas.items(), key=lambda kv: -len(kv[0])):
-                loc = loc.replace(abbr, full)
-            if loc: e["loc"] = loc
-            if hint.get("npc"): e["npc"] = hint["npc"]
-            if hint.get("price"): e["price"] = hint["price"]
+        price = (entry or {}).get("price") or (row and row[1])
+        if price:
+            e["price"] = price
+        npcs = [n for n in (entry or {}).get("npcs", []) if n.get("zone")]
+        if npcs:
+            withnpc += 1
+            e["npcs"] = [{"npc": n.get("npc"), "title": n.get("title"), "zone": n.get("zone"),
+                          "x": n.get("x"), "y": n.get("y")} for n in npcs[:3]]
+            if len(npcs) > 3:
+                e["more"] = len(npcs) - 3               # 「還有幾處」——不列一長串通用商人
         out[str(iid)] = e
     con.close()
     with open(os.path.join(OUT, "vendors.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
-    withloc = sum(1 for v in out.values() if "loc" in v)
-    print("✓ vendors.json：職業任務相關物品 %d 件，其中 %d 件 NPC 有賣、%d 件另有地點/單價"
-          "（試算表說有賣但解包說沒有的 %d 件已剔除：%s）"
-          % (len(need), len(out), withloc, len(conflict), conflict or "無"))
+    print("✓ vendors.json：職業任務相關物品 %d 件，其中 %d 件 NPC 有賣、%d 件查得到販售地點"
+          % (len(need), len(out), withnpc))
 
 
 def main():
