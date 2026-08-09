@@ -1632,6 +1632,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   Q.setVendors({
     1: { shop: 1, price: 18, npcs: [{ npc: '斯姆爾維布', title: '行會供應商', zone: '烏爾達哈現世回廊', x: 10.6, y: 9.6 }], more: 5 },
     2: { shop: 1 },
+    // 通用商人：資料裡只有名字沒有座標（實測楓木方盾就是這樣）——不能因此當成「查不到商人」
+    4: { shop: 1, price: 72, npcs: [{ npc: '雜用商人', title: '購物&修理' }, { npc: '武具商' }] },
   });
 
   const full = Q.vendorHtml(1), bare = Q.vendorHtml(2), none = Q.vendorHtml(3);
@@ -1641,15 +1643,25 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T32 NPC 太多時用「另有 N 處」帶過，不塞一長串', /另有 5 處/.test(full));
   check('T32 只知道「有賣」但不知道在哪 → 誠實說沒有販售地點資料',
     /商人有賣/.test(bare) && /沒有這件的販售地點資料/.test(bare));
+  // 沒座標≠沒商人：第一版用 `if n.zone` 過濾，把「武具商」這種通用商人整批丟掉，
+  // 畫面說「沒有販售地點資料」，但遊戲裡到處都買得到（Owner 2026-08-09 指出）。
+  {
+    const generic = Q.vendorHtml(4, false);
+    check('T32 沒有座標的通用商人照樣列出名字與稱號',
+      /雜用商人/.test(generic) && /武具商/.test(generic) && /72 G/.test(generic));
+    check('T32 有商人時不得再說「沒有販售地點資料」', !/沒有這件的販售地點資料/.test(generic));
+  }
 
   // 資料檔不變量：vendors.json 每筆都是解包確認有賣；帶 NPC 的必須有地名（沒地名的地點資訊沒用）
   const v = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'vendors.json'), 'utf8'));
   const rows = Object.values(v);
   check('T32 vendors.json 每筆都是「解包確認有 NPC 賣」', rows.length > 0 && rows.every((e) => e.shop === 1));
-  check('T32 每個 NPC 都帶地名（沒地名的販售點對玩家沒用）',
-    rows.every((e) => !e.npcs || e.npcs.every((n) => n.zone && n.npc)));
-  check('T32 販售地點覆蓋率沒有倒退（現況 172 件，之前靠社群資料只有 38 件）',
-    rows.filter((e) => e.npcs && e.npcs.length).length >= 150);
+  check('T32 每個 NPC 都至少有名字（沒名字的條目沒有意義）',
+    rows.every((e) => !e.npcs || e.npcs.every((n) => n.npc)));
+  check('T32 帶座標的商人排在前面（能直接跑過去的優先）',
+    rows.every((e) => !e.npcs || e.npcs.every((n, i, a) => i === 0 || !(n.zone && !a[i - 1].zone))));
+  check('T32 「跟誰買」的覆蓋率沒有倒退（現況 247/256；社群資料時代只有 38）',
+    rows.filter((e) => e.npcs && e.npcs.length).length >= 240);
 }
 
 
@@ -1669,13 +1681,12 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   Q.setVendors({ 7: { shop: 1, loc: '西薩納蘭-銅鈴銅山', price: 18 } });
 
   const nq = Q.vendorHtml(7, false);      // 任務不要求 HQ → 照常說買得到
-  const hq = Q.vendorHtml(7, true);       // 任務要求 HQ → 必須改口
+  const hq = Q.vendorHtml(7, true);       // 任務要求 HQ → 商人資訊對這一格毫無用處
   const unknown = Q.vendorHtml(7, null);  // 不知道要不要 HQ → 要照實提醒
 
-  check('T33 不要求 HQ → 徽章照常顯示可購買與單價', /18 G/.test(nq) && !/只賣 NQ/.test(nq));
-  check('T33 要求 HQ → 徽章改成「只賣 NQ」', /只賣 NQ/.test(hq));
-  check('T33 要求 HQ → 說明講清楚買來的不能交、要自己做', /不能直接交/.test(hq) && /HQ/.test(hq));
-  check('T33 要求 HQ 的徽章不得沿用「買得到」的樣式', /crafter-qt-tag--nq/.test(hq) && !/crafter-qt-tag--shop/.test(hq));
+  check('T33 不要求 HQ → 徽章照常顯示可購買與單價', /18 G/.test(nq));
+  // 商人根本不賣 HQ：寫「有賣」是誤導（買了交不掉），寫「只賣 NQ」是廢話（Owner 2026-08-09）
+  check('T33 要求 HQ → 整個商人徽章不出現', hq === '');
   check('T33 HQ 需求未知 → 徽章仍出，但說明要提醒可能交不了', /不確定這件是否要求 HQ/.test(unknown));
 
   // 資料檔：hq 只會是 true / null（試算表有列但沒標＝false 也可以），不得出現字串等雜訊

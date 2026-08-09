@@ -591,6 +591,3 @@ body {
   color: var(--color-gold, #ffd166); cursor: help; white-space: nowrap; }
 .crafter-qt-tag--unknown { background: color-mix(in srgb, var(--color-warn) 12%, transparent);
   color: var(--color-warn); cursor: help; }
-/* 要交 HQ 卻只有 NQ 可買 → 徽章不能長得像「買得到」的綠色 */
-.crafter-qt-tag--nq { background: color-mix(in srgb, var(--color-warn) 14%, transparent);
-  color: var(--color-warn); cursor: help; white-space: nowrap; }

@@ -274,8 +274,11 @@ def write_vendors(quests_path):
     ——那份只有 38 筆、且只有縮寫地名；本檔涵蓋 96%（247/256）且價格與 `item_lookup.price_mid` 逐筆一致。
     留兩份就是留一份會漂移的。
 
-    `is_gil_shop` 仍是「有沒有得買」的判準（全覆蓋）；查得到 NPC 的再附上「在哪買」。
-    NPC 常有十幾個（通用商人各城都有）→ 只留**帶座標**的前 3 個，其餘用數量帶過。
+    `is_gil_shop` 仍是「有沒有得買」的判準（全覆蓋）；查得到 NPC 的再附上「跟誰買／在哪買」。
+    ⚠ **沒有座標不等於沒有商人**：像「武具商」「雜用商人」這類散佈各城的通用商人，資料裡常只有
+    名字與稱號（實測楓木方盾就是這樣）。第一版用 `if n.zone` 過濾＝把它們整批丟掉，畫面上變成
+    「本站沒有販售地點資料」，但遊戲裡到處都買得到 → **一律保留，只是把帶座標的排前面**。
+    NPC 常有十幾個 → 取前 3 個，其餘用數量帶過。
     範圍限「職業任務交付物 ＋ 它們配方展開到底的所有素材」：全量有上萬筆，對這個分頁沒用。
     """
     jobs = json.load(open(quests_path, encoding="utf-8"))
@@ -318,18 +321,20 @@ def write_vendors(quests_path):
         price = (entry or {}).get("price") or (row and row[1])
         if price:
             e["price"] = price
-        npcs = [n for n in (entry or {}).get("npcs", []) if n.get("zone")]
+        # 帶座標的排前面（能直接跑過去），但沒座標的照樣留著（名字本身就是線索）
+        npcs = sorted((entry or {}).get("npcs", []), key=lambda n: 0 if n.get("zone") else 1)
         if npcs:
             withnpc += 1
-            e["npcs"] = [{"npc": n.get("npc"), "title": n.get("title"), "zone": n.get("zone"),
-                          "x": n.get("x"), "y": n.get("y")} for n in npcs[:3]]
+            e["npcs"] = [{k: v for k, v in
+                          (("npc", n.get("npc")), ("title", n.get("title")), ("zone", n.get("zone")),
+                           ("x", n.get("x")), ("y", n.get("y"))) if v is not None} for n in npcs[:3]]
             if len(npcs) > 3:
                 e["more"] = len(npcs) - 3               # 「還有幾處」——不列一長串通用商人
         out[str(iid)] = e
     con.close()
     with open(os.path.join(OUT, "vendors.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
-    print("✓ vendors.json：職業任務相關物品 %d 件，其中 %d 件 NPC 有賣、%d 件查得到販售地點"
+    print("✓ vendors.json：職業任務相關物品 %d 件，其中 %d 件 NPC 有賣、%d 件查得到是跟誰買"
           % (len(need), len(out), withnpc))
 
 
