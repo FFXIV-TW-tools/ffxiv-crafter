@@ -197,7 +197,7 @@ def write_job_quests():
     else:
         print("⚠ 缺 tools/job-quest-qty.json（跑 fetch-quest-qty.py）→ 本輪不帶交付數量", file=sys.stderr)
     con = sqlite3.connect(ITEM_LOOKUP)
-    out, miss_item, qty_hit, qty_miss = [], 0, 0, 0
+    out, miss_item, qty_hit, qty_miss, hq_hit = [], 0, 0, 0, 0
     recipes = json.load(open(os.path.join(OUT, "recipes.json"), encoding="utf-8"))
     recipe_by_item = {}
     for r in recipes:                                  # 成品 item_id → 配方 id（同一物品多配方時取先出現者，與配方表一致）
@@ -226,16 +226,21 @@ def write_job_quests():
                 name = (r and r[0]) or ("#" + str(iid))
                 lv = str(int(x[idx["ClassJobLevel[0]"]] or 0))
                 sheet_row = qty_src.get(job["label"], {}).get(lv, {}) or {}
-                qty = sheet_row.get(name)                      # ① 名稱本來就一樣
-                if qty is None:                                 # ② 走 item_lookup 把社群名（可能是簡中/異體）解成 id 再比
-                    for sheet_name, n in sheet_row.items():
+                hit = sheet_row.get(name)                       # ① 名稱本來就一樣
+                if hit is None:                                 # ② 走 item_lookup 把社群名（可能是簡中/異體）解成 id 再比
+                    for sheet_name, v in sheet_row.items():
                         if resolve_item_id(con, sheet_name) == iid:
-                            qty = n
+                            hit = v
                             break
+                qty = hit.get("qty") if hit else None
+                # 是否要交 HQ：對不上就是 None＝**未知**，不能當成 False
+                # （當 False 的話畫面會說「商人有賣」，玩家買了 NQ 才發現交不了）
+                need_hq = hit.get("hq") if hit else None
                 if qty: qty_hit += 1
                 else: qty_miss += 1
+                if need_hq: hq_hit += 1
                 items.append({"id": iid, "name": name, "icon": (r and r[1]) or None,
-                              "recipe": recipe_by_item.get(iid), "qty": qty})
+                              "recipe": recipe_by_item.get(iid), "qty": qty, "hq": need_hq})
             if not items:                              # 沒有交付物的是解鎖/劇情任務 → 不列（列了是空行噪音）
                 continue
             quests.append({"id": int(x[0]), "lv": int(x[idx["ClassJobLevel[0]"]] or 0),
@@ -258,6 +263,7 @@ def write_job_quests():
         sum(len(q["items"]) for j in out for q in j["quests"]), miss_item))
     print("  交付數量：%d 件對到試算表、%d 件數量未知（名稱不一致或試算表未涵蓋 → 前端標「數量未知」）"
           % (qty_hit, qty_miss))
+    print("  要求 HQ：%d 件（來源同上；對不上的是 null＝未知，**不當成不用 HQ**）" % hq_hit)
 
 
 def write_vendors(quests_path):

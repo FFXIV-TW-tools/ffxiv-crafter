@@ -116,8 +116,14 @@
     const tag = it.recipe != null
       ? '<span class="codex-xs crafter-qt-tag">可製作</span>'
       : '<span class="codex-xs crafter-qt-tag crafter-qt-tag--gather">非製作</span>';
+    // 要交 HQ 是「會不會白做一爐」等級的資訊 → 徽章寫出來，未知也照實標（不默默當成不用）
+    const hq = it.hq === true
+      ? '<span class="codex-xs crafter-qt-tag crafter-qt-tag--hq" data-help="這個任務要交 HQ（高品質）版本｜商人賣的 NQ 不能交，要自己做或採到 HQ">✦ 需 HQ</span>'
+      : (it.hq == null
+        ? '<span class="codex-xs crafter-qt-tag crafter-qt-tag--unknown" data-help="本站的資料來源沒有涵蓋這一筆，不確定是否要求 HQ｜交之前先看一下遊戲內的任務說明">HQ？</span>'
+        : '');
     return `<div class="crafter-qt-item">${ico}<span class="crafter-qt-item__name">${esc(it.name)}</span>${qty}` +
-      `<span class="crafter-qt-item__src">${tag}${vendorHtml(it.id)}${src}</span></div>`;
+      `<span class="crafter-qt-item__src">${hq}${tag}${vendorHtml(it.id, it.hq)}${src}</span></div>`;
   }
 
   function questsHtml(v) {
@@ -216,16 +222,26 @@
   }
   function setVendors(map) { VENDORS = (map && typeof map === 'object') ? map : {}; render(); }
 
-  // 「這件東西買得到嗎、在哪買」：只有解包說 NPC 有賣才出徽章；地點/單價有才附上（沒有就只講買得到）
-  function vendorHtml(itemId) {
+  // 「這件東西買得到嗎、在哪買」：只有解包說 NPC 有賣才出徽章；地點/單價有才附上（沒有就只講買得到）。
+  // ⚠ needHq：**商人賣的是 NQ**。任務要求 HQ 時說「商人有賣」等於叫人買一堆交不掉的東西
+  //   （買了才發現不能交，而畫面上完全看不出來）→ 改成「只賣 NQ」並寫清楚要自己做。
+  //   needHq 為 null＝本站不知道要不要 HQ，也要照實講，不能默默當成不用。
+  function vendorHtml(itemId, needHq) {
     const v = VENDORS[String(itemId)];
     if (!v) return '';
     const where = [v.loc, v.npc].filter(Boolean).join(' · ');
     const price = v.price ? `${v.price} G` : '';
     const detail = [where, price].filter(Boolean).join('｜');
-    const help = detail
+    const base = detail
       ? `NPC 商人有賣｜${detail}｜地點與單價為社群整理，價格可能隨版本變動`
       : 'NPC 商人有賣（本站沒有這件的販售地點資料）';
+    if (needHq === true) {
+      return `<span class="codex-xs crafter-qt-tag crafter-qt-tag--nq" data-help="${deps.esc(
+        '這件任務要交 HQ，而商人賣的是 NQ — 買來的不能直接交，要自己做出 HQ（或採到 HQ）｜' + base)}">🏪 只賣 NQ</span>`;
+    }
+    const help = needHq == null
+      ? base + '｜本站不確定這件是否要求 HQ；若任務要 HQ，買來的 NQ 不能交'
+      : base;
     return `<span class="codex-xs crafter-qt-tag crafter-qt-tag--shop" data-help="${deps.esc(help)}">🏪 ${deps.esc(price || '商人有賣')}</span>`;
   }
 

@@ -1647,5 +1647,45 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     rows.every((e) => !e.loc || e.loc.length < 2 || !/^(北黑|中黑|南黑|東黑|低拉|中拉|西拉|東拉|高拉|外拉|西薩|中薩|東薩|南薩|北薩|庫中|庫西|德山|德谷|德海)-/.test(e.loc)));
 }
 
+
+// ===== T33：要交 HQ 的任務，商人徽章不得說「買得到」=====
+// 商人賣的是 NQ。任務要 HQ 時把徽章寫成「商人有賣」＝叫玩家買一堆交不掉的東西，
+// 而且他是**買完到 NPC 面前才發現**——畫面上一路都正常。這條就是釘住那個分流。
+{
+  const QSRC = fs.readFileSync(path.join(ROOT, 'app-quests.js'), 'utf8');
+  const c3 = { console, document: { getElementById: () => null }, localStorage: { getItem: () => null, setItem() {} } };
+  c3.globalThis = c3;
+  vm.createContext(c3);
+  vm.runInContext(QSRC, c3, { filename: 'app-quests-t33.js' });
+  const Q = c3.CraftQuests;
+  Q.init({ $: () => null, esc: (s) => String(s), iconUrl: () => '', toast() {}, mbItem: () => '#',
+    selectRecipe: () => true, switchTab() {}, getItems: () => ({}), getIngredients: () => ({}),
+    getRecipesById: () => ({}), getRecipeByItem: () => ({}) });
+  Q.setVendors({ 7: { shop: 1, loc: '西薩納蘭-銅鈴銅山', price: 18 } });
+
+  const nq = Q.vendorHtml(7, false);      // 任務不要求 HQ → 照常說買得到
+  const hq = Q.vendorHtml(7, true);       // 任務要求 HQ → 必須改口
+  const unknown = Q.vendorHtml(7, null);  // 不知道要不要 HQ → 要照實提醒
+
+  check('T33 不要求 HQ → 徽章照常顯示可購買與單價', /18 G/.test(nq) && !/只賣 NQ/.test(nq));
+  check('T33 要求 HQ → 徽章改成「只賣 NQ」', /只賣 NQ/.test(hq));
+  check('T33 要求 HQ → 說明講清楚買來的不能交、要自己做', /不能直接交/.test(hq) && /HQ/.test(hq));
+  check('T33 要求 HQ 的徽章不得沿用「買得到」的樣式', /crafter-qt-tag--nq/.test(hq) && !/crafter-qt-tag--shop/.test(hq));
+  check('T33 HQ 需求未知 → 徽章仍出，但說明要提醒可能交不了', /不確定這件是否要求 HQ/.test(unknown));
+
+  // 資料檔：hq 只會是 true / null（試算表有列但沒標＝false 也可以），不得出現字串等雜訊
+  const jq = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'job-quests.json'), 'utf8'));
+  const items = jq.flatMap((j) => j.quests.flatMap((q) => q.items));
+  check('T33 hq 欄只會是 true/false/null', items.every((it) => it.hq === true || it.hq === false || it.hq == null));
+  check('T33 確實有標到要求 HQ 的任務（哨兵本身有效）', items.filter((it) => it.hq === true).length >= 50);
+  // 木工 Lv25 胡桃木材＝已用 can_be_hq 全量反驗過的 golden（標 ୭ 的 92 件全部可 HQ、0 例外）
+  const w25 = jq.find((j) => j.job === '木工師').quests.find((q) => q.lv === 25);
+  eq('T33 木工 Lv25 要交 HQ 胡桃木材（golden）',
+    JSON.stringify(w25.items.map((i) => [i.name, i.hq])), JSON.stringify([['胡桃木材', true]]));
+  const w10 = jq.find((j) => j.job === '木工師').quests.find((q) => q.lv === 10);
+  eq('T33 木工 Lv10 不要求 HQ（早期任務；反向 golden）',
+    JSON.stringify(w10.items.map((i) => [i.name, i.hq])), JSON.stringify([['梣木木材', false]]));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

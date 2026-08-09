@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """fetch-quest-qty.py — 抓「生活職業任務所需材料」試算表，產 tools/job-quest-qty.json。
 
-輸出兩塊：`jobs`＝各職各等級的**交付數量**；`vendors`＝素材的**商人地點與單價**
+輸出兩塊：`jobs`＝各職各等級的**交付數量與是否要求 HQ**；`vendors`＝素材的**商人地點與單價**
 （試算表「採集材料」欄，形如 `[LV05木](北黑-私語東)#商人名` 換行 `楓木原木/2G`）。
 
 **為什麼要有這一支**：職業任務的「要交幾個」在台服解包裡找不到權威欄位
@@ -34,8 +34,10 @@ LV_RE = re.compile(r"(\d+)\s*級")
 VENDOR_RE = re.compile(
     r"^\[LV(\d+)([^\]]*)\]\(([^)]*)\)(?:#(\S+))?\s*\n\s*([^/\n(]+?)(?:/(?:#(\S+?))?(\d+)G)?(?:\(|$|\n)",
     re.S)
-# 「楓木木材×1」「橡木長弓୭×1」：୭ 是試算表自己的 HQ 記號，不屬於物品名
-ITEM_RE = re.compile(r"^\s*([^（(×]+?)[୭\s]*×\s*(\d+)")
+# 「楓木木材×1」「橡木長弓୭×1」：୭ ＝**這件要交 HQ**（試算表自己的記號，不屬於物品名）。
+# 語意不是猜的——標 ୭ 的 92 件物品**全部** can_be_hq=1（0 件例外），且 Lv1–19 完全沒有標記、
+# Lv20 起才出現、Lv60 後又變少，與遊戲的職業任務機制吻合。
+ITEM_RE = re.compile(r"^\s*([^（(×]+?)([୭\s]*)×\s*(\d+)")
 
 
 def main():
@@ -73,7 +75,7 @@ def main():
             for line in str(items).split("\n"):
                 mm = ITEM_RE.match(line)
                 if mm:
-                    got[mm.group(1).strip()] = int(mm.group(2))
+                    got[mm.group(1).strip()] = {"qty": int(mm.group(3)), "hq": "୭" in mm.group(2)}
             if got:
                 per_lv.setdefault(m.group(1), {}).update(got)
                 rows_seen += 1
