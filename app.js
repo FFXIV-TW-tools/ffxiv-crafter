@@ -50,6 +50,8 @@ const NAME_COLLATOR = new Intl.Collator('zh-Hant'); // 預建 collator，避免�
 
 let RECIPES = [], RLV = {}, ACTIONS = {}, RINDEX = [], ITEMS = {}, INGREDIENTS = {};
 let selected = null;    // { recipe, rlv }
+// 職業任務層展開素材樹要用的兩份索引（建一次、隨 loadData 重建；避免每次重繪掃 11803 筆）
+let RECIPE_BY_ID = {}, RECIPE_BY_ITEM = {};
 let openedFromList = false; // 由製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入則不顯示（避免幽靈導覽）
 let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
 // worker / solveClock 已移入 app-solve.js（該層私有狀態）
@@ -63,7 +65,7 @@ async function loadData() {
   // 七檔同一輪併發：meals/medicine 原本排第二輪 await，白等一個 RTT 只換 2.5KB（fetchOpt 自己吞錯，不會拖垮必要資料）
   // 品質階段同為選配：載不到只是少了「一階/二階/三階」快捷，目標品質仍可手打 → 不拖垮整站
   const fetchOptObj = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return {}; } };
-  const [recipes, rlv, actions, items, ingredients, meals, medicine, stages, levelSync] = await Promise.all([
+  const [recipes, rlv, actions, items, ingredients, meals, medicine, stages, levelSync, quests] = await Promise.all([
     fetchJson('data/recipes.json'),
     fetchJson('data/recipe_levels.json'),
     fetchJson('data/craft-actions.json'),
@@ -73,11 +75,17 @@ async function loadData() {
     fetchOpt('data/medicine.json'),
     fetchOptObj('data/quality-stages.json'),
     fetchOptObj('data/level-sync.json'),
+    fetchOpt('data/job-quests.json'),
   ]);
   RECIPES = recipes; RLV = rlv; ACTIONS = actions; ITEMS = items; INGREDIENTS = ingredients;
   globalThis.CraftConsumable?.setData?.(meals, medicine);
   globalThis.CraftStages?.setData?.(stages);
   globalThis.CraftSync?.setData?.(levelSync);
+  RECIPE_BY_ID = {}; RECIPE_BY_ITEM = {};
+  for (const r of RECIPES) {
+    RECIPE_BY_ID[r.id] = r;
+    if (r.item_id != null && RECIPE_BY_ITEM[r.item_id] == null) RECIPE_BY_ITEM[r.item_id] = r.id;  // 同物品多配方取先出現者（與配方表一致）
+  }
   RINDEX = RECIPES.map(r => ({
     id: r.id, name: r.item_name || '', job: r.job || '', rlv: r.rlv,
     // 簡中名只進搜尋、不顯示（顯示一律繁中）：很多人記的是陸服名或直接從簡中攻略貼過來
@@ -86,6 +94,9 @@ async function loadData() {
     icon: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].icon) || null,
     category: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].category) || '', // 道具種類（繁中）→ 配方名副行說明
   }));
+  // **必須在兩份配方索引建好之後**：職業任務的素材展開要靠它們判斷「這件東西做得出來嗎」，
+  // 早一步呼叫的話整份清單會靜默變成「全部非製作」（畫面正常、只是全錯）。
+  globalThis.CraftQuests?.setData?.(quests);
 }
 
 // ---------- 角色數值（localStorage，已抽到 app-gear.js：globalThis.CraftGear）----------
@@ -233,6 +244,7 @@ function switchTab(name, moveFocus) {
   $('tab-solve').hidden = name !== 'solve';
   $('tab-stats').hidden = name !== 'stats';
   $('tab-list').hidden = name !== 'list';
+  $('tab-quests').hidden = name !== 'quests';
   if (moveFocus && activeTab) activeTab.focus(); // 程式化切頁移焦到選中 tab，避免焦點卡在被隱藏的按鈕（鍵盤/SR a11y）
 }
 // tablist 鍵盤導覽（ARIA APG 水平：←→ 切換 + Home/End；焦點隨切換移動）
@@ -329,6 +341,10 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 且本層 init 才會把保存值套回 HQ / 專家之證 checkbox（保存值要先就位，後續公式與摘要才讀得到）
   if (!globalThis.CraftConsumable) throw new Error('app-consumable.js 未載入（部署不完整）');
   globalThis.CraftConsumable.init({ $, esc, iconUrl, toast, onChange: onConsumableChange });
+  // 職業任務層（app-quests.js classic script）：**必須早於 loadData**——loadData 尾端會 setData 繪清單
+  globalThis.CraftQuests?.init?.({ $, esc, iconUrl, toast, mbItem, selectRecipe, switchTab,
+    getItems: () => ITEMS, getIngredients: () => INGREDIENTS,
+    getRecipesById: () => RECIPE_BY_ID, getRecipeByItem: () => RECIPE_BY_ITEM });
   // 品質階段層（app-quality-stages.js classic script）：**必須早於 loadData**——loadData 尾端 setData、
   // 且深連結路徑會在 init 之後立刻 selectRecipe → refreshSelectedGear → setRecipe，監聽器要先掛好
   globalThis.CraftStages?.init?.({ $, invalidateResults });

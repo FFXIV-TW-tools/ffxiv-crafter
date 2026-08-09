@@ -3,6 +3,11 @@
 > 提案清單（B-NNN，append-only 編號）。**不經 Owner 核可不得自主實作**。來源標註便於回溯。
 > 完成打勾保留原句、尾巴追加 `✓ 完成於 cycle <id>`；否決用刪除線並留一行原因。格式見 DEVLOOP §4.2（四軸快篩）。
 
+- [ ] **B-023** (P2, data) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】職業任務「交付數量」剩 62 件未知 — 數量來自社群試算表、以 item id 對帳（`name_tc`／`name_sc`／OpenCC t2s 後查 `name_sc`），現況 228/290 對到。剩下的多數是**真差異**：60 級以上任務要交「XX的材料」，試算表列的是成品「高級XX」＝另一個 item id，id 對帳正確拒絕。**要補只能找到真正的權威欄位**（解包 `Quest.CountableNum` 是 255 哨兵值、`ToDo*` 沒有數量欄），或請 Owner 逐筆補一份覆寫表。**不得改用字面模糊比對**——猜錯會讓採購量整批偏掉而畫面全正常。來源: 2026-08-09 職業任務分頁
+
+- [ ] **B-024** (P2, feature) 【建議 高｜延遲風險 低｜執行風險 中（社群資料語意未定，弄錯會叫玩家跑錯地方）｜副作用 無】素材標示「商人有賣／賣在哪」 — Owner 需求。試算表的「採集材料」欄帶有商人標記與價格（例 `[LV01魚](海都)#海城魚商
+羅敏薩鳀魚/7G(沙蠶!)`），可解析出「地點／商人名／單價」。⚠ 動工前要拍板兩件事：① **語意**：`/7G` 是「NPC 商人售價」還是「採集後的參考售價」？兩者意思相反，弄錯會叫玩家跑去一個沒有商人的地方 ② **權威**：`item_lookup` 有 `is_gil_shop` 欄可判斷「這件東西是否有 NPC 販售」，但**沒有商人地點**；地點只有試算表有（社群整理）。建議做法＝`is_gil_shop` 當「有沒有商人賣」的權威（解包）、試算表只補「在哪買」的線索並標明來源。來源: 2026-08-09 Owner 要求
+
 - [ ] ~~**B-021** (P2, perf) 開頁資料改 lazy load + IndexedDB（抄 bis `app-core.js:419`）~~ — **否決 2026-08-05，前提是測錯的**。提案時說「開頁併發抓 7.3MB」，但那是 `decodedBodySize`＝**解壓後供解析的量**，不是下載量。CF 有 brotli，實測線上實際傳輸：`recipes.json` 4180KB→**196KB**、`items.json` 2190KB→**312KB**、`ingredients.json` 680KB→**99KB**，合計 ~607KB 且三支在同一輪 `Promise.all` 平行；主執行緒 `JSON.parse` 實測 **7 / 4 / 7 ＝ 18ms**。整頁 DCL 683ms、load 795ms、總傳輸 621KB。⇒ 抄 bis 那套等於為「最多一兩百毫秒的冷啟動下載」加一整套 IDB 快取＋失效＋版本比對，加在一個運作正常的載入路徑上，不划算。**唯一勉強成立的殘餘是 `ingredients.json`（99KB，只有開配方看 BOM 才需要）純延後、免 IDB——99KB 與 7ms，同樣不值得動。** ⚠️ 給後人：量頻寬要看 `transferSize` 或 `curl --compressed`，`decodedBodySize` 會讓這裡看起來大 12 倍。相關跨站盤點＝portal B-065。來源: 2026-08-05 跨站效能盤點
 
 - [ ] ~~**B-022** (P3, perf) 加 `<link rel="modulepreload">` 展平 module 瀑布（同 market B-081 / cosmic B-025 / sightseeing B-002）~~ — **否決 2026-08-05：本站沒有 module 瀑布可展平**。實地跑生成器產出 **0 條**：前端入口 `app.js` 雖是 `type="module"` 但**零相對 import**，10 支相依（`app-flow`／`app-gear`／`app-recipe`…）全走 classic `<script>` 全域載入。先前 grep 到的 7 支 ES module 檔全在後端（`functions/`／`worker.js`／`pkg/crafter_wasm.js`）。已把試作的生成器與哨兵撤回，不留無作用的機械。

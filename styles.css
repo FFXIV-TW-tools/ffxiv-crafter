@@ -97,7 +97,7 @@ body {
 .filter-group .job-chips { margin-bottom: var(--space-2, 8px); }
 /* 職業篩選＝共用 .codex-btn 方形分段（選中 --primary 填色 / 未選 --ghost）；此處僅補 icon 尺寸，不覆寫 codex-btn 屬性（gap/padding/radius/box-sizing 走元件本身）*/
 .job-chips { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
-#job-chips .job-btn img { width: 18px; height: 18px; }
+.job-chips .job-btn img { width: 18px; height: 18px; }   /* 求解分頁與職業任務分頁共用（原本只綁 #job-chips，新分頁的 icon 會變原尺寸大圖）*/
 .filter-row { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); align-items: center; }
 .filter-row .codex-input, .filter-row .codex-select { width: auto; }
 .filter-row .grow { flex: 1; min-width: 150px; }
@@ -533,3 +533,53 @@ body {
 .cl-mat-name--link { color: inherit; text-decoration: none; }   /* 素材名連 marketboard 查價/來源；hover 才亮 accent */
 .cl-mat-name--link:hover { color: var(--accent); text-decoration: underline; }
 .cl-mat-amt { margin-left: auto; flex: 0 0 auto; font-weight: var(--fw-semibold, 600); color: var(--accent); }
+
+/* ---- 職業任務分頁（app-quests.js）----
+   左：任務清單（勾完成）｜右：未完成任務的素材彙總。兩欄在窄屏堆疊。 */
+.crafter-qt-bar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3, 12px);
+  margin: var(--space-3, 12px) 0; }
+.crafter-qt-progress { color: var(--color-text); }
+.crafter-qt-progress b { color: var(--accent); font-variant-numeric: tabular-nums; }
+.crafter-qt-cols { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: var(--space-4, 16px);
+  align-items: start; }
+@media (max-width: 900px) { .crafter-qt-cols { grid-template-columns: 1fr; } }
+.crafter-qt-list { display: flex; flex-direction: column; gap: var(--space-2, 8px);
+  max-height: 70vh; overflow-y: auto; padding-right: var(--space-1, 4px); }
+.crafter-qt-quest { padding: var(--space-2, 8px) var(--space-3, 12px); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-left: 3px solid var(--accent); border-radius: var(--radius-sm, 6px); }
+/* 完成的任務不隱藏也不刪線一整塊：只降存在感，仍看得清楚交了什麼（要藏走「只顯示未完成」）*/
+.crafter-qt-quest.is-done { opacity: .55; border-left-color: var(--color-success, #7dd87d); }
+.crafter-qt-quest__head { display: flex; align-items: center; gap: var(--space-2, 8px); cursor: pointer; }
+.crafter-qt-quest__head input { width: 18px; height: 18px; accent-color: var(--accent); flex: 0 0 auto; }
+@media (pointer: coarse) { .crafter-qt-quest__head input { width: 24px; height: 24px; } }
+.crafter-qt-lv { flex: 0 0 auto; min-width: 4.2em; color: var(--accent); font-weight: var(--fw-bold, 700);
+  font-variant-numeric: tabular-nums; }
+.crafter-qt-name { font-weight: var(--fw-semibold, 600); min-width: 0; }
+.crafter-qt-items { display: flex; flex-direction: column; gap: var(--space-1, 4px); margin-top: var(--space-2, 8px); }
+.crafter-qt-item { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 34px;
+  padding: 0 var(--space-2, 8px); background: var(--color-bg); border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px); font-size: var(--fs-small); }
+.crafter-qt-item__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crafter-qt-item__src { display: flex; align-items: center; gap: var(--space-2, 8px); flex: 0 0 auto; }
+.crafter-qt-tag { padding: 1px var(--space-2, 8px); border-radius: var(--radius-xs, 4px);
+  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.crafter-qt-tag--gather { background: color-mix(in srgb, var(--color-gold, #ffd166) 16%, transparent);
+  color: var(--color-gold, #ffd166); }
+.crafter-qt-mats { position: sticky; top: 80px; }   /* 捲任務清單時素材彙總跟著（兩邊要對照著看）*/
+.crafter-qt-mats__group { margin-bottom: var(--space-3, 12px); }
+.crafter-qt-mats__group .codex-h4 { display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-2, 8px); margin: 0 0 var(--space-2, 8px); }
+.crafter-qt-mats__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-1, 4px); }
+.crafter-qt-mat { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 32px;
+  padding: 0 var(--space-2, 8px); background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px); font-size: var(--fs-small); color: inherit; text-decoration: none; }
+.crafter-qt-mat:hover { border-color: var(--accent); }
+.crafter-qt-mat__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crafter-qt-mat__n { flex: 0 0 auto; color: var(--accent); font-variant-numeric: tabular-nums; }
+.crafter-qt-item__qty { flex: 0 0 auto; color: var(--accent); font-variant-numeric: tabular-nums; }
+/* 數量未知＝資料缺口，用警示色寫出來（不是灰掉裝沒事）*/
+.crafter-qt-item__qty--unknown { color: var(--color-warn); cursor: help; }
+.crafter-qt-mats__note { padding: var(--space-2, 8px) var(--space-3, 12px); margin-bottom: var(--space-3, 12px);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warn) 40%, var(--color-border));
+  border-radius: var(--radius-sm, 6px); }

@@ -1,6 +1,3 @@
-LICENSE
-LICENSE-APACHE-2.0.txt
-LICENSE-MIT.txt
 _headers
 _routes.json
 app-browse.js
@@ -9,6 +6,7 @@ app-flow.js
 app-gear.js
 app-level-sync.js
 app-quality-stages.js
+app-quests.js
 app-recipe.js
 app-render.js
 app-solve.js
@@ -19,6 +17,9 @@ favicon-192.png
 favicon.ico
 functions
 index.html
+LICENSE
+LICENSE-APACHE-2.0.txt
+LICENSE-MIT.txt
 pkg
 robots.txt
 sitemap.xml

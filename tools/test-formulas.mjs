@@ -1530,5 +1530,90 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T30 「預設」的 specialist 不計入上限', ctx2.CraftGear.specialistCount(), 1);
 }
 
+
+// ===== T31：app-quests.js 職業任務層（素材展開 / 完成過濾）=====
+// 為什麼要守：這一頁的輸出是「玩家照著去買素材」的清單。算錯不會有任何錯誤訊號——
+// 畫面照樣是一張漂亮的表，人是到了市場板才發現少買。三個易錯點各釘一條：
+// ① 配方一次產 n 個 → 要 m 個是做 ceil(m/n) 次，素材照「做幾次」乘，不是照「要幾個」
+// ② 交付數量未知（qty=null）時以 1 份估算 —— 不能當成 0 直接不算
+// ③ 資料出環（A 的素材是 B、B 的素材是 A）不能把瀏覽器轉死
+{
+  const QUESTS_SRC = fs.readFileSync(path.join(ROOT, 'app-quests.js'), 'utf8');
+  const qctx = { console, document: { getElementById: () => null }, localStorage: { getItem: () => null, setItem() {} } };
+  qctx.globalThis = qctx;
+  vm.createContext(qctx);
+  vm.runInContext(QUESTS_SRC, qctx, { filename: 'app-quests.js' });
+  const Q = qctx.CraftQuests;
+  check('T31 CraftQuests 導出 expandMats / view', typeof Q.expandMats === 'function' && typeof Q.view === 'function');
+
+  // 配方 1：成品 100（一次產 3 個）← 素材 200×2 + 素材 300×1
+  // 配方 2：中間材 200 ← 底層 400×5
+  const ctx = {
+    recipesById: { 1: { id: 1, item_amount: 3 }, 2: { id: 2, item_amount: 1 } },
+    recipeByItem: { 100: 1, 200: 2 },
+    ingredients: { 1: [[200, 2], [300, 1]], 2: [[400, 5]] },
+  };
+  const flat = (arr) => Object.fromEntries(arr);
+
+  {
+    const r = Q.expandMats([{ id: 100, qty: 1 }], ctx);
+    // 要 1 個成品 → 做 1 次（產 3 但只需 1）→ 中間材 200 要 2、底層 300 要 1
+    // 中間材 200 要 2 → 配方 2 一次產 1 → 做 2 次 → 底層 400 要 10
+    eq('T31 一次產 3 個的配方：要 1 個仍是做 1 次', flat(r.inter)[200], 2);
+    eq('T31 中間材再展開到底層（2 × 5）', flat(r.base)[400], 10);
+    eq('T31 沒有配方的素材直接進底層', flat(r.base)[300], 1);
+    eq('T31 交付物本身不列進「要先做出來的」', flat(r.inter)[100], undefined);
+  }
+  {
+    const r = Q.expandMats([{ id: 100, qty: 4 }], ctx);
+    // 要 4 個 → ceil(4/3)=2 次 → 素材照 2 次算（不是照 4 個）
+    eq('T31 產出量取 ceil：要 4 個做 2 次 → 中間材 4', flat(r.inter)[200], 4);
+    eq('T31 底層跟著「做幾次」放大（4 × 5）', flat(r.base)[400], 20);
+    eq('T31 非配方素材同樣照次數（2 次 × 1）', flat(r.base)[300], 2);
+  }
+  {
+    const unknown = Q.expandMats([{ id: 100, qty: null }], ctx);
+    const one = Q.expandMats([{ id: 100, qty: 1 }], ctx);
+    eq('T31 數量未知（null）以 1 份估算、不是當 0 漏算',
+      JSON.stringify(unknown), JSON.stringify(one));
+  }
+  {
+    // 出環：500 的配方需要 600、600 的配方需要 500
+    const cyc = {
+      recipesById: { 9: { id: 9, item_amount: 1 }, 10: { id: 10, item_amount: 1 } },
+      recipeByItem: { 500: 9, 600: 10 },
+      ingredients: { 9: [[600, 1]], 10: [[500, 1]] },
+    };
+    const r = Q.expandMats([{ id: 500, qty: 1 }], cyc);   // 不得無限遞迴
+    check('T31 配方資料出環不會轉死，需求仍被記下', r.base.length + r.inter.length > 0);
+  }
+  {
+    const quests = [{ id: 1, lv: 1 }, { id: 2, lv: 5 }, { id: 3, lv: 10 }];
+    const done = new Set([2]);
+    const all = Q.view({ quests }, done, false);
+    const hide = Q.view({ quests }, done, true);
+    eq('T31 不隱藏時列出全部', all.quests.length, 3);
+    eq('T31 進度計已完成數', all.doneCount, 1);
+    eq('T31 「只顯示未完成」濾掉已完成', hide.quests.map((q) => q.id).join(','), '1,3');
+    eq('T31 素材彙總永遠只看未完成（與是否隱藏無關）',
+      JSON.stringify([all.remaining.map((q) => q.id), hide.remaining.map((q) => q.id)]),
+      JSON.stringify([[1, 3], [1, 3]]));
+  }
+  {
+    // 資料檔本身的不變量：11 職、每個任務至少一件交付物、qty 不是 0/負數
+    const jq = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'job-quests.json'), 'utf8'));
+    eq('T31 job-quests.json 收 11 個製作/採集職', jq.length, 11);
+    const items = jq.flatMap((j) => j.quests.flatMap((q) => q.items));
+    check('T31 每個任務都有交付物（沒有空任務列）', jq.every((j) => j.quests.every((q) => q.items.length > 0)));
+    check('T31 qty 只會是正整數或 null（0/負數是資料壞了）',
+      items.every((it) => it.qty == null || (Number.isSafeInteger(it.qty) && it.qty > 0)));
+    check('T31 交付物都有繁中名（不是 #id）', items.every((it) => it.name && !/^#\d+$/.test(it.name)));
+    // 木工 Lv10 交 12 個梣木木材＝Owner 提供的試算表對到解包的實證，數字變了要有人知道
+    const wood10 = jq.find((j) => j.job === '木工師').quests.find((q) => q.lv === 10);
+    eq('T31 木工 Lv10 交付物與數量（試算表 × 解包對帳過的 golden）',
+      JSON.stringify(wood10.items.map((i) => [i.name, i.qty])), JSON.stringify([['梣木木材', 12]]));
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -110,6 +110,7 @@
       <button class="codex-tab is-active" data-tab="solve" role="tab" aria-selected="true" aria-controls="tab-solve">🔨 配方求解</button>
       <button class="codex-tab" data-tab="list" role="tab" aria-selected="false" aria-controls="tab-list">📋 製造清單</button>
       <button class="codex-tab" data-tab="stats" role="tab" aria-selected="false" aria-controls="tab-stats">🧑‍🔧 角色數值</button>
+      <button class="codex-tab" data-tab="quests" role="tab" aria-selected="false" aria-controls="tab-quests">📜 職業任務</button>
     </nav>
 
     <!-- ===== 配方求解 ===== -->
@@ -312,6 +313,28 @@
       </section>
     </div>
 
+    <!-- ===== 職業任務 ===== -->
+    <div id="tab-quests" class="tabpanel" role="tabpanel" hidden>
+      <section class="codex-tablet codex-tablet--cyan panel">
+        <span class="codex-hud"></span>
+        <h2 class="codex-h2">職業任務 — 要交什麼</h2>
+        <p class="codex-body hint">11 個製作／採集職業的職業任務與<b>交付物品</b>（台服解包）。勾起完成的任務，下方<b>只彙總還沒完成的</b>素材，並展開到<b>要去買／採的底層素材</b>。進度只存本機。
+          交件數量取自社群試算表（<b>只在名稱完全對得上時採用</b>）；對不上的標<b>數量未知</b>並以 1 份估算，彙總區會寫出有幾件是估的。</p>
+        <div class="job-chips" id="quest-jobs"></div>
+        <div class="crafter-qt-bar">
+          <span id="quest-progress" class="crafter-qt-progress"></span>
+          <label class="opt"><input type="checkbox" id="quest-hide-done"> 只顯示未完成</label>
+        </div>
+        <div class="crafter-qt-cols">
+          <div id="quest-body" class="crafter-qt-list"></div>
+          <div class="crafter-qt-mats">
+            <h3 class="codex-h3">還要準備的素材</h3>
+            <div id="quest-mats"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <!-- ===== 製造清單 ===== -->
     <div id="tab-list" class="tabpanel" role="tabpanel" hidden>
       <section class="codex-tablet codex-tablet--cyan panel">
@@ -336,6 +359,7 @@
   <script src="app-solve.js"></script>
   <script src="app-browse.js"></script>
   <script src="app-consumable.js"></script>
+  <script src="app-quests.js"></script>
   <script src="app-quality-stages.js"></script>
   <script src="app-level-sync.js"></script>
   <script type="module" src="app.js"></script>
