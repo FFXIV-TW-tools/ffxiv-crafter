@@ -116,14 +116,15 @@
     const tag = it.recipe != null
       ? '<span class="codex-xs crafter-qt-tag">可製作</span>'
       : '<span class="codex-xs crafter-qt-tag crafter-qt-tag--gather">非製作</span>';
-    // 要交 HQ 是「會不會白做一爐」等級的資訊 → 徽章寫出來，未知也照實標（不默默當成不用）
+    // 要交 HQ ＝直接在品名後綴遊戲裡的 HQ 符號（玩家一眼認得），不另開一個標籤佔位置。
+    // 未知的用同一個符號加問號，維持同一套視覺語彙——仍要標，不能默默當成不用。
     const hq = it.hq === true
-      ? '<span class="codex-xs crafter-qt-tag crafter-qt-tag--hq" data-help="這個任務要交 HQ（高品質）版本｜商人賣的 NQ 不能交，要自己做或採到 HQ">✦ 需 HQ</span>'
+      ? '<span class="crafter-qt-hq" data-help="這個任務要交 HQ（高品質）版本｜商人賣的 NQ 不能交，要自己做或採到 HQ" aria-label="需要 HQ">✦</span>'
       : (it.hq == null
-        ? '<span class="codex-xs crafter-qt-tag crafter-qt-tag--unknown" data-help="本站的資料來源沒有涵蓋這一筆，不確定是否要求 HQ｜交之前先看一下遊戲內的任務說明">HQ？</span>'
+        ? '<span class="crafter-qt-hq crafter-qt-hq--unknown" data-help="本站的資料來源沒有涵蓋這一筆，不確定是否要求 HQ｜交之前先看一下遊戲內的任務說明" aria-label="是否需要 HQ 未知">✦?</span>'
         : '');
-    return `<div class="crafter-qt-item">${ico}<span class="crafter-qt-item__name">${esc(it.name)}</span>${qty}` +
-      `<span class="crafter-qt-item__src">${hq}${tag}${vendorHtml(it.id, it.hq)}${src}</span></div>`;
+    return `<div class="crafter-qt-item">${ico}<span class="crafter-qt-item__name">${esc(it.name)}${hq}</span>${qty}` +
+      `<span class="crafter-qt-item__src">${tag}${vendorHtml(it.id, it.hq)}${src}</span></div>`;
   }
 
   function questsHtml(v) {
