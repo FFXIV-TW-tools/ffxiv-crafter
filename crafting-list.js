@@ -10,6 +10,16 @@
   let byId = new Map(); // recipe id → recipe
   let list = [];        // [{ id, qty }]（qty＝製作次數）
 
+  // 移除鈕＝功能性小圖示 → 走 portal 共用元件（`FFXIVIcons.btnHTML('close', …)` → `.codex-icon-btn` ＋內嵌 SVG）。
+  // 自刻 ✕ 字元的問題與 emoji 同型：字型相依、視覺重量跟旁邊的 SVG 圖示不一致。
+  // 缺 CDN 時退回原本的字元鈕（功能不消失）。class 保持 `cl-del`——事件綁定靠它。
+  function delBtn(name) {
+    const label = `從清單移除「${name}」`;
+    if (globalThis.FFXIVIcons?.btnHTML) return globalThis.FFXIVIcons.btnHTML('close', label, { class: 'cl-del' });
+    return `<button class="cl-del codex-btn codex-btn--ghost codex-btn--icon" type="button"` +
+      ` aria-label="${deps.esc(label)}">✕</button>`;
+  }
+
   const clampQty = (q) => Math.max(QTY_MIN, Math.min(QTY_MAX, Math.floor(+q) || QTY_MIN));
   const notify = () => { if (deps && deps.onChange) deps.onChange(); };  // 清單任一變更 → 通知求解分頁配方表更新「已加入」標示
 
@@ -117,7 +127,7 @@
           <button class="cl-go codex-btn codex-btn--ghost" type="button" data-help="選定此配方並切到求解分頁">前往求解 →</button>
           ${mb}
           <span class="cl-qty codex-small">次數 <input class="cl-qty-in codex-input" type="number" min="${QTY_MIN}" max="${QTY_MAX}" inputmode="numeric" value="${e.qty}" aria-label="「${esc(r.item_name)}」製作次數"></span>
-          <button class="cl-del codex-btn codex-btn--ghost codex-btn--icon" type="button" aria-label="從清單移除「${esc(r.item_name)}」">✕</button>
+          ${delBtn(r.item_name)}
         </div>
       </div>`;
     }).join('');
@@ -158,7 +168,7 @@
         <div class="cl-mats">${matRows || '<span class="codex-small">（無素材資料）</span>'}</div>
       </section>`;
     const cm = box.querySelector('.cl-copy-mats');
-    if (cm) cm.onclick = () => deps.copyText(matText, '✓ 已複製素材清單');
+    if (cm) cm.onclick = () => deps.copyText(matText, '✓ 已複製素材清單', '素材清單');
     const sb = box.querySelector('.cl-shoplist');
     if (sb) sb.onclick = () => {
       const result = buildShoplistCsv(list, byId);

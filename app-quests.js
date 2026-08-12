@@ -125,8 +125,11 @@
         ? '<span class="crafter-qt-hq--unknown" data-help="本站的資料來源沒有涵蓋這一筆，不確定是否要求 HQ｜交之前先看一下遊戲內的任務說明">' +
           '<img class="crafter-qt-hq" src="assets/hq.png" width="14" height="14" alt="是否需要 HQ 未知">?</span>'
         : '');
-    return `<div class="crafter-qt-item">${ico}<span class="crafter-qt-item__name">${esc(it.name)}${hq}</span>${qty}` +
-      `<span class="crafter-qt-item__src">${copyBtn(it.name)}${tag}${vendorHtml(it.id, it.hq)}${src}</span></div>`;
+    // 數量與複製鈕**緊接品名**（Owner 2026-08-12）：這一列很寬，把它們丟到最右邊等於讓眼睛跨過
+    // 一大片空白才讀到「要幾個」。右側只留狀態徽章與動作鈕。
+    return `<div class="crafter-qt-item">${ico}<span class="crafter-qt-item__name">${esc(it.name)}${hq}</span>` +
+      `${qty}${copyBtn(it.name)}` +
+      `<span class="crafter-qt-item__src">${tag}${vendorHtml(it.id, it.hq)}${src}</span></div>`;
   }
 
   function questsHtml(v) {

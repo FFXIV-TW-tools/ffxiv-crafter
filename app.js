@@ -299,8 +299,12 @@ function toast(msg, v) {
   if (v === 'error' || v === 'warn') alert(msg);           // 重要訊息用原生提示 → CDN toast 未載時玩家仍看得到
 }
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
-// 複製：優先 async clipboard；行動 webview / 非安全脈絡（http、file://）無 navigator.clipboard → execCommand 降級
-function copyText(text, okMsg = '✓ 已複製') {   // okMsg 泛化：巨集/素材清單共用同一 clipboard fallback（DRY）
+// 複製：**優先 portal 共用實作**（`FFXIVClipboard.copy`，B-027 自 marketboard 升格——secure-context
+// 判斷＋execCommand fallback＋toast 都在那邊，是生態內最完整的一份）。
+// 本地那份只留作 CDN 未載時的退場（本機沒開 portal svc、或 CDN 掛掉時複製功能不能跟著消失）。
+// ⚠ 共用版的 toast 文字固定是「已複製「label」」→ 呼叫端的 okMsg 改當 label 傳（不要兩套文案各講一次）。
+function copyText(text, okMsg = '✓ 已複製', label) {   // okMsg 泛化：巨集/素材清單共用同一 clipboard fallback（DRY）
+  if (window.FFXIVClipboard?.copy) { window.FFXIVClipboard.copy(text, label); return; }
   if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(text).then(() => toast(okMsg, 'ok'), () => fallbackCopy(text, okMsg)); return; }
   fallbackCopy(text, okMsg);
 }

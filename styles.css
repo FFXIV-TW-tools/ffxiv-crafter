@@ -559,8 +559,11 @@ body {
 .crafter-qt-item { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 34px;
   padding: 0 var(--space-2, 8px); background: var(--color-bg); border: 1px solid var(--color-border);
   border-radius: var(--radius-sm, 6px); font-size: var(--fs-small); }
-.crafter-qt-item__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.crafter-qt-item__src { display: flex; align-items: center; gap: var(--space-2, 8px); flex: 0 0 auto; }
+/* 名稱不吃滿剩餘寬度（原本 flex:1 會把數量/複製鈕推到最右）→ 數量與複製鈕緊跟在品名後面，
+   右側動作群靠 margin-left:auto 收邊。長品名仍可截斷（min-width:0 + ellipsis）。 */
+.crafter-qt-item__name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crafter-qt-item__src { display: flex; align-items: center; gap: var(--space-2, 8px); flex: 0 0 auto;
+  margin-left: auto; }
 .crafter-qt-tag { padding: 1px var(--space-2, 8px); border-radius: var(--radius-xs, 4px);
   background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
 .crafter-qt-tag--gather { background: color-mix(in srgb, var(--color-gold, #ffd166) 16%, transparent);

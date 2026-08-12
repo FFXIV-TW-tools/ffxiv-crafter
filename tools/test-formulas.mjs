@@ -43,6 +43,8 @@ const sandbox = {
   location: { hostname: 'localhost', search: '' },
   window: {},
   localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  navigator: {},          // 瀏覽器一定有 navigator；沒有 clipboard 屬性＝非安全脈絡，正好走 execCommand 退場路徑
+  alert() {},             // toast 的最後退場（CDN 未載 + 重要訊息）會用它；瀏覽器一定有
   Worker: function () { this.postMessage = () => {}; this.terminate = () => {}; },
   fetch: () => Promise.reject(new Error('test: no network')), // loadData 失敗 → IIFE catch → 不跑後續 init
   setTimeout, clearTimeout, setInterval, clearInterval, URLSearchParams,
@@ -53,7 +55,7 @@ vm.runInContext(GEAR_SRC, sandbox, { filename: 'app-gear.js' });
 vm.runInContext(RECIPE_SRC, sandbox, { filename: 'app-recipe.js' });
 vm.runInContext(RENDER_SRC, sandbox, { filename: 'app-render.js' }); // 先定義 globalThis.CraftRender（hqPercent 純函式、不需 init）
 vm.runInContext(
-  APP_SRC + '\n;globalThis.__t = { computeSettings, recipeMaxes, effectiveStats, esc, mbItem, mbCraft, selectRecipe, DOH, JOB_ICON, hqPercent: globalThis.CraftRender.hqPercent };',
+  APP_SRC + '\n;globalThis.__t = { computeSettings, recipeMaxes, effectiveStats, esc, mbItem, mbCraft, selectRecipe, copyText, DOH, JOB_ICON, hqPercent: globalThis.CraftRender.hqPercent };',
   sandbox, { filename: 'crafter-app.js' });
 const T = sandbox.__t;
 
@@ -1748,6 +1750,41 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     /data-copy-name/.test(QSRC) && /preventDefault\(\)/.test(QSRC));
   check('T34 複製優先走 portal 共用 clipboard、缺 CDN 才退回本地',
     /FFXIVClipboard/.test(QSRC) && /deps\.copyText/.test(QSRC));
+}
+
+
+// ===== T35：重複實作一律接共用（clipboard／移除鈕）=====
+// Owner 2026-08-12：「有重複使用的請接共用」。portal 的 header.js 已有生態內最完整的
+// clipboard（secure-context 判斷＋execCommand fallback＋toast）與功能性圖示組；本站原本各留一份。
+// 這一組守的是「接了共用、但退場路徑仍在」——只接不留退場，本機沒開 portal svc 時複製會整個消失。
+{
+  // (a) app.js 的 copyText：有共用就用共用
+  const calls = [];
+  sandbox.window.FFXIVClipboard = { copy: (t, l) => { calls.push([t, l]); return true; } };
+  try {
+    T.copyText('/ac 製作 <wait.3>', '✓ 已複製巨集', '巨集');
+    eq('T35 copyText 有共用實作時一律走 FFXIVClipboard.copy', calls.length, 1);
+    eq('T35 文字原樣傳給共用實作', calls[0][0], '/ac 製作 <wait.3>');
+    eq('T35 label 傳給共用實作當 toast 文字（不要兩套文案）', calls[0][1], '巨集');
+  } finally {
+    delete sandbox.window.FFXIVClipboard;
+  }
+  // 沒有共用時仍要能複製（退場路徑）——sandbox 無 navigator.clipboard → 走 execCommand 分支不得拋錯
+  let threw = null;
+  try { T.copyText('abc', '✓'); } catch (e) { threw = e; }
+  check('T35 缺共用實作時退回本地 fallback，不得拋錯', threw === null);
+
+  // (b) 純圖示鈕：清單移除鈕走共用 close 圖示，缺 CDN 退回字元鈕
+  const LIST_SRC = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
+  check('T35 清單移除鈕走共用 FFXIVIcons（close）', /FFXIVIcons(\?\.|\.)btnHTML\('close'/.test(LIST_SRC));
+  check('T35 移除鈕保留 cl-del class（事件綁定靠它）', /class: 'cl-del'/.test(LIST_SRC));
+  check('T35 缺 CDN 時仍有可按的移除鈕（退場路徑）', /aria-label="\$\{deps\.esc\(label\)\}">✕<\/button>/.test(LIST_SRC));
+
+  // (c) 帶文字的動作鈕**刻意保留 emoji**：AGENTS「icon 節制」管的是身分/主操作，B-027 只收功能性小圖示。
+  //     這條是負向哨兵——別哪天「順手統一」把它們也換成 SVG。
+  check('T35 帶文字的動作鈕維持 emoji（📋 加入製造清單／📋 複製清單）',
+    /📋 加入製造清單/.test(fs.readFileSync(path.join(ROOT, 'app-recipe.js'), 'utf8')) &&
+    /📋 複製清單/.test(LIST_SRC));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
