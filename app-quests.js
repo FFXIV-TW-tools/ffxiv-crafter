@@ -126,7 +126,7 @@
           '<img class="crafter-qt-hq" src="assets/hq.png" width="14" height="14" alt="是否需要 HQ 未知">?</span>'
         : '');
     return `<div class="crafter-qt-item">${ico}<span class="crafter-qt-item__name">${esc(it.name)}${hq}</span>${qty}` +
-      `<span class="crafter-qt-item__src">${tag}${vendorHtml(it.id, it.hq)}${src}</span></div>`;
+      `<span class="crafter-qt-item__src">${copyBtn(it.name)}${tag}${vendorHtml(it.id, it.hq)}${src}</span></div>`;
   }
 
   function questsHtml(v) {
@@ -157,8 +157,13 @@
     const row = ([iid, n]) => {
       const it = ITEMS[String(iid)] || NAME_BY_ID.get(iid) || {};
       const ico = it.icon ? `<img class="ing-ico" src="${iconUrl(it.icon)}" alt="" loading="lazy">` : '';
-      return `<a class="crafter-qt-mat" href="${mbItem(iid)}" target="ffxiv-marketboard" data-help="到市場板查價格與來源。共用同一分頁。">` +
-        `${ico}<span class="crafter-qt-mat__name">${esc(it.name || ('#' + iid))}</span>${vendorHtml(iid)}<b class="crafter-qt-mat__n">×${n}</b></a>`;
+      const name = it.name || ('#' + iid);
+      // 容器 div 而非整列 <a>：複製鈕是 <button>，塞進 <a> 是非法嵌套（互動元素不得互套），
+      // 而且點鈕會連帶觸發連結跳頁。連結只包「可點去查價」的那段。
+      return `<div class="crafter-qt-mat">` +
+        `<a class="crafter-qt-mat__link" href="${mbItem(iid)}" target="ffxiv-marketboard" data-help="到市場板查價格與來源。共用同一分頁。">` +
+        `${ico}<span class="crafter-qt-mat__name">${esc(name)}</span>${vendorHtml(iid)}<b class="crafter-qt-mat__n">×${n}</b></a>` +
+        copyBtn(name) + `</div>`;
     };
     const note = unknown
       ? `<div class="crafter-qt-mats__note codex-small">⚠ 其中 <b>${unknown}</b> 件交付物的數量未知，已以「1 份」估算 — 實際可能更多，請自行加量。</div>`
@@ -180,6 +185,22 @@
     renderChips();
     deps.$('quest-progress').innerHTML = `<b>${deps.esc(cur.job)}</b>　已完成 <b>${v.doneCount}</b> / ${v.total}`;
     deps.$('quest-mats').innerHTML = matsHtml(v);
+    wireCopy(deps.$('quest-mats'));
+  }
+
+  // 複製：優先 portal 共用實作（secure-context 判斷 + execCommand fallback + toast 都在那邊），
+  // 缺 CDN 才退回本站注入的 copyText。事件委派掛在容器上 → 重繪後不必重綁。
+  function wireCopy(root) {
+    if (!root || root.__copyWired) return;
+    root.__copyWired = true;
+    root.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-copy-name]');
+      if (!btn) return;
+      e.preventDefault();                       // 鈕在連結旁邊，別讓事件繼續跑到 <a>
+      const name = btn.dataset.copyName;
+      if (globalThis.FFXIVClipboard && globalThis.FFXIVClipboard.copy) globalThis.FFXIVClipboard.copy(name);
+      else deps.copyText(name, `✓ 已複製「${name}」`);
+    });
   }
 
   function render() {
@@ -207,10 +228,11 @@
     $('quest-body').querySelectorAll('.crafter-qt-go').forEach((b) => {
       b.onclick = () => { if (deps.selectRecipe(Number(b.dataset.recipe))) deps.switchTab('solve', true); };
     });
+    wireCopy($('quest-body'));
   }
 
   // ---------- init / setData ----------
-  const REQUIRED = ['$', 'esc', 'iconUrl', 'toast', 'mbItem', 'selectRecipe', 'switchTab',
+  const REQUIRED = ['$', 'esc', 'iconUrl', 'toast', 'mbItem', 'selectRecipe', 'switchTab', 'copyText',
     'getItems', 'getIngredients', 'getRecipesById', 'getRecipeByItem'];
   function init(d) {
     const miss = REQUIRED.filter((k) => d == null || d[k] == null);
@@ -224,6 +246,19 @@
     }
   }
   function setVendors(map) { VENDORS = (map && typeof map === 'object') ? map : {}; render(); }
+
+  // 複製品名鈕：**用 portal 的共用元件**（`FFXIVIcons.btnHTML('copy', …)` → `.codex-icon-btn` ＋內嵌 SVG，
+  // B-027 已從 marketboard 升格到 header.js）。不自刻 📋 emoji —— 那正是 B-027 要收掉的東西
+  // （emoji 當功能性小圖示：字型相依、拿不到 currentColor、縮小後糊）。
+  // CDN 沒載到（本機沒開 portal svc）時退回一顆同樣可按的文字鈕，功能不因此消失。
+  function copyBtn(name) {
+    const attrs = { 'data-copy-name': name, 'data-help': '複製這個道具的繁中名稱到剪貼簿' };
+    if (globalThis.FFXIVIcons && globalThis.FFXIVIcons.btnHTML) {
+      return globalThis.FFXIVIcons.btnHTML('copy', `複製「${name}」名稱`, attrs);
+    }
+    return `<button type="button" class="codex-icon-btn" aria-label="複製「${deps.esc(name)}」名稱"` +
+      ` data-copy-name="${deps.esc(name)}" data-help="複製這個道具的繁中名稱到剪貼簿">⧉</button>`;
+  }
 
   // 「這件東西買得到嗎、跟誰買」：資料來自解包（gil_shop_npc → 價格＋販售 NPC 的名字/稱號/座標）。
   // ⚠ needHq＝true 時**整個徽章不出**：商人根本不賣 HQ，寫「只賣 NQ」是廢話，寫「有賣」是誤導
@@ -259,5 +294,5 @@
     render();
   }
 
-  globalThis.CraftQuests = { init, setData, setVendors, vendorHtml, expandMats, view };
+  globalThis.CraftQuests = { init, setData, setVendors, vendorHtml, copyBtn, expandMats, view };
 })();

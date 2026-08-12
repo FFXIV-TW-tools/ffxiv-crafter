@@ -570,10 +570,13 @@ body {
 .crafter-qt-mats__group .codex-h4 { display: flex; align-items: baseline; justify-content: space-between;
   gap: var(--space-2, 8px); margin: 0 0 var(--space-2, 8px); }
 .crafter-qt-mats__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-1, 4px); }
-.crafter-qt-mat { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 32px;
-  padding: 0 var(--space-2, 8px); background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm, 6px); font-size: var(--fs-small); color: inherit; text-decoration: none; }
+/* 容器只負責框與排列；可點去查價的是內層 <a>，複製鈕與它同層（<a> 內不得放 <button>）*/
+.crafter-qt-mat { display: flex; align-items: center; gap: var(--space-1, 4px); min-height: 32px;
+  padding: 0 var(--space-1, 4px) 0 var(--space-2, 8px); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); font-size: var(--fs-small); }
 .crafter-qt-mat:hover { border-color: var(--accent); }
+.crafter-qt-mat__link { display: flex; align-items: center; gap: var(--space-2, 8px); flex: 1; min-width: 0;
+  color: inherit; text-decoration: none; }
 .crafter-qt-mat__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .crafter-qt-mat__n { flex: 0 0 auto; color: var(--accent); font-variant-numeric: tabular-nums; }
 .crafter-qt-item__qty { flex: 0 0 auto; color: var(--accent); font-variant-numeric: tabular-nums; }

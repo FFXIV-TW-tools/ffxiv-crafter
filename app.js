@@ -344,7 +344,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   if (!globalThis.CraftConsumable) throw new Error('app-consumable.js 未載入（部署不完整）');
   globalThis.CraftConsumable.init({ $, esc, iconUrl, toast, onChange: onConsumableChange });
   // 職業任務層（app-quests.js classic script）：**必須早於 loadData**——loadData 尾端會 setData 繪清單
-  globalThis.CraftQuests?.init?.({ $, esc, iconUrl, toast, mbItem, selectRecipe, switchTab,
+  globalThis.CraftQuests?.init?.({ $, esc, iconUrl, toast, mbItem, selectRecipe, switchTab, copyText,
     getItems: () => ITEMS, getIngredients: () => INGREDIENTS,
     getRecipesById: () => RECIPE_BY_ID, getRecipeByItem: () => RECIPE_BY_ITEM });
   // 品質階段層（app-quality-stages.js classic script）：**必須早於 loadData**——loadData 尾端 setData、

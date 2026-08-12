@@ -2,6 +2,21 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-12 — 職業任務每列補「複製品名」鈕（走 portal 共用元件）
+
+**為什麼**：查到要什麼之後，下一步幾乎都是把名字貼到市場板或遊戲搜尋框。
+
+- 交付物列與素材列各有一顆複製鈕，用 **portal 的共用元件**：`FFXIVIcons.btnHTML('copy', …)`
+  （→ `.codex-icon-btn` ＋內嵌 SVG）＋ `FFXIVClipboard.copy`（secure-context 判斷 ＋ execCommand fallback ＋ toast）。
+  **沒有自刻 📋 emoji 鈕** —— portal B-027 就是為了收掉那個（5 個 repo 各刻一份、glyph 四種不一致）。
+  Owner 問「market 那個複製按鈕應該要在共用元件內，請確認」→ **確認早就在**（B-027 已從 marketboard 升格），
+  本站這次是接上去，不是再造一份。
+- 缺 CDN（本機沒開 portal svc）時退回一顆同樣可按、同樣帶 `aria-label`／`data-copy-name` 的文字鈕，功能不消失。
+- 素材列結構改為「容器 `div` ＋ 內層 `.crafter-qt-mat__link` ＋同層的鈕」：原本整列是 `<a>`，
+  把 `<button>` 塞進去是**非法嵌套**，而且點鈕會連帶跳去市場板。
+- T34：共用元件契約（用 copy 圖示／label 帶品名／`data-copy-name` 帶值／退場版不得用 emoji／
+  `<a>` 內不得有鈕／點鈕不得跳頁／優先共用 clipboard）。298 → **308 passed**。
+
 ## 2026-08-09 — 新增「職業任務」分頁（11 職／勾完成／素材展開到底層）
 
 **為什麼**：練生活職業時最花時間的不是製作，是「這一路上到底要交哪些東西、還缺什麼」。原本要開灰機一頁頁查。
