@@ -153,14 +153,14 @@
       : '';
     // 上下兩張獨立卡片：配方清單卡 / 素材總需求卡（Owner：兩者不要混在一起、上下分開）
     box.innerHTML = `
-      <section class="cl-card">
+      <section class="codex-tint-panel codex-tint-panel--neutral cl-card">
         <div class="cl-card-head">
           <h3 class="codex-h3">配方清單</h3>
           <span class="cl-count codex-small">${list.length} 種 · 製作 ${totalRuns} 次</span>
         </div>
         <div class="cl-rows">${rows}</div>
       </section>
-      <section class="cl-card">
+      <section class="codex-tint-panel codex-tint-panel--neutral cl-card">
         <div class="cl-card-head">
           <h3 class="codex-h3">素材總需求</h3>
           <div class="cl-card-actions">${copyBtn}${shopBtn}</div>

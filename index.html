@@ -145,7 +145,7 @@
              首次 renderTable 後由 app.js 卸下 → 之後篩選只剩少量結果時不會留一口空井。 -->
         <div id="picker" class="is-loading">
           <!-- 篩選子面板：職業 + 搜尋/等級 組成獨立卡，與下方結果列表硬分兩區（Owner：界線更硬）-->
-          <div class="filter-group">
+          <div class="codex-tint-panel codex-tint-panel--neutral filter-group">
           <div class="job-chips" id="job-chips"></div>
           <div class="filter-row">
             <input id="recipe-search" class="codex-input grow" type="text" placeholder="搜尋配方名稱…" aria-label="搜尋配方名稱" autocomplete="off">
@@ -187,7 +187,7 @@
             <div id="ls-note" class="codex-small crafter-lvsync__note"></div>
           </div>
 
-          <div class="cfg-card">
+          <div class="codex-tint-panel codex-tint-panel--neutral cfg-card">
           <h3 class="codex-h3 cfg-card__title">素材與加成</h3>
           <p class="cfg-card__desc codex-small">HQ 素材、食物與藥水會提高起始品質與數值 — 不確定就保持預設。</p>
           <details class="consumable-block" id="consumable-block" open>
@@ -214,7 +214,7 @@
           <div id="ingredients" class="ingredients"></div>
           </div>
 
-          <div class="cfg-card">
+          <div class="codex-tint-panel codex-tint-panel--neutral cfg-card">
           <h3 class="codex-h3 cfg-card__title">求解設定</h3>
           <p class="cfg-card__desc codex-small">預設值適用多數配方；要壓縮步數或指定品質再調整。</p>
 

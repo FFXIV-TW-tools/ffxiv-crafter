@@ -1787,5 +1787,45 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     /📋 複製清單/.test(LIST_SRC));
 }
 
+// ===== T36：中性分組容器走共用 .codex-tint-panel--neutral（portal B-017d／B3 消費端遷移）=====
+// 三個容器（.filter-group／.cfg-card／.cl-card）的幾何——8px 圓角／1px 中性邊／底色——
+// 由 portal header.css 的 `.codex-tint-panel--neutral` 提供，底色以 `--panel-bg` 傳參。
+// **守的是回退**：這種遷移最容易被「順手」還原成本地 background/border/border-radius，
+// 而還原後畫面完全正常（值一樣），只是幾何又分岔成第二份事實源 ⇒ 日後 portal 調 8px 這裡不會跟上。
+// padding 與外距**刻意留本地**（共用版的 8/12px 是給資訊盒用的），故不在此斷言。
+{
+  const HTML_SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const LIST2_SRC = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
+  const NEUTRAL = 'codex-tint-panel codex-tint-panel--neutral';
+
+  // (a) 三個容器都要掛上共用 class（cl-card 由 crafting-list.js 動態產出，兩張卡都要）
+  check('T36 .filter-group 掛共用中性面板', HTML_SRC.includes(`${NEUTRAL} filter-group`));
+  eq('T36 兩張 .cfg-card 都掛共用中性面板',
+    (HTML_SRC.match(new RegExp(`${NEUTRAL} cfg-card`, 'g')) || []).length, 2);
+  eq('T36 兩張 .cl-card 都掛共用中性面板',
+    (LIST2_SRC.match(new RegExp(`${NEUTRAL} cl-card`, 'g')) || []).length, 2);
+
+  // (b) 本地不得再宣告這三個屬性（遷移的意義就在這裡；宣告了＝幾何有兩份）
+  const bodyOf = (sel) => {
+    const m = CSS_SRC.match(new RegExp(`\\${sel}\\s*\\{([^}]*)\\}`));
+    return m ? m[1] : null;
+  };
+  for (const sel of ['.filter-group', '.cfg-card', '.cl-card']) {
+    const body = bodyOf(sel);
+    check(`T36 ${sel} 規則存在（padding 與外距仍留本地）`, body !== null);
+    check(`T36 ${sel} 不再本地宣告 background（底色走 --panel-bg）`,
+      body !== null && !/(^|;)\s*background\s*:/.test(body));
+    check(`T36 ${sel} 不再本地宣告 border（描邊走共用）`,
+      body !== null && !/(^|;)\s*border\s*:/.test(body));
+    check(`T36 ${sel} 不再本地宣告 border-radius（圓角走共用）`,
+      body !== null && !/border-radius\s*:/.test(body));
+  }
+
+  // (c) 需要非預設底色的兩個要傳 --panel-bg；.cl-card 用共用預設（--color-surface）故刻意不傳
+  check('T36 .filter-group 以 --panel-bg 傳底色', /--panel-bg:\s*var\(--color-surface-hover\)/.test(bodyOf('.filter-group')));
+  check('T36 .cfg-card 以 --panel-bg 傳底色', /--panel-bg:\s*var\(--color-bg-deep/.test(bodyOf('.cfg-card')));
+  check('T36 .cl-card 不傳 --panel-bg（用共用預設 --color-surface）', !/--panel-bg/.test(bodyOf('.cl-card')));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -2,6 +2,23 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-13 — 三個中性分組容器遷共用 `.codex-tint-panel--neutral`（portal B-017d／B3 消費端）
+
+**為什麼**：`.filter-group`／`.cfg-card`／`.cl-card` 三個容器各自在本地寫了一份「8px 圓角＋1px 中性邊＋一種底色」，
+而 portal 8/8 已交付 `.codex-tint-panel--neutral` 正是這個形狀的共用版（本站這三個就是它當初的取樣對象之一）。
+
+- 幾何（圓角／描邊／底色）改由共用版提供，底色以 **`--panel-bg` 傳參**：`.filter-group` → `--color-surface-hover`、
+  `.cfg-card` → `--color-bg-deep`、`.cl-card` 不傳（共用預設就是 `--color-surface`）。
+  **padding 與外距刻意留本地**——共用版的 8/12px 是給資訊盒用的，分組容器要更寬且 `.cfg-card` 上下不等。
+- **視覺終態逐項相同**（瀏覽器實測 computed style，非讀 CSS 推論）：底色 `rgb(24,34,47)`／`rgb(3,6,12)`／`rgb(16,24,36)`、
+  邊 `1px solid rgb(43,63,86)`、圓角 8px、padding `12px`／`12px 16px 16px`／`16px` 與改動前一致，零 console error。
+- **不是 `.codex-card`**：這三個是靜態分組盒，套互動卡會得到「滑過就發光的假按鈕」，且圓角／內距／陰影三項都對不上
+  （portal 2026-08-08 否決 `.codex-card--static` 的理由就是這個）。
+- T36：三個容器都要掛共用 class，且**本地不得再宣告 `background`／`border`／`border-radius`**。
+  守的是回退——寫回去畫面完全正常（值一樣），只是幾何又變成兩份事實源，日後 portal 調 8px 這裡不會跟上。
+  突變驗過（拿掉 `.filter-group` 的共用 class ＋ 把 `.cl-card` 的 background/border-radius 寫回本地 → 紅 3 條）。
+  316 → **334 passed**。
+
 ## 2026-08-12 — 職業任務每列補「複製品名」鈕（走 portal 共用元件）
 
 **為什麼**：查到要什麼之後，下一步幾乎都是把名字貼到市場板或遊戲搜尋框。

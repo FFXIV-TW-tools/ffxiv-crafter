@@ -93,7 +93,9 @@ body {
 .crafter-picked .pick-head { margin-bottom: 0; flex: 1; min-width: 0; }
 .crafter-picked .crafter-pick-title { display: none; }
 /* 篩選子面板：職業 + 搜尋/等級 整組成 raised 灰框卡（bg 亮一階、gray border）→ 與下方結果列表（recessed cyan-bordered well）硬分兩區（Owner：界線更硬）。組內間距靠 padding，job-chips 底 margin 收掉避免雙重間距 */
-.filter-group { background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: var(--radius-md, 8px); padding: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); }
+/* 幾何（8px 圓角／1px 中性邊／底色）走共用 .codex-tint-panel--neutral，底色以 --panel-bg 傳參；
+   本地只留 padding 與外距（共用版的 8/12px 是給資訊盒用的，分組容器要更寬）。 */
+.filter-group { --panel-bg: var(--color-surface-hover); padding: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); }
 .filter-group .job-chips { margin-bottom: var(--space-2, 8px); }
 /* 職業篩選＝共用 .codex-btn 方形分段（選中 --primary 填色 / 未選 --ghost）；此處僅補 icon 尺寸，不覆寫 codex-btn 屬性（gap/padding/radius/box-sizing 走元件本身）*/
 .job-chips { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
@@ -288,9 +290,10 @@ body {
 .cfg-line .codex-select { width: auto; flex: 1; max-width: 240px; }
 .cfg-line__label { flex: 0 0 3.5em; }   /* 食物/藥水 標籤定寬 → 兩列下拉起點對齊 */
 
-/* config 子分組卡 — 安靜 inset（非 codex-card 互動卡：表單分組滑過不該跳動發光） */
-.cfg-card { background: var(--color-bg-deep, #03060c); border: 1px solid var(--color-border);
-  border-radius: var(--radius-md, 8px); padding: var(--space-3, 12px) var(--space-4, 16px) var(--space-4, 16px);
+/* config 子分組卡 — 安靜 inset（非 codex-card 互動卡：表單分組滑過不該跳動發光）
+   幾何走共用 .codex-tint-panel--neutral；本地只留 padding（上下不等）與外距 */
+.cfg-card { --panel-bg: var(--color-bg-deep, #03060c);
+  padding: var(--space-3, 12px) var(--space-4, 16px) var(--space-4, 16px);
   margin-top: var(--space-4, 16px); }
 .cfg-card__title { margin: 0 0 var(--space-1, 4px); }
 /* 每張設定卡一行「這張卡在決定什麼」——不靠使用者自己摸索欄位用途（Owner 引導性要求）*/
@@ -506,7 +509,8 @@ body {
 
 /* ---- 製造清單分頁（panel 吃滿版 container，與其他兩頁一致；痛點5）---- */
 /* 上下兩張獨立卡片（配方清單 / 素材總需求）：surface 底與 tablet 分層、彼此硬分開（Owner）*/
-.cl-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md, 8px); padding: var(--space-4, 16px); margin-bottom: var(--space-4, 16px); }
+/* 幾何走共用 .codex-tint-panel--neutral（底色即共用預設 --color-surface，故不傳 --panel-bg）*/
+.cl-card { padding: var(--space-4, 16px); margin-bottom: var(--space-4, 16px); }
 .cl-card:last-child { margin-bottom: 0; }
 .cl-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 8px); flex-wrap: wrap; margin-bottom: var(--space-3, 12px); }
 .cl-card-head > .codex-h3 { margin: 0; }
