@@ -1992,8 +1992,10 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   const LIST2_SRC = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
   const NEUTRAL = 'codex-tint-panel codex-tint-panel--neutral';
 
-  // (a) 三個容器都要掛上共用 class（cl-card 由 crafting-list.js 動態產出，兩張卡都要）
+  // (a) 四個容器都要掛上共用 class（cl-card 由 crafting-list.js 動態產出，兩張卡都要）
   check('T36 .filter-group 掛共用中性面板', HTML_SRC.includes(`${NEUTRAL} filter-group`));
+  // .result-summary 是 2026-08-13 那輪漏掉的第四個（幾何與共用版逐項相同，B-027 補遷）
+  check('T36 .result-summary 掛共用中性面板', HTML_SRC.includes(`${NEUTRAL} result-summary`));
   eq('T36 兩張 .cfg-card 都掛共用中性面板',
     (HTML_SRC.match(new RegExp(`${NEUTRAL} cfg-card`, 'g')) || []).length, 2);
   eq('T36 兩張 .cl-card 都掛共用中性面板',
@@ -2004,7 +2006,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     const m = CSS_SRC.match(new RegExp(`\\${sel}\\s*\\{([^}]*)\\}`));
     return m ? m[1] : null;
   };
-  for (const sel of ['.filter-group', '.cfg-card', '.cl-card']) {
+  for (const sel of ['.filter-group', '.cfg-card', '.cl-card', '.result-summary']) {
     const body = bodyOf(sel);
     check(`T36 ${sel} 規則存在（padding 與外距仍留本地）`, body !== null);
     check(`T36 ${sel} 不再本地宣告 background（底色走 --panel-bg）`,
@@ -2019,6 +2021,12 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T36 .filter-group 以 --panel-bg 傳底色', /--panel-bg:\s*var\(--color-surface-hover\)/.test(bodyOf('.filter-group')));
   check('T36 .cfg-card 以 --panel-bg 傳底色', /--panel-bg:\s*var\(--color-bg-deep/.test(bodyOf('.cfg-card')));
   check('T36 .cl-card 不傳 --panel-bg（用共用預設 --color-surface）', !/--panel-bg/.test(bodyOf('.cl-card')));
+  check('T36 .result-summary 以 --panel-bg 傳底色', /--panel-bg:\s*var\(--color-bg-deep/.test(bodyOf('.result-summary')));
+  // 負向哨兵：`.consumables` **刻意沒有**遷過去——它是 6px（--radius-sm）不是共用版的 8px，
+  // 巢狀在 .cfg-card 裡用小一級圓角是合理的設計選擇，不是漏遷。要遷就要 Owner 先決定接受 8px。
+  // 這條在有人「順手統一」時會紅，逼他回來看這段理由（B-027 剩餘項）。
+  check('T36 .consumables 維持本地 6px 圓角（非漏遷，見註解）',
+    /border-radius:\s*var\(--radius-sm/.test(bodyOf('.consumables') || ''));
 }
 
 // ===== T41：資料載入的降級分級（哪些載不到可以摸摸鼻子、哪些必須講出來）=====
@@ -2161,6 +2169,24 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T39 切段後每段仍不得超過 15 行（14 步 + 1 行 /echo）', /巨集 1 \/ 2（15 行）/.test(macro()));
   check('T39 末段行數＝剩餘步數 + /echo', /巨集 2 \/ 2（3 行）/.test(macro()));
   check('T39 切段時每段結尾要有 /echo 提示第幾段完成', (macro().match(/\/echo 第 \d+ 段完成/g) || []).length === 2);
+}
+
+// ===== T44：職業任務交付物列的窄屏形狀（B-029）=====
+// CSS 文字比對驗不了 layout（同 T26 的教訓），所以這裡只擋**已知會壞的那個形狀**：
+// 單列 flex 裡右側 .crafter-qt-item__src 是 `flex: 0 0 auto`（不收縮），而品名是唯一能縮的
+// ⇒ 窄屏時品名吸收全部不足。2026-08-15 實測：≤560px 開始截斷、**≤390px 全部 27 筆的品名寬度是 0**
+// （玩家看到「圖 + ×1 + 複製鈕 + 徽章」而沒有品名）。修法＝窄屏讓它落到第二行、品名拿回整行。
+// 真正的驗收是量測（同源 iframe 定寬 10 種寬度，截斷數全為 0），紀錄在 CHANGELOG；這條防的是被順手改回去。
+{
+  const srcRules = (CSS_SRC.match(/\.crafter-qt-item__src\s*\{[^}]*\}/g) || []).join('\n');
+  check('T44 .crafter-qt-item__src 規則存在', srcRules.length > 0);
+  check('T44 窄屏必須把右側動作群釋放成整行（否則品名會被壓成 0 寬）',
+    /flex:\s*1\s+1\s+100%/.test(srcRules), srcRules);
+  const media = CSS_SRC.match(/@media \(max-width: (\d+)px\)\s*\{[^@]*crafter-qt-item/);
+  check('T44 窄屏規則掛在既有的 760px 斷點上（不另發明數字）', !!media && media[1] === '760',
+    media ? media[1] : '找不到含 crafter-qt-item 的 @media');
+  check('T44 窄屏要允許換行（flex-wrap: wrap）',
+    /@media \(max-width: 760px\)[\s\S]{0,500}?crafter-qt-item\s*\{[^}]*flex-wrap:\s*wrap/.test(CSS_SRC));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -411,9 +411,12 @@ body {
 .solve-status:empty { display: none; margin-top: 0; min-height: 0; }
 
 /* ---- 結果 + 摺疊 ---- */
-/* 結果摘要＝獨立的 inset 面板（徽章 + 步數/秒數 metric + 兩條進度條），與下方摺疊區塊分開 */
-.result-summary { padding: var(--space-3, 12px); margin-bottom: var(--space-3, 12px);
-  background: var(--color-bg-deep, #03060c); border: 1px solid var(--color-border); border-radius: var(--radius-md, 8px); }
+/* 結果摘要＝獨立的 inset 面板（徽章 + 步數/秒數 metric + 兩條進度條），與下方摺疊區塊分開。
+   幾何走共用 .codex-tint-panel--neutral（同 .cfg-card／.filter-group／.cl-card）；本地只留 padding 與外距。
+   2026-08-13 那輪遷了三個容器卻漏掉這一個——它的幾何與共用版**逐項相同**（8px 圓角／1px 中性邊／bg-deep 底），
+   純粹是當時沒掃到 ⇒ 遷移後畫面零變化，收掉的是第二份會漂移的事實源。*/
+.result-summary { --panel-bg: var(--color-bg-deep, #03060c);
+  padding: var(--space-3, 12px); margin-bottom: var(--space-3, 12px); }
 .sum-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
 .sum-meta { margin-left: auto; display: inline-flex; gap: var(--space-2, 8px); flex: 0 0 auto; }
 /* 步數 / 秒數：值大、單位小，與左側徽章群拉開重量差（原本是一行同字級小字）*/
@@ -568,6 +571,16 @@ body {
 .crafter-qt-item__name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .crafter-qt-item__src { display: flex; align-items: center; gap: var(--space-2, 8px); flex: 0 0 auto;
   margin-left: auto; }
+/* 窄屏：右側徽章／動作群落到第二行，品名拿回整行。
+   由來（B-029，2026-08-15 實測；報告的前提「必然溢出」是錯的，實測文件層級**沒有**水平溢出）：
+   單列時 __src 是 flex:0 0 auto 不收縮（實測 222px），品名是唯一能縮的 ⇒ 它吸收全部不足。
+   實測截斷從 ≤560px 開始（3/27）、460px 有 11/27、**≤390px 全部 27 筆的品名寬度是 0**
+   —— 玩家看到「圖 + ×1 + 複製鈕 + 徽章」而沒有品名，等於這一列最重要的資訊被犧牲掉。
+   斷點沿用本檔既有的 760px（.crafter-flow／.work 單欄化用的同一個），不另發明數字。 */
+@media (max-width: 760px) {
+  .crafter-qt-item { flex-wrap: wrap; padding-top: var(--space-1, 4px); padding-bottom: var(--space-1, 4px); }
+  .crafter-qt-item__src { flex: 1 1 100%; margin-left: 0; }
+}
 .crafter-qt-tag { padding: 1px var(--space-2, 8px); border-radius: var(--radius-xs, 4px);
   background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
 .crafter-qt-tag--gather { background: color-mix(in srgb, var(--color-gold, #ffd166) 16%, transparent);
