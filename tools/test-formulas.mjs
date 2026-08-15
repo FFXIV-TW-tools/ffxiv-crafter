@@ -2091,11 +2091,15 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T36 .cfg-card 以 --panel-bg 傳底色', /--panel-bg:\s*var\(--color-bg-deep/.test(bodyOf('.cfg-card')));
   check('T36 .cl-card 不傳 --panel-bg（用共用預設 --color-surface）', !/--panel-bg/.test(bodyOf('.cl-card')));
   check('T36 .result-summary 以 --panel-bg 傳底色', /--panel-bg:\s*var\(--color-bg-deep/.test(bodyOf('.result-summary')));
-  // 負向哨兵：`.consumables` **刻意沒有**遷過去——它是 6px（--radius-sm）不是共用版的 8px，
-  // 巢狀在 .cfg-card 裡用小一級圓角是合理的設計選擇，不是漏遷。要遷就要 Owner 先決定接受 8px。
-  // 這條在有人「順手統一」時會紅，逼他回來看這段理由（B-027 剩餘項）。
-  check('T36 .consumables 維持本地 6px 圓角（非漏遷，見註解）',
-    /border-radius:\s*var\(--radius-sm/.test(bodyOf('.consumables') || ''));
+  // .consumables 2026-08-15 也遷了（Owner 拍板把剩下的一起做）：圓角由 6px 統一成共用版的 8px，
+  // 那是唯一的視覺變化。它用共用預設底色故不傳 --panel-bg。
+  check('T36 .consumables 掛共用中性面板', HTML_SRC.includes(`${NEUTRAL} consumables`));
+  check('T36 .consumables 不再本地宣告 background／border／border-radius',
+    !/(^|;)\s*(background|border|border-radius)\s*:/.test(bodyOf('.consumables') || ''));
+  // --panel-bg 會繼承：巢狀在 .cfg-card（傳 bg-deep）裡不顯式指定就會吃到父層的深色底，
+  // 正好抵銷「展開後與卡片背景分開」的原意。遷移當下實測踩到過，這條釘住。
+  check('T36 巢狀的 .consumables 必須顯式傳 --panel-bg（否則繼承父層 .cfg-card 的深色底）',
+    /--panel-bg:\s*var\(--color-surface\)/.test(bodyOf('.consumables') || ''));
 }
 
 // ===== T41：資料載入的降級分級（哪些載不到可以摸摸鼻子、哪些必須講出來）=====
@@ -2317,6 +2321,33 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   const missing = files.filter((f) => !APP49.includes(`throw new Error('${f} 未載入`));
   check('T49 每一支分層檔在 app.js 都有「未載入（部署不完整）」硬擋',
     missing.length === 0, `缺守衛：${missing.join(', ')}`);
+}
+
+// ===== T50：三張表都消費共用 .codex-table（DS-01）=====
+// 重點不是「少寫幾行 CSS」，是 .rt 原本自刻的 sticky 重現了 portal 已文件化並修掉的坑：
+// `border-collapse: collapse` 下 th 的 border-bottom 由 table 畫、**不跟著 sticky 移動**
+// ⇒ 捲動時列直接穿到表頭下方、沒有分隔線（2026-08-15 截圖實證）。
+// `.codex-table--sticky` 用 border-collapse: separate 解掉它，消費端不必記得那三個坑。
+{
+  const marks = [
+    ['app-browse.js', '.rt', /class="codex-table codex-table--fixed codex-table--sticky rt"/],
+    ['app-render.js', '.wt-table', /class="codex-table wt-table"/],
+    ['app-gear.js', '.gear-table', /class="codex-table codex-table--fixed gear-table"/],
+  ];
+  for (const [f, sel, re] of marks) {
+    check(`T50 ${sel} 掛共用 .codex-table`, re.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
+  }
+  // 本地不得再宣告共用版已提供的基底（width / border-collapse）——那是第二份事實源
+  for (const sel of ['.rt', '.wt-table', '.gear-table']) {
+    const m = CSS_SRC.match(new RegExp('[.]' + sel.slice(1) + '[ ]*[{]([^}]*)[}]'));
+    check(`T50 ${sel} 本地不再宣告 width／border-collapse／table-layout（走共用與變體）`,
+      // `min-width` 不算重複宣告：共用版沒有它，那是 .gear-table 窄螢幕內部橫捲的特化
+      !!m && !/(^|;|\s)(width|border-collapse|table-layout)\s*:/.test(m[1]), m ? m[1].trim().slice(0, 90) : '(無規則)');
+  }
+  // .rt 的 sticky 必須來自共用變體，本地不得再自刻 position: sticky
+  const rtThead = (CSS_SRC.match(/\.rt thead th\s*\{[^}]*\}/) || [''])[0];
+  check('T50 .rt 表頭 sticky 走共用 --sticky 變體（本地不再自刻 position: sticky）',
+    !/position:\s*sticky/.test(rtThead), rtThead.slice(0, 90));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

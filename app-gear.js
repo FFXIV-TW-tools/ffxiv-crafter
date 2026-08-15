@@ -63,7 +63,7 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
       ? '<td class="gear-na" aria-hidden="true">—</td>'
       : `<td><input class="gear-spec" type="checkbox" data-job="${esc(job)}"${specialistFor(job) ? ' checked' : ''} aria-label="${esc(job)}：專家之證"></td>`;
     $('gearsets').innerHTML = `
-      <table class="gear-table">
+      <table class="codex-table codex-table--fixed gear-table">
         <thead><tr><th>職業</th><th>等級</th><th>作業精度</th><th>加工精度</th><th>CP</th>
           <th data-help="持有專家之證的職業：作業 +20・加工 +20・CP +15，並解鎖「專心致志」「快速改革」｜遊戲同時最多 3 個">專家之證 <span id="spec-count" class="gear-spec-count"></span></th></tr></thead>
         <tbody>${rows.map(job =>

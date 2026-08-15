@@ -79,19 +79,19 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 >
 > ⚠️ 它**刻意不併進本 repo 既有的測試 runner**：該檔與 `functions/_middleware.js` 是 13 站逐站複製的樣板（每站只換 `OLD_HOST`／`NEW_ORIGIN` 兩個常數），檔名與介面必須跨站一致，不能為配合各站慣例改寫——改寫等於每站手動調整，正是 monorepo 交接頁一致性哨兵要防的漏抄。**既有測試基線不變。**
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="396" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="421" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **396**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳（見下方 `TEST-BASELINE` 標記），改測試數量時兩邊要一起改。
+> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **421**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳（見下方 `TEST-BASELINE` 標記），改測試數量時兩邊要一起改。
 >
 > 每一條測試當初是為了擋什麼、數字怎麼一路長上來的**逐輪流水帳搬到** [`docs/test-baseline-history.md`](docs/test-baseline-history.md)（2026-08-15，健檢 B-025）——那份歷史對「現在要怎麼做」沒有幫助，而本檔每個 session 都會被全文注入。
 >
 
 ```bash
 node --check *.js                       # JS 語法（用萬用字元，不列清單——手維護的清單會漏掉新模組，2026-08-15 就漏了 app-quests.js）
-node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T1〜T44，各條的用途寫在測試檔內；396 passed）
+node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T1〜T50，各條的用途寫在測試檔內；421 passed）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）＋ pkg/ 同步戳記 ＋ sim-diff 與 wasm 釘同一個 raphael tag
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一 + 神速技巧耐久/路徑/步數三條（5 passed）
 ```
@@ -118,6 +118,16 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 
 > **可執行的規則全在本節**（每 session 自動載入）；「怎麼發現的、錯了會怎樣」等敘事已搬 [`docs/lessons.md`](docs/lessons.md)（2026-08-03，DEVLOOP R7 20KB 護欄）。標了「→ 敘事見」的條目，動那一區前建議一併讀。
 
+- **分層 classic script 缺席一律硬失敗**（2026-08-15 RES-02）：`app.js` init 對 index.html 列出的每一支
+  `app-*.js`／`crafting-list.js` 都要有 `if (!globalThis.CraftXxx) throw new Error('<檔名> 未載入（部署不完整）')`。
+  用 `?.` 軟略過的話，那支檔 404 時玩家拿到的是「看起來正常、按下去才無聲 TypeError」的頁面。
+  **T49 由 index.html 的 script 清單反推涵蓋率**，新增分層檔忘了加守衛會紅。
+  各層**內部**的 `globalThis.CraftXxx?.` 選擇性呼叫不在此列（那是給測試 sandbox 只載部分層用的；
+  測試側的 stub 收在 `LAYER_STUBS()` 一處，別再逐個 harness 補）。
+- **晶體判定只有 `app.js` 的 `isCrystal(iid, name)` 一份**（2026-08-15 Q-02）：配方原料排序與製造清單彙總
+  都經 deps 注入取用，**不得在各層自己寫那個正則**（T48 守：`晶簇|水晶|碎晶` 在站台 JS 只准出現在一個檔）。
+- **程式化切頁一律帶移焦**（`switchTab(name, true)`）：那幾條路徑都是「被擋下 → 去補資料」的補救動線，
+  不移焦等於把鍵盤／螢幕閱讀器使用者丟回頁面開頭。只有 tablist 自己的 click handler 例外。T47 掃描。
 - **技能 icon 取列策略勿改回 `ORDER BY id LIMIT 1`**：正解＝排除佔位圖 `000786` → `class_job_level` DESC → id ASC（`check-actions.py` 有不變量守）。只改技能對照用 `py -3.11 tools/build-data.py --actions-only`。**職業專屬 icon 固定木工版是 Owner 裁示的取捨，B-008 已否決勿再提案**；紅線只有「不得出現佔位刪除號圖」。→ 敘事見 [`docs/lessons.md`](docs/lessons.md)
 - **食物/藥水下拉是自繪 listbox 不是 `<select>`**：**按鈕上的 Enter/Space 不要自己處理**（瀏覽器已轉成 click，兩邊都做會開了又關），keydown 只接 ↑↓。icon/品級來自 `meals.json`／`medicine.json`，由 `build-data.py --consumables-only` 補。→ 敘事見 [`docs/lessons.md`](docs/lessons.md)
 - **專家之證是「角色狀態」不是求解選項**（2026-08-09 起）：住 `gearsets[職業].specialist`（角色數值分頁勾），
@@ -161,6 +171,13 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
   ⚠ 鈕不能放進 `<a>` 裡（互動元素不得互套，且點鈕會連帶跳頁）：素材列因此是「容器 div ＋ 內層
   `.crafter-qt-mat__link` ＋同層的鈕」，click 處理要 `preventDefault()`。
 - **hover 說明一律 `data-help`，禁原生 `title`**（設計系統鐵則；2026-07-27 已把全 repo 19 處 title 清乾淨）：新增提示走 `data-help="…"`（`｜`／`。` 分行），圖示鈕另補 `aria-label`；`window.FFXIVHelp.setup()` 在 app.js init 呼叫一次（冪等）。
+- **表格一律消費共用 `.codex-table`**（2026-08-15 DS-01）：`.rt`／`.wt-table`／`.gear-table` 三張都掛，
+  欄寬與內容脫鉤用 `--fixed`、表頭釘頂用 `--sticky`（**不要自刻 sticky**：`border-collapse: collapse` 下
+  th 的 border-bottom 由 table 畫、不跟著 sticky 移動 ⇒ 捲動時列直接穿到表頭下方沒有分隔線，
+  本站原本就中招、2026-08-15 截圖實證；共用變體用 `separate` 解掉）。本地只留視覺特化。T50 守。
+- **巢狀的 `.codex-tint-panel` 一律顯式寫 `--panel-bg`**：那是 CSS 自訂屬性、**會繼承**——
+  `.consumables` 巢在 `.cfg-card`（傳 `--color-bg-deep`）裡不指定就吃到父層深色底，
+  正好抵銷「與卡片背景分開」的原意（遷移當下實測踩到）。T36 守。
 - **表格一律 `table-layout: fixed` + 百分比欄寬**（配方表 `.rt` / 角色數值 `.gear-table`，2026-07-27）：欄寬與內容脫鉤才不會在篩選/換頁時跳動（📊 表格佈局穩定鐵則）。**列內可能插徽章的儲存格要預留 `min-height`**（`.rt-nmline` 22px）——否則有徽章的列比別列高一截。掃視靠斑馬紋、分隔線淡化到 55%，別再加回每列實線。
 - **求解選項的說明是常駐文字不是 hover**（`.crafter-opt__desc`）：勾選類開關逐項要有一行說明；停用時**不隱藏控制**，改暗掉 + `.crafter-why` 寫出原因（`#adv-why` 高難度 / `#target-why` NQ 模式 / `#solve-btn[aria-disabled]` 缺角色數值）。
 - **改任一求解輸入 → 舊巨集失效**：`invalidateResults()` 集中失效，涵蓋 opt-* / 目標品質 / solve-mode / HQ 素材 / 全部 HQ 鈕 / 食藥 / 角色數值（程式設值不觸發 input 者須手動呼叫）。新增求解輸入時記得掛。

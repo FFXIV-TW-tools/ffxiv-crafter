@@ -125,7 +125,7 @@
       ${bar('品質', r.final_quality, r.max_quality, pct)}`;
     $('rotation').innerHTML = r.steps.map(actionChip).join('');
     $('walkthrough').innerHTML = `
-      <table class="wt-table">
+      <table class="codex-table wt-table">
         <thead><tr><th>#</th><th>手法</th><th>進展</th><th>品質</th><th>耐久</th><th>CP</th></tr></thead>
         <tbody>${r.steps.map((s, i) =>
           `<tr data-step="${i}"><td>${i + 1}</td><td class="wt-act">${actImg(s.action)}${esc(actionName(s.action))}</td><td>${s.progress}</td><td>${s.quality}</td><td>${s.durability}</td><td>${s.cp}</td></tr>`).join('')}</tbody>

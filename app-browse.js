@@ -56,7 +56,7 @@
       : (jobFilter || range || rlvVal || q ? '無符合配方' : '');  // rlvVal 納入判斷：僅配方等級篩選且 0 命中也顯「無符合配方」（對抗審 codex/grok，搬移前既有 bug）
     renderPager(total, pageCount);
     $('recipe-table').innerHTML = shown.length ? `
-      <table class="rt">
+      <table class="codex-table codex-table--fixed codex-table--sticky rt">
         <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th><th class="rt-actcol">加入</th></tr></thead>
         <tbody>${shown.map(r =>
           `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmwrap"><span class="rt-nmline"><span class="rt-nm">${esc(r.name)}</span></span>${r.category ? `<span class="rt-cat codex-small">${esc(r.category)}</span>` : ''}</span></span></td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td class="rt-act"><button type="button" class="codex-btn codex-btn--ghost codex-btn--icon rt-add" data-id="${r.id}" aria-label="將「${esc(r.name)}」加入製造清單" data-help="加入製造清單（不離開目前畫面）">＋</button></td></tr>`).join('')}</tbody>

@@ -138,10 +138,14 @@ body {
 .crafter-pager__info b { color: var(--accent); }
 /* table-layout:fixed + 百分比欄寬（📊 表格佈局穩定鐵則）：篩選/搜尋換內容時欄寬不重算＝欄位不跳動；
    同時把原本「名稱欄吃掉全部剩餘寬」造成的中段大片空白攤回各欄。 */
-.rt { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-small); }
+/* 基底走共用 .codex-table（+ --fixed 欄寬與內容脫鉤 + --sticky 表頭釘頂）。
+   **--sticky 才是重點**：它用 `border-collapse: separate` 解掉 portal 記錄的三個坑，其中第 ③ 個
+   （collapse 下 th 的 border-bottom 由 table 畫、不跟著 sticky 移動 ⇒ 捲動時列直接穿到表頭下方、
+   沒有分隔線）本站原本就中招——2026-08-15 截圖實證。本地只留字級與各欄的視覺特化。 */
+.rt { font-size: var(--fs-small); }
 /* 表頭加亮（原 --color-surface 與 panel 同色會融）＋下緣 accent 分隔線 → 明確界定列表頂、與篩選區分開 */
-.rt thead th { position: sticky; top: 0; z-index: var(--z-sticky, 500); background: var(--color-surface-hover); color: var(--accent); text-align: left;
-  padding: var(--space-2, 8px); border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, var(--color-border)); font-weight: var(--fw-semibold, 600); }
+.rt thead th { background: var(--color-surface-hover); text-align: left;
+  padding: var(--space-2, 8px); border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, var(--color-border)); }
 /* 固定列高 + 淡化分隔線：每列都畫實線＝密集網格感，掃視改交給斑馬紋 */
 .rt td { padding: var(--space-1, 4px) var(--space-2, 8px); height: 46px;
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
@@ -311,9 +315,15 @@ body {
 .consumable-block > summary::before { content: '▸'; color: var(--accent); margin-right: var(--space-1, 4px); display: inline-block; transition: transform var(--transition-fast, .15s); }
 .consumable-block[open] > summary::before { transform: rotate(90deg); }
 /* 展開後是一組有功能的表單 → 給它自己的卡片底（原本裸貼在卡片背景上，欄位像散落的） */
-.consumables { display: flex; flex-direction: column; gap: var(--space-2, 8px);
-  padding: var(--space-3, 12px); margin-bottom: var(--space-2, 8px);
-  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+/* 幾何走共用 .codex-tint-panel--neutral（同 .cfg-card／.filter-group／.cl-card／.result-summary，B-027）：
+   本地只留 flex 版面、padding 與外距。底色用共用預設（--color-surface）故不傳 --panel-bg。
+   ⚠ 圓角由 6px（--radius-sm）改為共用版的 8px —— 這是唯一的視覺變化。
+   ⚠⚠ **`--panel-bg` 是 CSS 自訂屬性，會繼承**：本區塊巢狀在 `.cfg-card`（它傳 --color-bg-deep）裡，
+   不顯式指定就會吃到父層的深色底，正好抵銷「展開後給它自己的卡片底、與卡片背景分開」的原意
+   （實測遷移當下就踩到：底色變成 rgb(3,6,12)）。**巢狀的 tint panel 一律顯式寫 --panel-bg。** */
+.consumables { --panel-bg: var(--color-surface);
+  display: flex; flex-direction: column; gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px); margin-bottom: var(--space-2, 8px); }
 .consumables .cfg-line .codex-select { width: auto; flex: 1; max-width: 220px; }
 
 /* ---- 食物/藥水自繪下拉（原生 <option> 放不了 icon／品級／功效 → 自建 listbox）---- */
@@ -464,11 +474,13 @@ body {
 .chip-name { max-width: 100%; text-align: center; line-height: var(--lh-tight, 1.15); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .walkthrough { overflow-x: auto; padding-bottom: var(--space-2, 8px); }
-.wt-table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+/* 基底走共用 .codex-table（寬度／collapse／表頭 accent 色與字重／hover 由它提供）；
+   本地只留特化：字級小一階、padding 收緊、數字欄靠右、分隔線淡化到 55%（密集網格感的取捨，見上方註解）*/
+.wt-table { font-size: var(--fs-small); }
 .wt-table th, .wt-table td { padding: var(--space-1, 4px) var(--space-2, 8px); text-align: right;
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
 .wt-table th:nth-child(2), .wt-table td:nth-child(2) { text-align: left; }
-.wt-table th { background: var(--color-surface-hover); color: var(--accent); font-weight: var(--fw-semibold, 600); }
+.wt-table th { background: var(--color-surface-hover); }
 .wt-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }
 .wt-table td { font-variant-numeric: tabular-nums; }   /* 進展/品質/耐久/CP 逐步遞減時位數對齊 */
 .wt-act { display: flex; align-items: center; gap: var(--space-1, 4px); }
@@ -486,12 +498,14 @@ body {
 .hint { margin-bottom: var(--space-4, 16px); }
 .gearsets { overflow-x: auto; }  /* 窄螢幕表格內部橫捲，不撐破頁面 */
 /* 撐滿面板（原本 width:auto + margin auto 置中 → 寬螢幕下左右各留一大片空白、表格孤懸中間）*/
-.gear-table { width: 100%; table-layout: fixed; border-collapse: collapse; min-width: 640px; }
-.gear-table th, .gear-table td { padding: var(--space-2, 8px) var(--space-3, 12px);
+/* 基底走共用 .codex-table（+ --fixed）：寬度／collapse／th·td padding（8/12 與共用版相同）／
+   表頭 accent 色與字重／hover 全由它提供。本地只留 min-width（窄螢幕內部橫捲）與淡化的分隔線。*/
+.gear-table { min-width: 640px; }
+.gear-table th, .gear-table td {
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
 .gear-table td { text-align: center; }   /* 輸入框在欄內置中 → 與置中表頭同一垂直軸 */
 .gear-table th:first-child { width: 24%; }
-.gear-table thead th { color: var(--accent); text-align: center; font-weight: var(--fw-semibold, 600); }  /* 數值欄表頭置中 */
+.gear-table thead th { text-align: center; }  /* 數值欄表頭置中（色與字重走共用 .codex-table）*/
 .gear-table thead th:first-child { text-align: left; }  /* 職業欄表頭靠左（對齊職名）*/
 .gear-table tbody tr:hover { background: var(--color-surface-hover); }
 .gear-table .gj { text-align: left; font-weight: var(--fw-semibold, 600); white-space: nowrap; }
@@ -584,10 +598,10 @@ body {
   .crafter-qt-item { flex-wrap: wrap; padding-top: var(--space-1, 4px); padding-bottom: var(--space-1, 4px); }
   .crafter-qt-item__src { flex: 1 1 100%; margin-left: 0; }
 }
-.crafter-qt-tag { padding: 1px var(--space-2, 8px); border-radius: var(--radius-xs, 4px);
-  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
-.crafter-qt-tag--gather { background: color-mix(in srgb, var(--color-gold, #ffd166) 16%, transparent);
-  color: var(--color-gold, #ffd166); }
+/* 徽章走共用 .codex-badge（含 --gold／--success 語意變體，DS-02）：底色／字色／圓角／字重都由它提供。
+   本地只留「這一列很密」需要的收斂：字級降一階、上下 padding 收緊、不換行。
+   ——不重刻底色與圓角，那正是 2026-08-13 那輪在中性面板上收掉的同一種第二份事實源。*/
+.crafter-qt-tag { padding-top: 1px; padding-bottom: 1px; font-size: var(--fs-xs, .6875rem); white-space: nowrap; }
 .crafter-qt-mats { position: sticky; top: 80px; }   /* 捲任務清單時素材彙總跟著（兩邊要對照著看）*/
 .crafter-qt-mats__group { margin-bottom: var(--space-3, 12px); }
 .crafter-qt-mats__group .codex-h4 { display: flex; align-items: baseline; justify-content: space-between;
@@ -609,9 +623,9 @@ body {
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-warn) 40%, var(--color-border));
   border-radius: var(--radius-sm, 6px); }
-/* 商人徽章：解包說「NPC 有賣」才出；地點/單價是社群資料，寫在 data-help 裡不擠版面 */
-.crafter-qt-tag--shop { background: color-mix(in srgb, var(--color-success, #7dd87d) 16%, transparent);
-  color: var(--color-success, #7dd87d); cursor: help; white-space: nowrap; }
+/* 商人徽章：解包說「NPC 有賣」才出；地點/單價是社群資料，寫在 data-help 裡不擠版面。
+   顏色走 .codex-badge--success，這裡只留 cursor（它是 hover 說明的觸發點）*/
+.crafter-qt-tag--shop { cursor: help; }
 /* 需 HQ ＝品名後直接貼遊戲內的 HQ icon（assets/hq.png，與 marketboard 同一張），不另開標籤；
    未知＝同一張圖淡化＋問號（仍要標，不假裝知道） */
 /* 白色（Owner 2026-08-09）：原圖是銅色漩渦，在深底的品名旁偏暗；轉成純白剪影＝遊戲內品名後

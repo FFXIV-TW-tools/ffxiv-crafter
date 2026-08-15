@@ -114,8 +114,8 @@
       ? `<b class="crafter-qt-item__qty">×${it.qty}</b>`
       : '<span class="crafter-qt-item__qty crafter-qt-item__qty--unknown codex-xs" data-help="遊戲資料裡沒有可信的數量欄位，社群資料也對不上這件物品的名稱｜彙總時以 1 份估算">數量未知</span>';
     const tag = it.recipe != null
-      ? '<span class="codex-xs crafter-qt-tag">可製作</span>'
-      : '<span class="codex-xs crafter-qt-tag crafter-qt-tag--gather">非製作</span>';
+      ? '<span class="codex-badge crafter-qt-tag">可製作</span>'
+      : '<span class="codex-badge codex-badge--gold crafter-qt-tag">非製作</span>';
     // 要交 HQ ＝品名後直接貼**遊戲內那顆 HQ 銅色漩渦 icon**（與 marketboard 同一張 assets/hq.png，
     // 該站 price_view/shop_table 用的就是它）——玩家在遊戲裡認的是這個圖，不是自創符號，也不必多一個標籤。
     // 未知的用同一張圖淡化 + 問號，維持同一套語彙：仍要標，不能默默當成不用。
@@ -292,7 +292,7 @@
     const help = needHq == null
       ? base + '｜本站不確定這件是否要求 HQ；若任務要 HQ，買來的 NQ 不能交'
       : base;
-    return `<span class="codex-xs crafter-qt-tag crafter-qt-tag--shop" data-help="${deps.esc(help)}">🏪 ${deps.esc(price || '商人有賣')}</span>`;
+    return `<span class="codex-badge codex-badge--success crafter-qt-tag crafter-qt-tag--shop" data-help="${deps.esc(help)}">🏪 ${deps.esc(price || '商人有賣')}</span>`;
   }
 
   function setData(rows) {
