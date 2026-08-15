@@ -15,8 +15,12 @@ const GEAR_SRC = fs.readFileSync(path.join(ROOT, 'app-gear.js'), 'utf8');
 const RECIPE_SRC = fs.readFileSync(path.join(ROOT, 'app-recipe.js'), 'utf8');
 const RENDER_SRC = fs.readFileSync(path.join(ROOT, 'app-render.js'), 'utf8'); // 結果渲染層（hqPercent 純函式住此）
 const CSS_SRC = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');       // T17 首載空間預留（CLS）規則哨兵
-const HANDWRITTEN_JS = ['app.js', 'app-flow.js', 'app-render.js', 'app-solve.js', 'app-browse.js',
-  'app-consumable.js', 'app-quality-stages.js', 'app-level-sync.js', 'crafting-list.js', 'worker.js'];
+// 站台手寫 JS＝repo 根的 .js，**掃描產生、不手維護清單**。
+// 由來（健檢 2026-08-15 docs-drift／tests 同一根因）：這份清單原本是手打的 10 支，
+// 漏掉 app-quests.js（第二大模組）／app-gear.js／app-recipe.js —— 靜默 catch 哨兵宣稱掃「全部手寫 JS」
+// 卻只掃 10/13，而且**漏掃的症狀就是全綠**。新增模組時沒有人會記得回來加一行，所以改成掃描。
+// （pkg/ 是 wasm-pack 產物、tools/ 與 tests/ 是工具鏈、functions/ 是 CF Pages Functions，都不在此範圍。）
+const HANDWRITTEN_JS = fs.readdirSync(ROOT).filter((f) => f.endsWith('.js')).sort();
 
 // ---------- 可控 DOM stub ----------
 const dom = {};
@@ -267,7 +271,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       get value() { return inputValue; },
       set value(v) { writes++; inputValue = String(v); },
     };
-    ctx.onGearInput({ target });
+    ctx.CraftGear.onGearInput({ target });
     const saved = JSON.parse(store['ffxiv-crafter-gearsets-v1']);
     const gearFor = ctx.gearFor('木工');
     return {
@@ -313,24 +317,36 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 {
   const LS_SRC = fs.readFileSync(path.join(ROOT, 'app-level-sync.js'), 'utf8');
   let invalidated = 0;
-  const mkT25Ctx = ({ recipe, rlvTable, syncMap = null, level }) => {
-    const els = {}, store = { 'ffxiv-crafter-gearsets-v1': JSON.stringify({ 木工: { level, cms: 4048, ctrl: 3980, cp: 600 } }) };
+  const QSTAGE_SRC = fs.readFileSync(path.join(ROOT, 'app-quality-stages.js'), 'utf8');
+  const mkT25Ctx = ({ recipe, rlvTable, syncMap = null, stageMap = null, level, gearExtra = {}, extraStore = {} }) => {
+    const els = {}, store = { 'ffxiv-crafter-gearsets-v1': JSON.stringify({ 木工: { level, cms: 4048, ctrl: 3980, cp: 600, ...gearExtra } }), ...extraStore };
     const makeEl = () => {
-      const attrs = {};
+      const attrs = {}, on = {};
       return { checked: false, value: '', innerHTML: '', textContent: '', hidden: true, disabled: false,
         max: '', min: '', placeholder: '', dataset: {}, style: {}, className: '',
         classList: { toggle() {}, add() {}, remove() {} },
         setAttribute(k, v) { attrs[k] = String(v); }, getAttribute(k) { return attrs[k] ?? null; },
-        addEventListener() {}, removeEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; },
+        // 錄下監聽器：T37 要走「真的觸發 ls-level 的 input 事件」那條路，不能自己去呼叫 onChange
+        // （那等於測試自己寫的接線，接線斷掉照樣綠）
+        addEventListener(t, fn) { (on[t] || (on[t] = [])).push(fn); }, removeEventListener() {},
+        _fire(t, ev) { (on[t] || []).forEach((fn) => fn(ev || {})); },
+        querySelectorAll() { return []; }, querySelector() { return null; },
         appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, focus() {}, scrollIntoView() {}, select() {} };
     };
     const ingredients = { _html: '', _inputs: [],
       set innerHTML(v) { this._html = v; this._inputs = [{ value: '0', dataset: { iid: '42', amt: '2' }, addEventListener() {} }]; },
       get innerHTML() { return this._html; },
       querySelectorAll(sel) { return sel === '.ing-hq-in' ? this._inputs : []; }, querySelector() { return null; } };
+    // 品質階段的下拉是真的 <select>（有 options／append），makeEl 那種泛用 stub 撐不住 setRecipe 重建選項
+    const stageEl = { options: [], value: '', selectedIndex: -1, hidden: false, textContent: '',
+      addEventListener() {}, append(...xs) { stageEl.options.push(...xs); } };
+    Object.defineProperty(stageEl, 'innerHTML', { get: () => '', set: () => { stageEl.options.length = 0; } });
     const ctx = {
       console: { log() {}, error() {}, warn() {} },
-      document: { getElementById: (id) => id === 'ingredients' ? ingredients : (els[id] || (els[id] = makeEl())),
+      Option: function (text, value) { return { textContent: text, value: String(value), disabled: false }; },
+      document: { getElementById: (id) => id === 'ingredients' ? ingredients
+          : id === 'opt-target-stage' ? stageEl
+          : (els[id] || (els[id] = makeEl())),
         querySelector() { return null; }, querySelectorAll() { return []; }, body: makeEl(), activeElement: null },
       location: { hostname: 'localhost', search: '' }, window: { FFXIVToast: { show() {} } },
       localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); }, removeItem() {} },
@@ -340,18 +356,24 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       // 換配方必須作廢飛行中的求解（見下方 T25 最後一條）：這個 stub 記錄呼叫次數
       // app.js init 會先呼叫 init/newWorker，stub 缺任一個就會在更早處拋錯（CraftRecipe.init 就跑不到）
       CraftSolve: { init() {}, newWorker() {}, invalidateInFlight() { invalidated++; return false; } },
+      // app.js init 對 app-consumable.js 是硬失敗（部署不完整就早報）→ 少了這個 stub，init 會在 :348 拋出，
+      // 後面的 CraftSync.init（接 ls-level 輸入事件）就永遠接不上，T37 那條路在測試裡等於不存在。
+      CraftConsumable: { init() {}, setData() {}, label() { return ''; }, get() { return { food: null, potion: null }; } },
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t25.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t25.js' });
+    // classic script **必須早於 app.js module**（與 index.html 的實際載入順序一致）：
+    // app.js 的 init 會 `globalThis.CraftSync?.init?.(…)` 把 ls-level 的輸入事件接起來，
+    // 反過來載的話那一行是 no-op ⇒ 手動指定等級整條路徑在測試裡根本不存在（T37 由來）。
+    if (syncMap) vm.runInContext(LS_SRC, ctx, { filename: 'app-level-sync-t25.js' });
+    if (stageMap) vm.runInContext(QSTAGE_SRC, ctx, { filename: 'app-quality-stages-t25.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t25.mjs' });
     vm.runInContext(`RECIPES = ${JSON.stringify([recipe])}; RLV = ${JSON.stringify(rlvTable)}; ITEMS = {"42":{"name":"測試素材","can_be_hq":true,"level":100}}; INGREDIENTS = {"${recipe.id}":[[42,2]]};`, ctx);
-    if (syncMap) {
-      vm.runInContext(LS_SRC, ctx, { filename: 'app-level-sync-t25.js' });
-      ctx.CraftSync.setData(syncMap);
-    }
-    return { ctx, ingredients, store };
+    if (syncMap) ctx.CraftSync.setData(syncMap);
+    if (stageMap) ctx.CraftStages.setData(stageMap);
+    return { ctx, ingredients, store, stageEl };
   };
   const baseRecipe = { id: 1, item_id: 0, item_name: 'T25 測試配方', job: '木工', rlv: 90,
     difficulty_factor: 100, quality_factor: 100, durability_factor: 100, material_quality_factor: 50, is_expert: false };
@@ -365,7 +387,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   stable.ingredients._inputs[0].value = '1';
   stable.ctx.updateInitial(baseRecipe, 1000);
   const initialBefore = vm.runInContext('computedInitial', stable.ctx);
-  stable.ctx.onGearInput({ target: { dataset: { job: '木工', f: 'cms' }, value: '4100' } });
+  stable.ctx.CraftGear.onGearInput({ target: { dataset: { job: '木工', f: 'cms' }, value: '4100' } });
   eq('T25 生效 rlv 不變 → 目標品質保留', stableTarget.value, '432');
   eq('T25 生效 rlv 不變 → computedInitial 保留', vm.runInContext('computedInitial', stable.ctx), initialBefore);
   eq('T25 生效 rlv 不變 → HQ 數量保留', stable.ingredients._inputs[0].value, '1');
@@ -380,7 +402,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   syncedTarget.value = '900';
   synced.ingredients._inputs[0].value = '1';
   synced.ctx.updateInitial(syncRecipe, 1000);
-  synced.ctx.onGearInput({ target: { dataset: { job: '木工', f: 'level' }, value: '70' } });
+  synced.ctx.CraftGear.onGearInput({ target: { dataset: { job: '木工', f: 'level' }, value: '70' } });
   const activeRlv = vm.runInContext('selected.rlv', synced.ctx);
   eq('T25 改角色等級 → 同步配方生效 rlv 改為 Lv70 基準', activeRlv.id, 70);
   eqObj('T25 改角色等級 → 難度/品質/耐久三上限跟著 rlv 變', synced.ctx.recipeMaxes(syncRecipe, activeRlv),
@@ -396,6 +418,95 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       invalidated, before + 1);
   }
   eq('T25 生效 rlv 改變 → HQ 數量保留', synced.ingredients._inputs[0].value, '1');
+
+  // ===== T37：手動指定同步等級，必須走與「改角色數值」同一條成果保留路徑 =====
+  // 由來（健檢 2026-08-15，correctness／perf-ux／ux-flows 三個維度獨立命中同一根因）：
+  // B-011 修好的是 gear 路徑（onGearInput → refreshGearNote，會先記成果再套回），
+  // 但 B-016 後來加的「手動指定等級」是 app.js 的 CraftSync.onChange **直呼 refreshSelectedGear**，
+  // 完全繞過那段保留邏輯 ⇒ 在等級同步的宇宙配方上打一個數字，已填的 HQ 素材與目標品質靜默歸零。
+  // 成果默默遺失是本專案最忌諱的一類，且畫面全正常＝零回饋訊號。
+  {
+    const manual = mkT25Ctx({ recipe: syncRecipe, rlvTable: { 70: rlv70, 100: rlv100 }, syncMap: { '2': 100 }, level: 100 });
+    manual.ctx.loadGear();
+    manual.ctx.selectRecipe(2);
+    const mTarget = manual.ctx.document.getElementById('opt-target');
+    mTarget.value = '900';
+    manual.ingredients._inputs[0].value = '1';
+    manual.ctx.updateInitial(syncRecipe, 1000);
+
+    const ls = manual.ctx.document.getElementById('ls-level');
+    ls.value = '70';
+    ls._fire('input');                     // 真的走使用者那條路：輸入事件 → setOverride → onChange
+
+    const mRlv = vm.runInContext('selected.rlv', manual.ctx);
+    eq('T37 手動指定等級 → 生效 rlv 改為 Lv70 基準', mRlv.id, 70);
+    eq('T37 手動指定等級 → 目標品質保留並收在新品質上限', mTarget.value, '700');
+    eq('T37 手動指定等級 → HQ 素材數量保留', manual.ingredients._inputs[0].value, '1');
+    // 說明面板必須跟著更新（原本唯一呼叫 CraftSync.render 的地方在 refreshSelectedGear 裡，
+    // 改走 refreshGearNote 後若沒補這一刀，面板會停在舊等級 ⇒ 修一個 bug 換一個 bug）
+    const last = manual.ctx.CraftSync._last();
+    eq('T37 手動指定等級 → 等級同步說明跟著重繪（生效等級）', last && last.info && last.info.level, 70);
+    eq('T37 手動指定等級 → 說明標明是手動指定', last && last.info && last.info.manual, true);
+  }
+
+  // ===== T43：需要專家之證的兩個選項，保存的偏好要套得回來 =====
+  // 由來（健檢 2026-08-15 correctness-core）：init 的順序是 loadSolveOpts() → refreshSpecialistGate()，
+  // 而那時還沒選配方（selected == null）⇒ 閘一律關 → 剛讀回來的勾選當場被清掉；
+  // 之後選了有專家之證的職業，閘只是「可勾」而不會把玩家的選擇勾回去 ⇒ 這個偏好**永遠套不回**，
+  // 每次開站都要重勾一次（而且他不會知道為什麼）。
+  {
+    const opts = JSON.stringify({ 'opt-heart': true, 'opt-qi': false });
+    const withSpec = mkT25Ctx({ recipe: baseRecipe, rlvTable: { 90: baseRlv }, level: 90,
+      gearExtra: { specialist: true }, extraStore: { 'ffxiv-crafter-solve-opts-v1': opts } });
+    withSpec.ctx.loadGear();
+    withSpec.ctx.selectRecipe(1);
+    eq('T43 有專家之證 → 保存的「專心致志」勾選套得回來',
+      withSpec.ctx.document.getElementById('opt-heart').checked, true);
+    eq('T43 有專家之證 → 沒勾的維持沒勾（不是一律勾回來）',
+      withSpec.ctx.document.getElementById('opt-qi').checked, false);
+
+    const noSpec = mkT25Ctx({ recipe: baseRecipe, rlvTable: { 90: baseRlv }, level: 90,
+      extraStore: { 'ffxiv-crafter-solve-opts-v1': opts } });
+    noSpec.ctx.loadGear();
+    noSpec.ctx.selectRecipe(1);
+    eq('T43 沒有專家之證 → 強制取消勾選（不產出玩家按不出來的巨集）',
+      noSpec.ctx.document.getElementById('opt-heart').checked, false);
+    // 關鍵：此時若因為別的選項變動而存檔，不得把玩家的偏好一起洗掉
+    noSpec.ctx.saveSolveOpts();
+    eq('T43 閘關著時存檔 → localStorage 仍記得玩家的偏好（他只是暫時拔了證）',
+      JSON.parse(noSpec.store['ffxiv-crafter-solve-opts-v1'])['opt-heart'], true);
+  }
+
+  // 接線層：refreshGearNote 真的有把「檔次」交給 CraftStages 重推嗎？
+  // T38 驗的是 CraftStages 那兩支 API 本身，**不驗有沒有人用它** —— 少了這一條，
+  // 把 refreshGearNote 改回「保留絕對數字」照樣全綠（本 repo 已有兩次空殼斷言前科）。
+  {
+    const staged = mkT25Ctx({ recipe: syncRecipe, rlvTable: { 70: rlv70, 100: rlv100 },
+      syncMap: { '2': 100 }, stageMap: { '2': { src: 'cosmic', stages: [50, 60, 85] } }, level: 100 });
+    staged.ctx.loadGear();
+    staged.ctx.selectRecipe(2);          // rlv100 → 滿品質 1000 → 三階 = ceil(1000×85%) = 850
+    const sTarget = staged.ctx.document.getElementById('opt-target');
+    eq('T38 接線：選配方後階段選項已建好（滿品質＋三階＋自訂）',
+      staged.stageEl.options.map((o) => o.value).join(','), ',500,600,850,custom');
+    staged.stageEl.value = '850'; sTarget.value = '850';   // 玩家選三階
+
+    const ls = staged.ctx.document.getElementById('ls-level');
+    ls.value = '70'; ls._fire('input');                    // 等級同步降到 Lv70 → 滿品質 700
+    eq('T38 接線：rlv 降級後目標依新滿品質重推三階（ceil(700×85%)）', sTarget.value, '595');
+    eq('T38 接線：下拉指到新的三階，不是「自訂」', staged.stageEl.value, '595');
+  }
+
+  // 生效 rlv 沒變的那條路也要重繪說明：等級數字本身是說明文字的一部分
+  // （Lv91→92 在同一個 rlv 級距內 → 走 cheap path，面板不重繪就會一直寫著 91）
+  {
+    const same = mkT25Ctx({ recipe: syncRecipe, rlvTable: { 70: rlv70, 100: rlv100 }, syncMap: { '2': 100 }, level: 100 });
+    same.ctx.loadGear();
+    same.ctx.selectRecipe(2);
+    const ls = same.ctx.document.getElementById('ls-level');
+    ls.value = '100'; ls._fire('input');   // 手動指定 100 ＝ 與目前生效的 rlv 相同 → 不重繪配方詳情
+    const last = same.ctx.CraftSync._last();
+    eq('T37 生效 rlv 未變 → 說明仍要重繪並標明手動指定', last && last.info && last.info.manual, true);
+  }
 }
 
 // ===== T4：hqPercent 斷點抽樣（品質% → HQ%；含邊界 100/99/98、5/2、0、超上限、maxQ=0）=====
@@ -487,6 +598,15 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   }
   check('T6 sec-A2：全部手寫 JS 的 catch 都有回報（worker postMessage 為具體白名單）',
     silentCatches.length === 0, silentCatches.length ? `靜默 catch：${silentCatches.join(', ')}` : '');
+  // 掃描本身也要有下限：glob 壞掉／目錄搬家時「掃到 0 支」同樣是全綠，那是最糟的假保護。
+  // 逐一點名幾支一定要在的（含前一版清單漏掉的三支），比只比數字更難被「順手改壞」。
+  {
+    const must = ['app.js', 'app-quests.js', 'app-gear.js', 'app-recipe.js', 'worker.js'];
+    const missing = must.filter((f) => !HANDWRITTEN_JS.includes(f));
+    check('T6 靜默-catch 哨兵的掃描範圍涵蓋全部站台模組（掃到 0 支也算失敗）',
+      missing.length === 0 && HANDWRITTEN_JS.length >= 13,
+      `缺=${missing.join(',') || '無'} 掃到 ${HANDWRITTEN_JS.length} 支`);
+  }
 
   // sec A2 行為回歸：壞掉／錯型別的 localStorage 不得靜默當成正常空設定。
   const mkGearLoadCtx = (raw) => {
@@ -599,6 +719,24 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T10 add 到上限 → 不觸發 onChange', notifyN, 0);
   const lt = toasts[toasts.length - 1] || ['', ''];
   check('T10 add 到上限 → warn toast 且不謊報 +1', lt[1] === 'warn' && !/\+1/.test(lt[0]), JSON.stringify(lt));
+
+  // ===== T40：保存失敗必須讓玩家知道（無痕/私密模式）=====
+  // 由來（健檢 2026-08-15，resilience／quality／ux-flows 三維同一根因）：六個 localStorage 保存點裡，
+  // 角色數值／食藥／職業任務／求解選項都會 toast，**只有製造清單與等級同步是靜默的**。
+  // 玩家會一路加十幾個配方、關掉分頁才發現整份清單不見了 —— 而且 console.warn 他不會看。
+  {
+    box.store = null; notifyN = 0; toasts.length = 0;
+    CL.init(mkDeps());
+    const realSet = cl.localStorage.setItem;
+    cl.localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
+    CL.add(100);
+    const hit = () => toasts.filter(([m]) => /製造清單/.test(m) && /遺失|保存|儲存/.test(m));
+    eq('T40 保存失敗 → 明確告知玩家（不是只寫 console）', hit().length, 1);
+    check('T40 保存失敗的告知是 warn 級', (hit()[0] || [])[1] === 'warn');
+    CL.add(100); CL.add(200);
+    eq('T40 持續失敗 → 只提醒一次（每次加減都跳 toast 會變噪音）', hit().length, 1);
+    cl.localStorage.setItem = realSet;
+  }
 }
 
 // ===== T12：crafting-list 成品採購清單 CSV（送端契約 + 三道收端上限）=====
@@ -1060,6 +1198,24 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   try { fl.CraftFlow.init({ $: () => ({}) }); } catch (e) { flowMiss = /缺依賴/.test(e.message); }
   check('T14 CraftFlow.init 缺依賴 → 早炸（注入契約不變量）', flowMiss);
 
+  // setTargetMode：「只求完成（NQ）」不吃目標品質 → 目標欄與**品質階段下拉**都要停用。
+  // 只停用目標欄的話，玩家仍可在下拉選「三階」——選了完全不生效（onStageChange 寫進一個停用的欄位），
+  // 一個「按了沒反應」的控制項比停用更難懂（健檢 2026-08-15 ux-flows）。
+  {
+    const fels = {};
+    fl.document = { getElementById: (id) => fels[id] || (fels[id] = { value: '', disabled: false, hidden: false, addEventListener() {} }) };
+    fl.document.getElementById('solve-mode').value = 'nq';
+    fl.CraftFlow.setTargetMode();
+    eq('T14 NQ 模式 → 目標品質欄停用', fels['opt-target'].disabled, true);
+    eq('T14 NQ 模式 → 品質階段下拉一併停用', fels['opt-target-stage'].disabled, true);
+    eq('T14 NQ 模式 → 寫出原因（控制不隱藏、要說為什麼）', fels['target-why'].hidden, false);
+    fels['solve-mode'].value = 'hq';
+    fl.CraftFlow.setTargetMode();
+    eq('T14 一般模式 → 目標品質欄恢復', fels['opt-target'].disabled, false);
+    eq('T14 一般模式 → 品質階段下拉恢復', fels['opt-target-stage'].disabled, false);
+    delete fl.document;   // T17 以下不需要 DOM，還原以免相互影響
+  }
+
   // ===== T17：index.html 的靜態流程軸 == flowHtml({}) 冷啟動輸出（CLS 預留標記防漂移）=====
   // 流程軸原本是空殼等 JS 填 → 首屏 +73px 位移。改成靜態標記後，兩邊字串一旦不同就會出現
   // 「先顯示舊文案、JS 一跑換掉」的閃動 → 這裡逐字比對，測試紅了就把新字串貼回 index.html。
@@ -1227,6 +1383,44 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   $q('opt-target').value = '';
   QS.syncFromInput();
   eq('T18 清空 → 回滿品質', $q('opt-target-stage').selectedIndex, 0);
+
+  // ===== T38：生效 rlv 改變時要保留「哪一檔」，不是那個絕對數字 =====
+  // 由來（健檢 2026-08-15 correctness-data）：宇宙任務的門檻是**滿品質的百分比**，
+  // rlv 一變同一檔就是不同數字。原本 refreshGearNote 在 rlv 改變時保留的是絕對品質再收斂到新上限
+  // ⇒ 等級同步的宇宙配方降級後，玩家選的「三階」變成一個舊 rlv 才成立的數字，
+  // 而下拉會翻成「自訂」——畫面上看不出哪裡不對，求出來的手法卻是照錯目標算的。
+  {
+    const stage = $q('opt-target-stage'), target = $q('opt-target');
+    QS.setRecipe({ id: 36199 }, 14900);                    // Lv100：滿品質 14900
+    stage.value = '12665'; target.value = '12665';         // 玩家選三階（85%）
+    const keep = QS.stageSelection();
+    eq('T38 選了三階 → stageSelection 回檔次 2（不是絕對品質）', keep, 2);
+
+    QS.setRecipe({ id: 36199 }, 8000);                     // 等級同步降級：滿品質變 8000
+    eq('T38 換 rlv 後套回同一檔 → 回 true', QS.applyStageSelection(keep), true);
+    eq('T38 換 rlv 後套回同一檔 → 目標依新滿品質重推（ceil(8000×85%)）', target.value, '6800');
+    eq('T38 換 rlv 後套回同一檔 → 下拉指到新的三階', stage.value, '6800');
+
+    // 「滿品質」也是一種選擇（空字串），要能原樣保留
+    stage.value = ''; target.value = '';
+    eq('T38 選了滿品質 → stageSelection 回 full', QS.stageSelection(), 'full');
+    QS.setRecipe({ id: 36199 }, 9000);
+    eq('T38 滿品質套回 → 目標維持留空（＝滿品質，語意與手動清空一致）',
+      QS.applyStageSelection('full') && target.value, '');
+
+    // 自訂（手打的數字）不屬於任何一檔 → 不能硬套成某一檔，讓呼叫端沿用既有的絕對值收斂
+    QS.setRecipe({ id: 36199 }, 14900);
+    stage.value = 'custom'; target.value = '9999';
+    eq('T38 自訂數字 → stageSelection 回 null（不猜檔次）', QS.stageSelection(), null);
+    eq('T38 自訂數字 → applyStageSelection 回 false（呼叫端自行處理）', QS.applyStageSelection(null), false);
+
+    // 新 rlv 下這一檔不存在（值算出來是 0）→ 同樣不硬湊
+    QS.setData({ 901: { src: 'collectable', stages: [0, 160, 200] } });
+    QS.setRecipe({ id: 901 }, 99999);
+    stage.value = '1600';
+    const keep2 = QS.stageSelection();
+    eq('T38 缺一階時 → 檔次仍以原始位置計（二階＝1）', keep2, 1);
+  }
 }
 
 // ===== T19：求解選項一律預設不勾 + 本機保存 =====
@@ -1825,6 +2019,148 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T36 .filter-group 以 --panel-bg 傳底色', /--panel-bg:\s*var\(--color-surface-hover\)/.test(bodyOf('.filter-group')));
   check('T36 .cfg-card 以 --panel-bg 傳底色', /--panel-bg:\s*var\(--color-bg-deep/.test(bodyOf('.cfg-card')));
   check('T36 .cl-card 不傳 --panel-bg（用共用預設 --color-surface）', !/--panel-bg/.test(bodyOf('.cl-card')));
+}
+
+// ===== T41：資料載入的降級分級（哪些載不到可以摸摸鼻子、哪些必須講出來）=====
+// 由來（健檢 2026-08-15 resilience A1）：level-sync.json 原本與食藥／品質階段一樣被歸為「選配」，
+// 失敗只 console.warn 就回空物件。但空物件＝「這個配方不會依等級同步」⇒ 宇宙探索配方沿用 rlv 690，
+// Lv70 玩家拿到六倍難度、求解回「做不到」，而畫面一切正常 —— 正是 B-016 修掉的那個病從另一條路回來。
+{
+  const GEAR_SRC2 = GEAR_SRC, RECIPE_SRC2 = RECIPE_SRC;   // 只是讓下面的載入順序讀起來明確
+  const mkLoadCtx = (failUrls, pendingForever = false) => {
+    const toasts = [];
+    const stub = () => ({ innerHTML: '', textContent: '', value: '', hidden: true, disabled: false, dataset: {},
+      classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, getAttribute() { return null; },
+      addEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; }, focus() {}, scrollIntoView() {} });
+    const els = {};
+    // 分頁按鈕：T42 要驗「資料還沒回來時它們就已經能按」
+    const tabs = ['solve', 'stats', 'list', 'quests'].map((t) => ({
+      dataset: { tab: t }, classList: { toggle() {}, add() {}, remove() {}, contains: () => false },
+      setAttribute() {}, focus() {}, tabIndex: -1, onclick: null, onkeydown: null }));
+    const DATA = {
+      'data/recipes.json': [], 'data/recipe_levels.json': {}, 'data/craft-actions.json': {},
+      'data/items.json': {}, 'data/ingredients.json': {}, 'data/meals.json': [], 'data/medicine.json': [],
+      'data/quality-stages.json': {}, 'data/level-sync.json': { 2: 100 }, 'data/job-quests.json': [], 'data/vendors.json': {},
+    };
+    const ctx = {
+      console: { log() {}, warn() {}, error() {} },
+      document: { getElementById: (id) => els[id] || (els[id] = stub()), querySelector() { return null; },
+        querySelectorAll: (sel) => (sel === '#main-tabs .codex-tab' ? tabs : []), body: stub() },
+      location: { hostname: 'localhost', search: '' },
+      window: { FFXIVToast: { show: (m, v) => toasts.push([m, v]) } },
+      localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+      Worker: function () {}, setTimeout, clearTimeout, setInterval, clearInterval, URLSearchParams,
+      AbortSignal: { timeout: () => null },
+      fetch: (url) => pendingForever ? new Promise(() => {})     // 慢網路：資料永遠不回來
+        : failUrls.includes(url)
+          ? Promise.reject(new Error('test: 這一支故意壞掉'))
+          : Promise.resolve({ ok: true, json: () => Promise.resolve(DATA[url]) }),
+      CraftFlow: { setTargetMode() {}, update() {} },
+      CraftSolve: { init() {}, newWorker() {}, invalidateInFlight() { return false; } },
+      CraftConsumable: { init() {}, setData() {}, label() { return ''; }, get() { return { food: null, potion: null }; } },
+    };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(GEAR_SRC2, ctx, { filename: 'app-gear-t41.js' });
+    vm.runInContext(RECIPE_SRC2, ctx, { filename: 'app-recipe-t41.js' });
+    vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t41.js' });
+    return { ctx, toasts, tabs };
+  };
+  const warned = (toasts, re) => toasts.filter(([m, v]) => re.test(m) && v === 'warn').length;
+  // app.js 的 init 自己也會跑一次 loadData → 先讓它跑完再清空，否則數到的是兩輪的總和
+  const run = async (failUrls) => {
+    const c = mkLoadCtx(failUrls);
+    await new Promise((r) => setTimeout(r, 0));
+    c.toasts.length = 0;
+    await c.ctx.loadData();
+    return c.toasts;
+  };
+
+  eq('T41 全部載得到 → 不對玩家發任何警告', warned(await run([]), /./), 0);
+  eq('T41 等級同步載不到 → 必須告訴玩家數字可能不對（不能只寫 console）',
+    warned(await run(['data/level-sync.json']), /等級同步/), 1);
+  // 對照組：這幾份載不到是真的「摸摸鼻子」——少一份加成／少一個快捷，數字不會錯
+  eq('T41 食藥／品質階段載不到 → 靜靜降級即可，不打擾玩家',
+    warned(await run(['data/meals.json', 'data/medicine.json', 'data/quality-stages.json']), /./), 0);
+
+  // ===== T42：資料還在載的時候，分頁按鈕就要能按 =====
+  // 由來（健檢 2026-08-15 ux-flows A2）：分頁的事件綁定原本排在 `await loadData()` **之後**，
+  // 而首次使用提示（updateHint，在 await 之前就顯示）正指著那幾顆按鈕叫玩家去填角色數值。
+  // 手機或慢網路上那段是好幾秒 —— 玩家照著提示點，什麼都沒發生，而且沒有任何訊號說「還在載」。
+  {
+    const pending = mkLoadCtx([], true);
+    await new Promise((r) => setTimeout(r, 0));   // init 已跑到 `await loadData()` 並停在那裡
+    check('T42 資料尚未載完 → 分頁按鈕已經可以點（不是死的）',
+      typeof pending.tabs[0].onclick === 'function' && typeof pending.tabs[3].onclick === 'function');
+    check('T42 資料尚未載完 → 分頁鍵盤導覽也已接上', typeof pending.tabs[0].onkeydown === 'function');
+    // 真的能切：點「角色數值」要把該面板顯示出來（首次使用提示指的就是它）
+    pending.tabs[1].onclick();
+    eq('T42 載入中點「角色數值」→ 面板真的切過去', pending.ctx.document.getElementById('tab-stats').hidden, false);
+  }
+}
+
+// ===== T39：結果渲染的接線（本 repo 最靠近玩家的一段，先前零覆蓋）=====
+// 由來（健檢 2026-08-15 tests/ux-flows）：`shortfallHtml` 與 `hqPercent` 是純函式、早有 golden，
+// 但**沒有任何測試跑過 render() 本身** ⇒ AGENTS 明訂的兩條鐵則（expert 中性措辭、未達標必須講出來）
+// 可以整段刪掉而 334 條全綠；巨集組裝（遊戲 15 行硬上限、超過要切段並補 /echo）也一條都沒有。
+{
+  const R = sandbox.CraftRender;
+  const $r = (id) => sandbox.document.getElementById(id);
+  const b64url = (s) => Buffer.from(s, 'utf8').toString('base64url');   // 瀏覽器版用 btoa，vm 沒有 → 測試側等價實作
+  let sel = { recipe: { item_id: 42, item_name: '測試成品', is_expert: false, job: '木工' } };
+  R.init({
+    $: $r, esc: T.esc, iconUrl: (p) => p, b64urlEncode: b64url, copyText() {},
+    MACRO_BUILDER_BASE: 'https://macro.example/', PH_HTML: '',
+    getSelected: () => sel, getItems: () => ({ 42: { can_be_hq: false } }),
+    // 用真的 craft-actions.json：順帶守住「render 取的欄位名」與資料的鍵形狀（nameTc / PascalCase）
+    getActions: () => JSON.parse(fs.readFileSync(path.join(ROOT, 'data/craft-actions.json'), 'utf8')),
+  });
+  const mkResult = (steps, over = {}) => ({
+    complete: true, error: null, error_step: 0,
+    final_progress: 100, max_progress: 100, final_quality: 500, max_quality: 1000,
+    step_count: steps, total_time: steps * 3,
+    steps: Array.from({ length: steps }, () => ({ action: 'BasicSynthesis', time: 3, progress: 1, quality: 1, durability: 1, cp: 1 })),
+    ...over,
+  });
+  const summary = () => $r('result-summary').innerHTML;
+  const macro = () => $r('macro').innerHTML;
+
+  // (a) NQ 模式的假警告：切到「只求完成（NQ）」時目標品質欄被停用但**值還在**，
+  //     render 直接讀 .value ⇒ 玩家沒設目標卻被警告「未達目標品質 900」。
+  //     shortfallHtml 的註解自己寫著「NQ 模式 ⇒ 不警告」——壞的是接線不是那支純函式。
+  $r('opt-target').value = '900';
+  $r('opt-target').disabled = true;
+  R.render(mkResult(3), false);
+  check('T39 NQ 模式（目標品質欄停用）→ 不得出現未達目標警語', !/未達目標品質/.test(summary()), summary().slice(0, 120));
+  $r('opt-target').disabled = false;
+  R.render(mkResult(3), false);
+  check('T39 一般模式且未達目標 → 必須講出來', /未達目標品質 900/.test(summary()));
+  $r('opt-target').value = '';
+  R.render(mkResult(3), false);
+  check('T39 目標留空（＝滿品質）→ 不警告', !/未達目標品質/.test(summary()));
+
+  // (b) expert 配方一律中性措辭（AGENTS 鐵則：勿改回無條件「✓ 可完成」金徽）
+  R.render(mkResult(3), false);
+  check('T39 一般配方且可完成 → 綠色「✓ 可完成」', /codex-badge--success[^>]*>✓ 可完成/.test(summary()));
+  sel = { recipe: { ...sel.recipe, is_expert: true } };
+  R.render(mkResult(3), false);
+  check('T39 高難度配方 → 中性「試算完成 ⚠」而非成功徽章', /試算完成 ⚠/.test(summary()) && !/codex-badge--success/.test(summary()));
+  check('T39 高難度配方 → 必附「僅供參考、無法保證」警語', /靜態巨集僅供參考/.test(summary()));
+  sel = { recipe: { ...sel.recipe, is_expert: false } };
+  R.render(mkResult(3, { complete: false }), false);
+  check('T39 未完成 → 紅色「✗ 未完成」', /codex-badge--danger[^>]*>✗ 未完成/.test(summary()));
+
+  // (c) 巨集組裝：遊戲的巨集一格上限 15 行。超過要切段，且每段補一行 /echo 提示才知道該貼下一段
+  //     ——切錯的後果是玩家貼進遊戲少做最後幾步，而站上一切正常。
+  R.render(mkResult(15), false);
+  check('T39 15 步 → 單一巨集、不切段', /巨集 1 \/ 1（15 行）/.test(macro()));
+  check('T39 未切段時不得插入 /echo（那會佔掉一行）', !/\/echo/.test(macro()));
+  check('T39 巨集行格式＝/ac "技能" <wait.秒>', macro().includes('/ac &quot;製作&quot; &lt;wait.3&gt;'));
+  R.render(mkResult(16), false);
+  check('T39 16 步 → 切成兩段', /巨集 1 \/ 2/.test(macro()) && /巨集 2 \/ 2/.test(macro()));
+  check('T39 切段後每段仍不得超過 15 行（14 步 + 1 行 /echo）', /巨集 1 \/ 2（15 行）/.test(macro()));
+  check('T39 末段行數＝剩餘步數 + /echo', /巨集 2 \/ 2（3 行）/.test(macro()));
+  check('T39 切段時每段結尾要有 /echo 提示第幾段完成', (macro().match(/\/echo 第 \d+ 段完成/g) || []).length === 2);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
