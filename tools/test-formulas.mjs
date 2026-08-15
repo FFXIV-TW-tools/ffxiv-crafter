@@ -471,6 +471,26 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     eq('T37 手動指定等級 → 說明標明是手動指定', last && last.info && last.info.manual, true);
   }
 
+  // ===== T52 接線：多職業時優先挑「玩家有填數值」的職業 =====
+  // 只驗 export 是空殼。這裡用真的 gearsets（只有木工有數值）驗選擇邏輯：
+  // 站台若挑了他沒練的職業，他按求解只會被擋在角色數值頁 —— 而宇宙探索那批中間材
+  // 動輒 3〜12 個職業可做，挑錯的機率不低。
+  {
+    const c = mkT25Ctx({ recipe: baseRecipe, rlvTable: { 90: baseRlv }, level: 90 });
+    c.ctx.loadGear();
+    // 同一件東西三個職業可做，且**鍛造排在最前面**（玩家沒填鍛造的數值）
+    vm.runInContext(`
+      RECIPE_BY_ID = { 10: { id:10, item_id:777, item_name:'多職品', job:'鍛造', item_amount:1 },
+                       11: { id:11, item_id:777, item_name:'多職品', job:'木工', item_amount:1 } };
+      RECIPES_BY_ITEM = { 777: [10, 11] };`, c.ctx);
+    const CRr = c.ctx.CraftRecipe;
+    eq('T52 三個職業可做 → recipesForItem 全部列出（不是只給第一個）', CRr.recipesForItem(777).length, 2);
+    eq('T52 優先挑玩家有填數值的職業（木工），不是排最前面的鍛造', CRr.pickRecipeForItem(777).job, '木工');
+    // 都沒填 → 沿用第一個（不假裝知道，畫面上仍給切換鈕）
+    vm.runInContext(`gearsets = {};`, c.ctx);
+    eq('T52 都沒填數值 → 沿用第一個', CRr.pickRecipeForItem(777).job, '鍛造');
+  }
+
   // ===== T45：返回配方列表也要作廢飛行中的求解（CF-04）=====
   // app-solve.js 的註解早就宣告「供外部（換配方 / 返回配方列表）作廢當前求解」，但 showPicker 沒有呼叫它
   // ⇒ 返回列表後 UI 狀態（solve-btn 藏著、cancel-btn 亮著）殘留到新配方頁面，舊求解還在燒 CPU。
@@ -2348,6 +2368,80 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   const rtThead = (CSS_SRC.match(/\.rt thead th\s*\{[^}]*\}/) || [''])[0];
   check('T50 .rt 表頭 sticky 走共用 --sticky 變體（本地不再自刻 position: sticky）',
     !/position:\s*sticky/.test(rtThead), rtThead.slice(0, 90));
+}
+
+// ===== T51：製作鏈（宇宙探索那種「先做中間材、再做交付物」的連續動線）=====
+// 由來（Owner 2026-08-15）：月球任務常常是「先做 1，再用 1 的材料做 2」，
+// 玩家原本得自己重新搜尋每一層。craftPlan 把整條鏈算出來，UI 才給得出「先做這個 → 一鍵回來」。
+{
+  const RECIPES = [
+    { id: 900, item_id: 48329, item_name: '統一規格的合金鉚釘', job: '鍛造', item_amount: 1 },
+    { id: 901, item_id: 48333, item_name: '統一規格的合金', job: '鍛造', item_amount: 1 },
+    { id: 902, item_id: 700, item_name: '雙聯板', job: '鍛造', item_amount: 3 },   // 一次產 3 個
+  ];
+  const byId = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
+  const byItem = Object.fromEntries(RECIPES.map((r) => [r.item_id, r.id]));
+  const ING = {
+    900: [[48333, 2], [50, 1]],   // 合金 ×2 ＋ 一個買得到的素材
+    901: [[48233, 1]],            // 宇宙貨箱（買/採，不是步驟）
+    902: [[51, 1]],
+  };
+  const CTX = { recipesById: byId, recipeByItem: byItem, ingredients: ING };
+  const plan = sandbox.CraftRecipe.craftPlan(RECIPES[0], CTX);
+  eq('T51 步驟由底層排到成品', plan.map((s) => s.name).join(' → '), '統一規格的合金 → 統一規格的合金鉚釘');
+  eq('T51 中間材要做幾次＝需求量 ÷ 一次產幾個（無條件進位）', plan[0].times, 2);
+  eq('T51 最後一步是成品本身', plan[plan.length - 1].final === true, true);
+  check('T51 買得到的素材不進步驟（它們在原料清單裡看得到）', !plan.some((s) => s.itemId === 50 || s.itemId === 48233));
+
+  // 一次產多個：要 4 個雙聯板、配方一次產 3 → 做 2 次（不是 4 次）
+  const plan2 = sandbox.CraftRecipe.craftPlan(
+    { id: 999, item_id: 1, item_name: 'X', job: '鍛造', item_amount: 1 },
+    { ...CTX, ingredients: { ...ING, 999: [[700, 4]] } });
+  eq('T51 一次產多個 → 做的次數用進位而不是照需求量', plan2[0].times, 2);
+  eq('T51 需求量本身照實記', plan2[0].need, 4);
+
+  // 三層鏈：往下傳的必須是「做幾次」而不是「要幾個」——中間那層一次產 3 個時，
+  // 要 4 個只需做 2 次，底層素材就只要 2 份。傳錯的話採購量會整批偏高而畫面完全正常。
+  {
+    const R3 = [
+      { id: 800, item_id: 80, item_name: '成品', job: '鍛造', item_amount: 1 },
+      { id: 801, item_id: 81, item_name: '中間材', job: '鍛造', item_amount: 3 },   // 一次產 3
+      { id: 802, item_id: 82, item_name: '底層材', job: '鍛造', item_amount: 1 },
+    ];
+    const ctx3 = { recipesById: Object.fromEntries(R3.map((r) => [r.id, r])),
+      recipeByItem: Object.fromEntries(R3.map((r) => [r.item_id, r.id])),
+      ingredients: { 800: [[81, 4]], 801: [[82, 1]], 802: [] } };
+    const p3 = sandbox.CraftRecipe.craftPlan(R3[0], ctx3);
+    const mid = p3.find((x) => x.itemId === 81), base = p3.find((x) => x.itemId === 82);
+    eq('T51 三層：中間材要 4 個、一次產 3 → 做 2 次', `${mid.need}/${mid.times}`, '4/2');
+    eq('T51 三層：底層材依「做幾次」算＝2 份（不是照 4 個算）', `${base.need}/${base.times}`, '2/2');
+    eq('T51 三層：順序由最深排到成品', p3.map((x) => x.name).join(' → '), '底層材 → 中間材 → 成品');
+  }
+
+  // 資料出環不得轉死（同 expandMats 的煞車）
+  let threw = false;
+  try {
+    sandbox.CraftRecipe.craftPlan(RECIPES[1],
+      { ...CTX, ingredients: { 901: [[48329, 1]], 900: [[48333, 1]] } });
+  } catch (e) { threw = true; }
+  check('T51 資料出環（A 要 B、B 要 A）不得無限遞迴', !threw);
+}
+
+// ===== T52：多職業可製作時要能換職業（Owner 2026-08-15）=====
+// 實測 651 件物品有多個配方，宇宙探索的「統一規格的金屬板」有 12 個＝全 DoH。
+// 只取「先出現者」等於幫玩家選了一個他可能沒練的職業，他按求解只會被擋在角色數值頁。
+{
+  const R = [
+    { id: 10, item_id: 48251, item_name: '統一規格的合金', job: '鍛造', item_amount: 1 },
+    { id: 11, item_id: 48251, item_name: '統一規格的合金', job: '甲冑', item_amount: 1 },
+    { id: 12, item_id: 48251, item_name: '統一規格的合金', job: '金工', item_amount: 1 },
+  ];
+  const byId = Object.fromEntries(R.map((r) => [r.id, r]));
+  const byItemAll = { 48251: [10, 11, 12] };
+  const CR = sandbox.CraftRecipe;
+  check('T52 CraftRecipe 導出 recipesForItem / pickRecipeForItem',
+    typeof CR.recipesForItem === 'function' && typeof CR.pickRecipeForItem === 'function');
+  void R; void byId; void byItemAll;
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -248,6 +248,16 @@ body {
   .ri-actions { flex: 0 1 auto; margin-left: auto; }
 }
 /* 角色數值套用狀況＝共用 .codex-tint-panel--bar 左緣色條資訊盒（原本是浮在版面中間的一行彩色字）*/
+/* 多職業切換：同一件東西好幾個職業都能做（宇宙探索那批中間材 3〜12 個）→ 一列小鈕直接換。
+   「未填」標記讓玩家一眼看出哪些職業按下去會被擋在角色數值頁，而不是按了才知道。*/
+.ri-jobs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1, 4px);
+  margin-top: var(--space-2, 8px); }
+.ri-jobs__label { color: var(--color-text-dim, #8ba0b8); margin-right: var(--space-1, 4px); }
+.ri-job-btn { height: 28px; padding: 0 var(--space-2, 8px); }
+.ri-job-btn__no { opacity: .7; }
+/* 製作鏈：可製作的素材給「先做這個」入口，做完由 ri-actions 的「← 回…」回上一層 */
+.ing-go { height: 26px; padding: 0 var(--space-2, 8px); white-space: nowrap; }
+
 .ri-gear { font-size: var(--fs-small); }
 .ri-gear a { color: var(--accent); }
 

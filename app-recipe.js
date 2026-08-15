@@ -3,7 +3,7 @@
 (function () {
   let deps = null;
 
-  function selectRecipe(id, fromList) {
+  function selectRecipe(id, fromList, keepChain) {
     const recipe = deps.getRecipes().find(r => r.id === id);
     if (!recipe) return false;
     const rlv = deps.getRlvTable()[String(recipe.rlv)];
@@ -12,6 +12,7 @@
     // 放在兩個 return false 之後：選配方失敗時不該波及正在跑的求解。
     globalThis.CraftSolve?.invalidateInFlight?.();
     deps.setSelected({ recipe, rlv, baseRlv: rlv });   // rlv 之後可能被等級同步換掉；baseRlv 永遠是配方原始那列
+    if (!keepChain) chain = [];   // 從配方表／清單／深連結另選一個配方＝放棄原本那條鏈
     deps.setOpenedFromList(!!fromList);   // 從製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入為 false
     // 收合配方表；返回控件＝右上「← 返回配方列表」鈕（唯一可點）。此處只放誠實的「當前位置」狀態，不做「配方瀏覽›」假 nav 麵包屑（死 span 誤導可點）。
     deps.$('picker').hidden = true;
@@ -29,6 +30,7 @@
   }
 
   function showPicker() {
+    chain = [];   // 返回配方列表＝放棄這條製作鏈（返回鈕的語意才不會指向一個已經離開的情境）
     // 返回配方列表＝離開這次求解 → 作廢飛行中的那一份。少了這行：UI 狀態（solve-btn 藏著、
     // cancel-btn 亮著）會殘留到新配方頁面，舊求解還在燒 CPU，而 app-solve 的註解早就宣告涵蓋這條路
     // ——契約寫在註解裡而程式碼另一套（T25 守，與 selectRecipe 那條並列）。
@@ -45,6 +47,71 @@
     const back = deps.$('recipe-table').querySelector('.rt-row.is-sel') || deps.$('recipe-search'); // 還焦：優先原選中列、否則搜尋框（a11y 返回焦點不遺失）
     if (back && back.focus) back.focus({ preventScroll: true });
   }
+
+  // ---------- 製作鏈（純函式，golden 測試面）----------
+  // 為什麼要這層：宇宙探索那種「階段性」的東西是**一條製作鏈**——先做中間材、再拿它做交付物。
+  // 例：統一規格的合金鉚釘(48329) ← 統一規格的合金(48333) ×2 ← 宇宙貨箱。
+  // 玩家原本得自己搜尋每一層、求解、複製巨集、再回頭搜下一層。這裡把整條鏈算出來，
+  // UI 才給得出「先做這個 → 回來做這個」的連續動線。
+  //
+  // 回傳由**底層到成品**排序的步驟：[{ itemId, name, recipeId, times, need, depth }]
+  //   need  ＝這一層總共要幾個（已乘上層的製作次數）
+  //   times ＝要做幾次（need ÷ 該配方一次產幾個，無條件進位）
+  // 只收「做得出來的」——沒有配方的素材是買/採的，不進步驟（它們在原料清單裡已經看得到）。
+  function craftPlan(recipe, ctx, maxDepth = 8) {
+    const byId = ctx.recipesById || {}, byItem = ctx.recipeByItem || {}, ing = ctx.ingredients || {};
+    const steps = new Map();   // itemId → step（同一個中間材在多處用到時把 need 加總，不重複列）
+    const walk = (rid, runs, depth, path) => {
+      if (depth > maxDepth || path.has(rid)) return;   // 資料出環時停下：寧可少展開一層也不要無限遞迴
+      const next = new Set(path); next.add(rid);
+      for (const [iid, amt] of (ing[String(rid)] || [])) {
+        const childRid = byItem[Number(iid)];
+        const child = childRid != null ? byId[childRid] : null;
+        if (!child) continue;                          // 買/採得到的底層素材不是「步驟」
+        const need = Number(amt) * runs;
+        const per = Math.max(1, Number(child.item_amount) || 1);
+        const cur = steps.get(Number(iid));
+        const total = (cur ? cur.need : 0) + need;
+        steps.set(Number(iid), { itemId: Number(iid), name: child.item_name || ('#' + iid),
+          recipeId: child.id, need: total, times: Math.ceil(total / per), depth: depth + 1 });
+        walk(child.id, Math.ceil(total / per), depth + 1, next);
+      }
+    };
+    walk(recipe.id, 1, 0, new Set());
+    // 深的先做（底層 → 上層），同深度按需求量多的在前，量同則 id 穩定排序
+    const ordered = [...steps.values()].sort((a, b) => b.depth - a.depth || b.need - a.need || a.itemId - b.itemId);
+    const per = Math.max(1, Number(recipe.item_amount) || 1);
+    ordered.push({ itemId: recipe.item_id, name: recipe.item_name, recipeId: recipe.id,
+      need: per, times: 1, depth: 0, final: true });
+    return ordered;
+  }
+
+  // 同一件東西常常好幾個職業都能做（實測 651 件；宇宙探索的「統一規格的金屬板」12 個＝全 DoH）。
+  // 挑選優先序：玩家**有填數值**的職業 → 否則第一個。畫面上一律給切換鈕，不幫他決定死。
+  function recipesForItem(itemId) {
+    return (deps.getRecipesByItem()[Number(itemId)] || [])
+      .map((id) => deps.getRecipesById()[id]).filter(Boolean);
+  }
+  function pickRecipeForItem(itemId) {
+    const list = recipesForItem(itemId);
+    return list.find((r) => deps.gearOkFor(r.job)) || list[0] || null;
+  }
+
+  // 製作鏈的返回堆疊（多層）：從成品鑽進中間材時把「原本在哪」推進去，做完一鍵回去。
+  // 用堆疊而不是 openedFromList 那種 boolean —— 鏈可能不只兩層（A ← B ← C）。
+  // **不在切分頁時清空**（玩家常常要跳去「角色數值」補資料再回來），只有「返回配方列表」
+  // 或從配方表另選一個配方才算放棄這條鏈。
+  let chain = [];
+  function craftIngredient(rid) {
+    const cur = deps.getSelected();
+    if (cur && cur.recipe) chain.push({ id: cur.recipe.id, name: cur.recipe.item_name });
+    if (!selectRecipe(rid, false, true)) chain.pop();   // 選失敗就還原堆疊，不留下假的返回點
+  }
+  function backInChain() {
+    const prev = chain.pop();
+    if (prev) selectRecipe(prev.id, false, true);
+  }
+  function chainDepth() { return chain.length; }
 
   function refreshGearNote() {
     const selected = deps.getSelected();
@@ -124,6 +191,24 @@
     const mbLink = recipe.item_id
       ? `<a class="codex-btn codex-btn--ghost" href="${deps.mbCraft(recipe.item_id)}" target="ffxiv-marketboard" data-help="到市場板看材料多層樹｜各材料即時價｜成本與利潤試算。共用同一分頁。">💰 材料樹與利潤</a>`
       : '';
+    // 多職業：給切換鈕。**不是裝飾**——宇宙探索那批中間材動輒 3〜12 個職業可做，
+    // 站台若替玩家選了一個他沒練的職業，他按求解只會被擋在「請先設定角色數值」。
+    const alts = recipesForItem(recipe.item_id);
+    const jobSwitch = alts.length > 1
+      ? `<div class="ri-jobs" role="group" aria-label="換一個職業製作">` +
+        `<span class="codex-small ri-jobs__label">也能做：</span>` +
+        alts.map((r) => {
+          const on = r.id === recipe.id, ok = deps.gearOkFor(r.job);
+          const jic = deps.JOB_ICON[r.job] ? `<img class="ri-jico" src="${deps.iconUrl(deps.JOB_ICON[r.job])}" alt="">` : '';
+          return `<button type="button" class="codex-btn ${on ? 'codex-btn--primary' : 'codex-btn--ghost'} ri-job-btn"` +
+            ` data-rid="${r.id}"${on ? ' aria-current="true"' : ''}` +
+            ` data-help="${on ? '目前用這個職業的配方' : '改用「' + deps.esc(r.job) + '」的配方求解'}${ok ? '' : '｜這個職業還沒填角色數值'}">` +
+            `${jic}${deps.esc(r.job)}${ok ? '' : ' <span class="codex-xs ri-job-btn__no">未填</span>'}</button>`;
+        }).join('') + `</div>`
+      : '';
+    const backChain = chain.length
+      ? `<button id="back-in-chain" class="codex-btn codex-btn--primary" type="button" data-help="回到這條製作鏈的上一層（中間材做完了就回去做成品）">← 回「${deps.esc(chain[chain.length - 1].name)}」</button>`
+      : '';
     const backToList = deps.getOpenedFromList()
       ? `<button id="back-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="回到製造清單分頁">← 回製造清單</button>`
       : '';
@@ -136,14 +221,21 @@
       </div>
       <div class="ri-actions">
         <button id="add-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="加進「製造清單」分頁，彙總所有成品的素材總需求">📋 加入製造清單</button>
+        ${backChain}
         ${mbLink}
         ${backToList}
       </div>
     </div>
+    ${jobSwitch}
     <div id="gear-note" class="ri-gear codex-tint-panel codex-tint-panel--bar"></div>`;
     const ab = deps.$('add-to-list'); if (ab) ab.onclick = () => { if (typeof globalThis.CraftList?.add === 'function') globalThis.CraftList.add(recipe.id); };
     // 回清單：switchTab('list') 已集中清 openedFromList + 收返回鈕（見 switchTab），此處只需切頁+移焦
     const bl = deps.$('back-to-list'); if (bl) bl.onclick = () => deps.switchTab('list', true);
+    const bc = deps.$('back-in-chain'); if (bc) bc.onclick = backInChain;
+    // 換職業**保留製作鏈**（換的是「用哪個職業做同一件東西」，不是放棄這條鏈）
+    deps.$('recipe-info').querySelectorAll('.ri-job-btn').forEach((b) => {
+      b.onclick = () => { if (+b.dataset.rid !== recipe.id) selectRecipe(+b.dataset.rid, deps.getOpenedFromList(), true); };
+    });
     deps.$('opt-target').value = ''; deps.$('opt-target').max = maxQ; deps.$('opt-target').placeholder = '滿(' + maxQ + ')';
     globalThis.CraftStages?.setRecipe?.(recipe, maxQ);   // 該配方有幾檔品質門檻（收藏品／宇宙任務）→ 重建階段選單
     globalThis.CraftFlow.setTargetMode();         // NQ 模式目標品質欄停用 + 寫出原因（引導層）
@@ -172,15 +264,27 @@
       const ico = it.icon ? `<img class="ing-ico" src="${deps.iconUrl(it.icon)}" alt="" loading="lazy">` : '';
       // 素材名掛 marketboard 查價/來源深連結（DRY mbItem）；晶體/水晶/晶簇亦可上市場板交易，故一律連（isCrystal 僅用於排序殿後）
       const nameHtml = `<a class="ing-name ing-name--link" href="${deps.mbItem(iid)}" target="ffxiv-marketboard" data-help="到市場板查「${deps.esc(name)}」的價格與來源。共用同一分頁。">${deps.esc(name)}</a>`;
+      // 可製作的素材 → 給「先做這個」入口（推入返回堆疊，做完一鍵回來）。
+      // 這是「階段性任務」的核心動線：原本玩家要自己重新搜尋中間材。
+      // 多職業可做時挑玩家**有填數值**的那個（挑他沒練的職業＝按下去只會被擋在角色數值頁）
+      const child = pickRecipeForItem(Number(iid));
+      const times = child ? Math.ceil(amount / Math.max(1, Number(child.item_amount) || 1)) : 0;
+      const goBtn = child
+        ? `<button type="button" class="codex-btn codex-btn--ghost ing-go" data-rid="${child.id}"` +
+          ` data-help="先做這個中間材（要做 ${times} 次）｜做完可以一鍵回到「${deps.esc(recipe.item_name)}」">⚒ 先做這個${times > 1 ? ' ×' + times : ''}</button>`
+        : '';
       const ctl = hqable(iid)
         ? `<span class="ing-hqctl"><span class="ing-hqctl__tag codex-xs">HQ</span><input class="ing-hq-in codex-input" data-iid="${iid}" data-amt="${amount}" type="number" min="0" max="${amount}" value="0" inputmode="numeric" aria-label="「${deps.esc(name)}」使用的 HQ 數量">/ ${amount}</span>`
         : '<span class="ing-na codex-small" data-help="此素材沒有 HQ 版本，無法用來提高起始品質" aria-label="不可 HQ">—</span>';
-      return `<div class="ing${hqable(iid) ? ' ing--hq' : ''}">${ico}${nameHtml}<span class="ing-amt">×${amount}</span>${ctl}</div>`;
+      return `<div class="ing${hqable(iid) ? ' ing--hq' : ''}">${ico}${nameHtml}<span class="ing-amt">×${amount}</span>${ctl}${goBtn}</div>`;
     }).join('');
     deps.$('ingredients').innerHTML = `
     <div class="ing-head"><span class="ing-group-title">配方原料</span>${anyHq ? '<button class="codex-btn codex-btn--ghost ing-allhq">全部 HQ</button>' : ''}</div>
     <div class="ing-list">${rows || '<span class="codex-small">（無原料資料）</span>'}</div>
     <div class="ing-initial" id="ing-initial"></div>`;
+    deps.$('ingredients').querySelectorAll('.ing-go').forEach((b) => {
+      b.onclick = () => craftIngredient(Number(b.dataset.rid));
+    });
     deps.$('ingredients').querySelectorAll('.ing-hq-in').forEach(inp => inp.addEventListener('input', () => { updateInitial(recipe, maxQ); deps.invalidateResults(); }));
     const all = deps.$('ingredients').querySelector('.ing-allhq');
     if (all) all.onclick = () => { deps.$('ingredients').querySelectorAll('.ing-hq-in').forEach(i => i.value = i.dataset.amt); updateInitial(recipe, maxQ); deps.invalidateResults(); };
@@ -217,8 +321,10 @@
   const REQUIRED = ['$', 'esc', 'iconUrl', 'toast', 'PH_HTML', 'JOB_ICON', 'mbItem', 'mbCraft', 'recipeMaxes', 'switchTab',
     'renderTable', 'getRecipes', 'getRlvTable', 'getItems', 'getIngredients', 'getSelected', 'setSelected',
     'getComputedInitial', 'setComputedInitial', 'getOpenedFromList', 'setOpenedFromList', 'invalidateResults',
-    'updateEff', 'gearFor', 'refreshSpecialistGate', 'isCrystal'];
+    'updateEff', 'gearFor', 'refreshSpecialistGate', 'isCrystal',
+    'getRecipesById', 'getRecipeByItem', 'getRecipesByItem', 'gearOkFor'];
   globalThis.CraftRecipe = {
+    craftPlan, craftIngredient, backInChain, chainDepth, recipesForItem, pickRecipeForItem,
     init(d) {
       const miss = REQUIRED.filter(k => d == null || d[k] == null);
       if (miss.length) throw new Error('CraftRecipe.init 缺依賴: ' + miss.join(', '));

@@ -39,7 +39,7 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 | `app-solve.js` | 求解編排：worker 生命週期／`doSolve`／求解計時／世代守衛／取消 |
 | `app-browse.js` | 配方瀏覽表：職業篩選 chips／每頁 60 筆分頁／已加入清單標示 |
 | `app-gear.js` | 角色數值：localStorage 讀寫與型別驗證／等級 0..100 clamp／專家之證逐職勾選（上限 3） |
-| `app-recipe.js` | 配方詳情狀態機：`selectRecipe`／`showPicker`／`refreshSelectedGear`／`refreshGearNote`／原料與初始品質 |
+| `app-recipe.js` | 配方詳情狀態機：`selectRecipe`／`showPicker`／`refreshSelectedGear`／`refreshGearNote`／原料與初始品質；**製作鏈**（`craftPlan` 純函式＋返回堆疊）與**多職業切換** |
 | `app-quests.js` | 職業任務分頁：11 職任務清單／完成勾選／素材遞迴展開 `expandMats`／商人徽章 |
 | `app-consumable.js` | 食物／藥水自繪 listbox（原生 `<option>` 放不了 icon／品級／功效）＋本區本地保存 |
 | `app-quality-stages.js` | 品質階段 → 目標品質。**兩種來源單位不同，換算只有這裡一份**：收藏品＝值×10、宇宙任務＝`ceil(滿品質×值/100)` |
@@ -79,19 +79,19 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 >
 > ⚠️ 它**刻意不併進本 repo 既有的測試 runner**：該檔與 `functions/_middleware.js` 是 13 站逐站複製的樣板（每站只換 `OLD_HOST`／`NEW_ORIGIN` 兩個常數），檔名與介面必須跨站一致，不能為配合各站慣例改寫——改寫等於每站手動調整，正是 monorepo 交接頁一致性哨兵要防的漏抄。**既有測試基線不變。**
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="421" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="435" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **421**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳（見下方 `TEST-BASELINE` 標記），改測試數量時兩邊要一起改。
+> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **435**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳（見下方 `TEST-BASELINE` 標記），改測試數量時兩邊要一起改。
 >
 > 每一條測試當初是為了擋什麼、數字怎麼一路長上來的**逐輪流水帳搬到** [`docs/test-baseline-history.md`](docs/test-baseline-history.md)（2026-08-15，健檢 B-025）——那份歷史對「現在要怎麼做」沒有幫助，而本檔每個 session 都會被全文注入。
 >
 
 ```bash
 node --check *.js                       # JS 語法（用萬用字元，不列清單——手維護的清單會漏掉新模組，2026-08-15 就漏了 app-quests.js）
-node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T1〜T50，各條的用途寫在測試檔內；421 passed）
+node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T1〜T52，各條的用途寫在測試檔內；435 passed）
 py -3.11 tools/check-actions.py         # 不變量：craft-actions.json 鍵 == lib.rs Action 變體（現 35=35）＋ pkg/ 同步戳記 ＋ sim-diff 與 wasm 釘同一個 raphael tag
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一 + 神速技巧耐久/路徑/步數三條（5 passed）
 ```
@@ -118,6 +118,16 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 
 > **可執行的規則全在本節**（每 session 自動載入）；「怎麼發現的、錯了會怎樣」等敘事已搬 [`docs/lessons.md`](docs/lessons.md)（2026-08-03，DEVLOOP R7 20KB 護欄）。標了「→ 敘事見」的條目，動那一區前建議一併讀。
 
+- **製作鏈：中間材要能「先做這個 → 一鍵回來」**（2026-08-15 Owner 需求，宇宙探索的階段性任務）：
+  可製作的素材列給 `.ing-go` 入口，點下去把當前配方**推進返回堆疊**（多層，不是 boolean——鏈可能 A←B←C），
+  配方詳情顯示「← 回『上一層品名』」。**堆疊不在切分頁時清空**（玩家常跳去角色數值補資料再回來），
+  只有「返回配方列表」或從配方表另選配方才算放棄。`craftPlan()` 是純函式（T51 守）：
+  **往下傳的是「做幾次」不是「要幾個」**——中間材一次產 3 個時要 4 個只需做 2 次，底層素材就只要 2 份，
+  傳錯的話採購量整批偏高而畫面完全正常。
+- **同一件東西常常好幾個職業都能做**（實測 651 件；宇宙探索的「統一規格的金屬板」12 個＝全 DoH）：
+  `RECIPE_BY_ITEM` 的「取先出現者」**只用於配方表**；深連結、製作鏈、職業切換一律走 `RECIPES_BY_ITEM`
+  （完整清單）＋ `pickRecipeForItem()`：**優先挑玩家有填數值的職業**，都沒填才沿用第一個。
+  挑一個他沒練的職業＝他按求解只會被擋在角色數值頁。畫面一律給切換鈕，不幫他決定死（T52 守）。
 - **分層 classic script 缺席一律硬失敗**（2026-08-15 RES-02）：`app.js` init 對 index.html 列出的每一支
   `app-*.js`／`crafting-list.js` 都要有 `if (!globalThis.CraftXxx) throw new Error('<檔名> 未載入（部署不完整）')`。
   用 `?.` 軟略過的話，那支檔 404 時玩家拿到的是「看起來正常、按下去才無聲 TypeError」的頁面。

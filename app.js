@@ -51,7 +51,7 @@ const NAME_COLLATOR = new Intl.Collator('zh-Hant'); // 預建 collator，避免�
 let RECIPES = [], RLV = {}, ACTIONS = {}, RINDEX = [], ITEMS = {}, INGREDIENTS = {};
 let selected = null;    // { recipe, rlv }
 // 職業任務層展開素材樹要用的兩份索引（建一次、隨 loadData 重建；避免每次重繪掃 11803 筆）
-let RECIPE_BY_ID = {}, RECIPE_BY_ITEM = {};
+let RECIPE_BY_ID = {}, RECIPE_BY_ITEM = {}, RECIPES_BY_ITEM = {};   // 後者＝item_id → 全部配方 id（多職業）
 let openedFromList = false; // 由製造清單「前往求解」進入 → 結果區顯示「← 回製造清單」；瀏覽/深連結進入則不顯示（避免幽靈導覽）
 let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
 // worker / solveClock 已移入 app-solve.js（該層私有狀態）
@@ -94,10 +94,13 @@ async function loadData() {
   globalThis.CraftConsumable?.setData?.(meals, medicine);
   globalThis.CraftStages?.setData?.(stages);
   globalThis.CraftSync?.setData?.(levelSync);
-  RECIPE_BY_ID = {}; RECIPE_BY_ITEM = {};
+  RECIPE_BY_ID = {}; RECIPE_BY_ITEM = {}; RECIPES_BY_ITEM = {};
   for (const r of RECIPES) {
     RECIPE_BY_ID[r.id] = r;
     if (r.item_id != null && RECIPE_BY_ITEM[r.item_id] == null) RECIPE_BY_ITEM[r.item_id] = r.id;  // 同物品多配方取先出現者（與配方表一致）
+    // **同一件東西常常好幾個職業都能做**（實測 651 件；宇宙探索的「統一規格的金屬板」有 12 個＝全 DoH）。
+    // 只留「先出現者」等於幫玩家選了一個他可能沒練的職業 → 另存完整清單供職業切換與「先做這個」挑選。
+    if (r.item_id != null) (RECIPES_BY_ITEM[r.item_id] = RECIPES_BY_ITEM[r.item_id] || []).push(r.id);
   }
   RINDEX = RECIPES.map(r => ({
     id: r.id, name: r.item_name || '', job: r.job || '', rlv: r.rlv,
@@ -373,7 +376,9 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     getSelected: () => selected, setSelected: (v) => { selected = v; },
     getComputedInitial: () => computedInitial, setComputedInitial: (v) => { computedInitial = v; },
     getOpenedFromList: () => openedFromList, setOpenedFromList: (v) => { openedFromList = v; },
-    invalidateResults, updateEff, gearFor, refreshSpecialistGate });
+    invalidateResults, updateEff, gearFor, refreshSpecialistGate,
+    getRecipesById: () => RECIPE_BY_ID, getRecipeByItem: () => RECIPE_BY_ITEM,
+    getRecipesByItem: () => RECIPES_BY_ITEM, gearOkFor: (job) => !!gearFor(job) });
   // 食物/藥水選擇層（app-consumable.js classic script）：**必須早於 loadData**——loadData 尾端會 setData 繪按鈕，
   // 且本層 init 才會把保存值套回 HQ / 專家之證 checkbox（保存值要先就位，後續公式與摘要才讀得到）
   if (!globalThis.CraftConsumable) throw new Error('app-consumable.js 未載入（部署不完整）');
@@ -428,7 +433,10 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 深連結：?recipe=<id> 或 ?item=<id> → 自動選配方（marketboard / 宇宙探索「求解手法」鈕用）
   const dlp = new URLSearchParams(location.search);
   const dlRecipe = +dlp.get('recipe') || 0, dlItem = +dlp.get('item') || 0;
-  const dlByItem = dlItem ? RECIPES.find(r => r.item_id === dlItem) : null;
+  // 多職業可做時優先挑玩家**有填數值**的那個職業（挑一個他沒練的等於一進站就是死路）；
+  // 都沒填就沿用第一個，畫面上的職業切換鈕仍可換。
+  const dlCands = dlItem ? (RECIPES_BY_ITEM[dlItem] || []).map((id) => RECIPE_BY_ID[id]).filter(Boolean) : [];
+  const dlByItem = dlCands.find((r) => gearFor(r.job)) || dlCands[0] || null;
   if (dlRecipe && RECIPES.some(r => r.id === dlRecipe)) selectRecipe(dlRecipe);
   else if (dlByItem) selectRecipe(dlByItem.id);
   else if (dlRecipe || dlItem) toast('找不到深連結指定的配方，請用搜尋手動選擇', 'warn'); // 從 marketboard 點過來但該物品無配方 → 給提示不迷路（ux-3）
