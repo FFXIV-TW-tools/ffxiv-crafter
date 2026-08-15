@@ -2,6 +2,7 @@
 .agents
 .gitignore
 .pytest_cache
+.rgignore
 .venv
 .wrangler
 AGENTS.md

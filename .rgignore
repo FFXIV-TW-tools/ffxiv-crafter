@@ -1,0 +1,3 @@
+# rg／Claude Code Grep 預設排除：歸檔的免責檔頭對「命中行」不可見，
+# agent grep 到歷史內容時看不到「非現行約束」宣告（DEVLOOP §4.5）。查歷史用 rg --no-ignore。
+/docs/BACKLOG-archive.md

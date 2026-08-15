@@ -2,110 +2,44 @@
 
 > 提案清單（B-NNN，append-only 編號）。**不經 Owner 核可不得自主實作**。來源標註便於回溯。
 > 完成打勾保留原句、尾巴追加 `✓ 完成於 cycle <id>`；否決用刪除線並留一行原因。格式見 DEVLOOP §4.2（四軸快篩）。
+> 歷史：已結案（含否決）的條目見 [BACKLOG-archive.md](BACKLOG-archive.md)（DEVLOOP §4.5 第二觸發：主檔 >40KB）——
+> 純搬移、原文一字未改，本檔只保留待辦與待拍板。
 
 - [ ] **B-023** (P2, data) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】職業任務「交付數量」剩 62 件未知 — 數量來自社群試算表、以 item id 對帳（`name_tc`／`name_sc`／OpenCC t2s 後查 `name_sc`），現況 228/290 對到。剩下的多數是**真差異**：60 級以上任務要交「XX的材料」，試算表列的是成品「高級XX」＝另一個 item id，id 對帳正確拒絕。**要補只能找到真正的權威欄位**（解包 `Quest.CountableNum` 是 255 哨兵值、`ToDo*` 沒有數量欄），或請 Owner 逐筆補一份覆寫表。**不得改用字面模糊比對**——猜錯會讓採購量整批偏掉而畫面全正常。來源: 2026-08-09 職業任務分頁
-
-- [x] **B-024** (P2, feature) 【建議 高｜延遲風險 低｜執行風險 中（社群資料語意未定，弄錯會叫玩家跑錯地方）｜副作用 無】素材標示「商人有賣／賣在哪」 — Owner 需求。試算表的「採集材料」欄帶有商人標記與價格（例 `[LV01魚](海都)#海城魚商
-羅敏薩鳀魚/7G(沙蠶!)`），可解析出「地點／商人名／單價」。⚠ 動工前要拍板兩件事：① **語意**：`/7G` 是「NPC 商人售價」還是「採集後的參考售價」？兩者意思相反，弄錯會叫玩家跑去一個沒有商人的地方 ② **權威**：`item_lookup` 有 `is_gil_shop` 欄可判斷「這件東西是否有 NPC 販售」，但**沒有商人地點**；地點只有試算表有（社群整理）。建議做法＝`is_gil_shop` 當「有沒有商人賣」的權威（解包）、試算表只補「在哪買」的線索並標明來源。來源: 2026-08-09 Owner 要求
-  - **✅ 完成 2026-08-09（cycle 職業任務分頁）——但兩個「動工前要拍板」的答案都跟提案時的假設不同**：
-    ① 語意經 Owner 確認＝**NPC 商人售價**（可以花錢買）。
-    ② **「地點只有試算表有」是錯的**——Owner 一句「不能拿別頁面的來用嗎」才發現 monorepo item_dict 早就有
-    `gil_shop_npc.json`（5642 件商品，含價格＋NPC 名/稱號/繁中地名/座標，marketboard 用的就是同一份）。
-    ⇒ 商人資訊**完全走解包**，社群試算表在這一項上整條退場（它只有 38 筆、只有縮寫地名）。
-    涵蓋率：591 件相關物品中 256 件有賣、**247 件查得到跟誰買**（172 件帶座標）；只留一份不留會漂移的第二份。
-    教訓已固化＝**既有資產沒翻過就不要下「只有 X 有」的結論**（同目錄的檔都沒看就寫進了 backlog 的權威判斷）。
-    另修兩個當時沒想到的正確性問題：**要交 HQ 的不顯示商人**（商人不賣 HQ，寫「有賣」是誤導）、
-    **沒有座標 ≠ 沒有商人**（通用商人常只有名字，用 `if n.zone` 過濾會讓 247 件掉到 172 件而畫面說「查不到」）。
-    T32／T33 守。
 
 - [ ] ~~**B-021** (P2, perf) 開頁資料改 lazy load + IndexedDB（抄 bis `app-core.js:419`）~~ — **否決 2026-08-05，前提是測錯的**。提案時說「開頁併發抓 7.3MB」，但那是 `decodedBodySize`＝**解壓後供解析的量**，不是下載量。CF 有 brotli，實測線上實際傳輸：`recipes.json` 4180KB→**196KB**、`items.json` 2190KB→**312KB**、`ingredients.json` 680KB→**99KB**，合計 ~607KB 且三支在同一輪 `Promise.all` 平行；主執行緒 `JSON.parse` 實測 **7 / 4 / 7 ＝ 18ms**。整頁 DCL 683ms、load 795ms、總傳輸 621KB。⇒ 抄 bis 那套等於為「最多一兩百毫秒的冷啟動下載」加一整套 IDB 快取＋失效＋版本比對，加在一個運作正常的載入路徑上，不划算。**唯一勉強成立的殘餘是 `ingredients.json`（99KB，只有開配方看 BOM 才需要）純延後、免 IDB——99KB 與 7ms，同樣不值得動。** ⚠️ 給後人：量頻寬要看 `transferSize` 或 `curl --compressed`，`decodedBodySize` 會讓這裡看起來大 12 倍。相關跨站盤點＝portal B-065。來源: 2026-08-05 跨站效能盤點
 
 - [ ] ~~**B-022** (P3, perf) 加 `<link rel="modulepreload">` 展平 module 瀑布（同 market B-081 / cosmic B-025 / sightseeing B-002）~~ — **否決 2026-08-05：本站沒有 module 瀑布可展平**。實地跑生成器產出 **0 條**：前端入口 `app.js` 雖是 `type="module"` 但**零相對 import**，10 支相依（`app-flow`／`app-gear`／`app-recipe`…）全走 classic `<script>` 全域載入。先前 grep 到的 7 支 ES module 檔全在後端（`functions/`／`worker.js`／`pkg/crafter_wasm.js`）。已把試作的生成器與哨兵撤回，不留無作用的機械。
 
-- [x] **B-001** (P3, data) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】DOH/JOB_ICON 權威源決策 — `app.js` DOH/JOB_ICON hardcode 無 AUTO-SYNC marker（`jobs.json` 僅 21 戰鬥職、不含 8 製作職）。選項：(a) 加註解「刻意 local」免月稽核誤報、(b) 加不變量 `Set(DOH)==recipes.job distinct`、(c) 納入某 sync 腳本。**待 shawn 選向**——(a)+(b) 低成本零風險、(c) 需先有製作職權威源。來源: 健檢 2026-07-04（DATA-2＝CQ-04）
-  - **✅ 完成 2026-08-03（Owner 選 (a)+(b)）**：`jobs.json` 只散布 21 個戰鬥職、不含 8 個製作職 ⇒ 這兩份**沒有上游可對**，
-    (c) 納 sync 腳本不成立。改法＝在 `app.js` 註明「刻意 local、月稽核請跳過」，並用 **T29 不變量**取代 sync：
-    `DOH` 必須恰好 == `recipes.json` 出現過的 job 集合、`JOB_ICON` 鍵集合 == `DOH`、每個值都是 icon 路徑。
-    負對照驗過（拿掉「烹調」→ 2 條紅）。240 → 243 passed。
-- [x] **B-002** (P2, refactor) app.js 按職責分層拆分 — `app.js` 現 543 行、承載 6+ 職責（data 載入 / gear / 公式 / 求解編排 / render / UI），已破 500 行門檻。拆分方案：`app-data.js`（loadData/RINDEX）｜`app-gear.js`（gearsets/localStorage）｜`app-formula.js`（computeSettings/recipeMaxes/hqPercent）｜`app-solve.js`（worker 編排/invalidate）｜`app-render.js`（render/macro/render 助手）｜`app.js`（init/UI 綁定）。**觸發點**：下次實質擴充再拆（現階段不為拆而拆）；紅線 2000 行仍遠。**2026-07-19 更新**：頁面整合改造後達 645 行，codex（阻擋）+grok（高）雙審再次點名「god-file 續膨脹、跨功能回歸風險升」→ Owner 需重新拍板：續延（沿用原「不為拆而拆」）或本輪後啟動拆分（至少先抽分頁導覽 / marketboard helper / picker UI）。**→ 2026-07-19 Owner 核可執行**：沿用 crafting-list.js 已驗證的 classic-script + deps 注入 pattern（非重寫狀態參照），抽 `app-render.js`（結果渲染 120 行）＋`app-solve.js`（求解編排 98 行）＝ app.js 658→**488**（<500）。原 6 層方案未全做（formula/gear/data 仍在 app.js——computeSettings 是對抗驗證公式、動它風險高，且 488 已達標）；每塊瀏覽器實測 solve→render 端到端＋40 tests 綠。✓ 完成於 2026-07-19（Owner 核可；beb2b1a 抽 app-render.js、後續抽 app-solve.js → app.js 658→488 <500）。**2026-08-02 拆分閘門一次性定案（Owner 拍板）**：app.js 現 569 行，健檢批次 1/2/3（B-010～B-012）都會動它 → **行為修復先做完，最後單獨一批抽 `app-gear.js`**（gearsets／localStorage／等級驗證）。理由＝重構與行為修復混在同一個 diff 裡，委派驗收無法歸因（看不出某行是修 bug 還是搬家）。`computeSettings` 一律不動（對抗驗證過的公式）。**此定案涵蓋 B-010～B-014，那三批不再逐批重議拆分閘門。** **✅ 2026-08-02 執行完成**：抽 `app-gear.js`（96 行，classic script `globalThis.CraftGear`）＝`gearsets` 狀態／`loadGear`·`saveGear`／`gearValid`·`gearFor`·`anyGear`／`renderGearsets`／`onGearInput`；app.js **640→592**。`computeSettings`／`refreshGearNote`／`refreshSelectedGear`／`updateHint` 依定案留在 app.js。**零行為變更**：測試 239 不變、斷言期望值一字未改（只在 sandbox 加載 `app-gear.js`）；`onGearInput` 的事件鏈順序（save→updateHint→refreshGearNote→invalidateResults→CraftFlow.update）由注入的 `afterInput` 逐字保留。**⚠ `GEAR_KEY`/`gearsets` 刻意留在 IIFE 外**——T6 sec-A2 用 `vm.runInContext('gearsets', ctx)` 直接讀全域識別字，搬進私有作用域會讓那兩條 ReferenceError；已在檔頭寫明，防「順手整理」打破。**app.js 仍 592 行（>500）**：proxy 委派本身要佔行數，單靠這一批到不了 500 以下 —— **2026-08-02 續抽 `app-recipe.js`（配方詳情狀態機）**：`selectRecipe`／`showPicker`／`refreshGearNote`／`refreshSelectedGear`／`renderIngredients`／`updateInitial` → 216 行新層，**app.js 592→424（<500，閘門達標）**。**狀態刻意不搬**（`selected`／`computedInitial`／`RECIPES`／`RLV`／`ITEMS`／`INGREDIENTS` 全留 app.js，模組走注入的 getter/setter，同 `app-browse.js` 形狀）——搬走會變成「模組與 app.js 共用六個可變全域」，那不是封裝只是換檔案放，而且要再開六個全域例外（`app-gear.js` 的 `gearsets` 是被既有測試逼出來的**例外，不是範本**）。`recipeMaxes` 留 app.js（公式面、與 `computeSettings` 共用，AGENTS 明訂不得兩處重算）。零行為變更、斷言期望值一字未改。來源: 健檢 2026-07-04（CQ-06）
-- [x] ~~**B-003** (P3, feature) worker 接 simulate（手動巨集沙盒）— WASM 已導出 `simulate()`（吃手動 action 序列 replay），但 UI 未接（worker 只跑 solve、已去 `cmd` dispatch 欄）。~~ — ✗ **否決於 2026-08-03（Owner 拍板）**：掛了快一個月都沒有實際需求，留著只是 backlog 噪音。`simulate()` 的 export 保留不刪（零成本、且 `replay()` 本來就是求解走查在用的同一條路），日後真的要「手動編巨集 → 逐步試算」再開新項，屆時只需 worker 補 cmd dispatch + import。來源: 2026-07-11 收官提案
-- [x] **B-004** (P2, test) JS 端自動測試評估 — ~~評估把 `computeSettings`/`hqPercent`/`recipeMaxes` 抽純函式模組加 node 單測~~ → 實作免抽模組：`tools/test-formulas.mjs` 以 node+vm 直接載 app.js（假 DOM + fetch reject 讓頂層 IIFE 走 catch），斷言公式 golden（spec §4 值）+ hqPercent 斷點 + recipeMaxes floor + 專家之證 CP+15 金鎖 + sec A1/A2 哨兵 → **29 passed**，掛 VERIFY 機械閘 4。✓ 完成於 `d70d590`（R2 批次0）。來源: 2026-07-11 收官提案
-- [x] ~~**B-005** (P2, perf) 首載 ~4.8MB JSON 主執行緒 parse 優化 — 評估 worker 內 parse / 資料分片 / 精簡未用欄位。~~ — ✗ **否決於 2026-07-27（實測推翻前提，Owner 裁示關閉）**：4.8MB 是**解壓後**大小；CF Pages 已上 brotli，**實際傳輸總計 536 KB**（recipes 197 / items 233 / ingredients 99 / 其餘 7），且 **`JSON.parse` 七檔合計僅 ~10 ms**（recipes 6ms、items 4ms，線上實測）。worker parse 與資料分片都在解一個不存在的瓶頸。若日後仍要壓，唯一有意義的方向是精簡 `items.json` 未用欄位（233 KB 為最大宗），量級僅數十 KB → 不值得單獨立項。來源: 健檢 2026-07-04（機械基線 perf 主軸）
-- [x] **B-006** (P3, ux) 【建議 中｜延遲風險 低｜執行風險 中｜副作用 跨 repo，需 portal/Owner 全生態一致決策】marketboard 連結 noopener 慣例 + portal `.codex-btn[hidden]` 全域守衛 — 兩項跨-repo 決策：(a) **noopener**：本工具/marketboard/macro-builder 深連結一律 `target="ffxiv-marketboard"` 且**刻意不加 `rel=noopener`**（named 分頁共用慣例，見 renderMacro/CHANGELOG）；codex（高）指跨子域 tabnabbing 面 → 是否全 repo 統一加 noopener（犧牲分頁重用）或維持現狀，**Owner 全生態一致決策**（勿只改單一工具連結造成不一致）。(b) **portal 守衛**：`.codex-btn`/`.codex-tab`/`.codex-chip` 缺 `[hidden]` 守衛（`display` 蓋 UA `[hidden]`），本工具已本地補 `.codex-btn[hidden]` interim → **portal `header.css` 宜全域補**（同 badge 既有鐵則），屆時刪本地。需改 portal repo（push 由 Owner）。來源: 整合改造雙審 2026-07-19（codex/grok）
-  - **✅ 結案 2026-08-03（Owner 選 A/A）**：
-    (a) **noopener 維持現狀不加**，但把「為什麼」成文進 portal `_DESIGN-SYSTEM.md` 新段〈🔗 生態內互跳〉——
-    目標全是同 org 自家子域、收端寫入動作一律有確認 modal；連非自家網域時仍必須加。**成文的目的是止血**：
-    這項被外審重複點名過，之後引用該段即可，除非能給出具體攻擊路徑。
-    (b) **portal 全域守衛早已存在**（`header.css:777` `.codex-btn/.codex-chip/.codex-icon-btn[hidden]`），
-    故本 repo 的 interim（收窄到 5 個按鈕 ID）已移除，改留一行「是 codex 元件就不用做事、自寫 class 才要補」的指引。
-    **實測驗過**（這正是「hidden 設了不等於收得起來」那個坑）：5 個按鈕逐一 `getComputedStyle` —— 顯示時 flex/inline-flex、
-    設 hidden 後全部 none；T21 哨兵仍綠。
-- [x] **B-007** (P2, refactor) app.js 抽 `app-browse.js`（配方瀏覽層拆分） — app.js **502→454 行**（wc -l／pre-commit gate 同法，<500 達標；先前註 437 為 Measure-Object 低估）。**實作**：抽 `app-browse.js`（`globalThis.CraftBrowse`，104 行 wc）＝ `renderChips`/`renderTable`/`markListState` ＋私有 `jobFilter`（僅本層讀寫）；`selectRecipe`/`showPicker`/`refreshSelectedGear`/公式/state **留 app.js**（選擇/詳情狀態機，耦合過重不宜同批移）。沿用 classic-script + deps 注入 pattern（同 app-render/app-solve；getter 取 live RINDEX/selected，注入 selectRecipe/toast）；app.js 以**同名 proxy** 委派 → 既有呼叫點/事件綁定/CraftList onChange 零改。瀏覽器實測整條瀏覽流程（表渲染 120/職業篩選/選配方收合 picker/返回列表/已加入綠底標示）零 console error；node --check/test-formulas 50 綠。✓ 完成於 2026-07-19（Owner 核可「有多個可拆分獨立功能可拆」）。來源: 對抗審 2026-07-19（codex 阻擋 / grok 中）
+### 健檢 2026-08-01 須修改項（B-009〜B-016）
 
-- [x] ~~**B-008** (P3, data) 技能 icon 跟著配方職業走 — CraftAction sheet 對每個 DoH 職業各有一份 icon（如 `Basic Synthesis` 有 8 筆：001501 木工 / 001551 鍛造 / …）。現行 `build-data.py` 固定取同批內 id 最小者＝**永遠是木工版** → 做金工配方時手法序列顯示的是木工的鋸子/刨刀圖。修法需：① monorepo `build_game_ref.py` 的 `craft_actions` 加 `class_job_id` 欄 ② 重建 `game_ref.sqlite` ③ `build-data.py` 產 per-job icon map ④ `app-render.js` 依 `selected.recipe.job` 取。~~ — ✗ **否決於 2026-07-27（Owner 裁示）**：技能**名稱一致**、只是圖示因職業有些微差異，不影響使用；不值得為此改資料模型 + 重建 game_ref。真正的紅線是「不得出現佔位『刪除號』圖」，該項已由 `tools/check-actions.py` 的 icon 不變量機械守。來源: 2026-07-27 icon 佔位圖修正 cycle 的殘留項
+✅ **12 項全數完成**（2026-08-01〜08-02）。條目與修法記錄搬到 [`BACKLOG-archive.md`](BACKLOG-archive.md)；
+本輪（2026-08-15）已逐一確認無回歸，fate 見該輪報告「前輪追蹤」。
 
-### 健檢 2026-08-01 須修改項（12 項，依 [修復計畫](health-reviews/2026-08-01-全維健檢-fix-plan.md) 批次切；**未標 `[go]` 不得開工**）
+### 差分審計 2026-08-03（B-017〜B-020）
 
-- [x] **B-009** (P1, test) 【建議 高｜延遲風險 中｜執行風險 低｜副作用 無】批次 0：測試地基 — T11「篩選變更回第 1 頁」經**突變測試證實為空殼斷言**（刪掉 `app-browse.js:50` 的 `page = 0`，122 項仍全綠）＋補 `effectiveStats` 食藥加成 golden。零行為變更，是後續所有批次的安全網，**應最先做**。來源: 健檢 2026-08-01（quality-tests A1）
-  - **✅ 已完成 2026-08-02**（cycle 2026-08-02-B009-test-foundation，委派 codex `gpt-5.6-luna`/xhigh 執行、CC 驗收）：T11 那條的空殼成因＝`||` 右邊「沒印頁碼就算過」在篩到單頁時恆真 → 改成篩出仍跨 3 頁的結果集並逐字比對頁碼段。**CC 獨立重跑突變測試**（只刪 `app-browse.js:50` 的 `page = 0;`）：新斷言紅（`第 3 / 3` vs 期望 `第 1 / 3`）、還原後綠且 `app-browse.js` 零 diff。另加 T22 `effectiveStats` 食藥 golden 4 條（百分比 floor／硬上限先生效／食物與藥水都以原始 base 計算／專家之證先疊入 base）——這條路徑先前一條測試都沒有。177 → **181 passed**。
-- [x] **B-010** (P1, bug) 【建議 高｜延遲風險 高｜執行風險 中｜副作用 無】批次 1：「算錯巨集」家族 — (a) `computeSettings` 的 `use_heart_and_soul`/`use_quick_innovation` **完全不看 `#specialist`**（app.js:323-325），沒插專家之證也會把「專心致志」排進巨集 → 玩家貼進遊戲那行直接失敗，正中本工具最痛失敗模式；(b) 角色等級欄無上界，輸入 101~255 關掉等級懲罰並誤開精修之眼（clamp 位置在 `onGearInput` 非 `cell()`）；(c) app.js 506 行拆分閘門一次性定案。來源: 健檢 2026-08-01（correctness A1/A3）
-  - **✅ 已完成 2026-08-02**（cycle 2026-08-02-B010-wrong-macro，委派 codex `gpt-5.6-luna`/xhigh、CC 驗收）：(a) 公式層硬 gate `$('opt-heart').checked && $('specialist').checked`（兩項同理）＋ UI 沿用 `#adv-why` 慣例（真 disabled ＋強制取消勾選＋`.crafter-why` 寫原因）；**強制取消勾選刻意不寫進 localStorage**——否則玩家只是暫時拔掉專家之證，勾好的偏好就永久沒了（T23 釘住）。(b) 等級收斂到 0..100，收斂點在 `onGearInput`（`cell()` 只產 HTML、`max=` 不擋鍵入）。(c) 拆分閘門定案見 B-002（行為修復做完再單獨拆一批）。181 → **207 passed**。
-  - **⚠ 第一輪退回重派**：執行者用 `Math.max(1, …)`，把「未填等級」壓成 Lv1 → 清空等級欄的玩家會用 **Lv1** 求解（本 repo 用 0/falsy 代表未填，`computeSettings` 是 `gear.level || 100`），且等級同步層會把宇宙配方降到 rlv 1。**它自己的 T24 只測 `150 → 100` 所以整批全綠地溜過去**——抓到它的是 CC 對 `onGearInput` 跑的六種輸入探測。教訓已固化：T24 現含清空／0／負數三條迴歸斷言，突變測試（下界改回 1）會紅 7 條。
-- [x] **B-011** (P2, ux) 【建議 高｜延遲風險 中｜執行風險 低｜副作用 無】批次 2：使用者可見缺陷＋成果遺失 — (a) `body` 缺 `padding-top: 64px` + `margin: 0` → 跨網域 header.css 晚到的 CLS race（**這解釋了 2026-07-29 CLS 輪留下的 `body`/`#ftw-main` 懸案，不必回 portal 查**）；(b) 改角色數值會靜默清空已填的 HQ 素材與目標品質；(c) 食藥選單 `max(100%, 400px)` 在 <1018px 與手機被 `.codex-tablet` 的 clip-path 裁掉且無法捲回；(d) `loadGear` 靜默 catch（全 repo 唯一，違反鐵則字面，且哨兵 T6 只掃 app.js 只認空 catch 故漏網）。來源: 健檢 2026-08-01（design-system A2／perf-ux A3＝correctness A2／ux-flows A4＝a11y A2／resilience A2）
-  - **✅ 已完成 2026-08-02**（cycle 2026-08-02-B011-visible-defects，委派 codex `gpt-5.6-luna`/xhigh、CC 驗收）：(a) `body` 補 `margin: 0` + `padding-top: 64px`（哨兵進 T17）；(b) `onGearInput` 改呼叫新的 `refreshGearNote()`，只更新 gear 真正影響的三處 → HQ 素材與目標品質不再被清空；**等級同步配方例外**：生效 rlv 真的變了才走完整重繪，且先存後套回並收斂到新上限（T25 五條）；(c) 窄屏選單見下；(d) `loadGear` 補 `console.warn` + 一次性 toast + 型別驗證，T6 哨兵升級成掃全部 10 支手寫 JS、規則改「catch body 不含 `console.`」、worker 的 postMessage 回報路徑列具體白名單。207 → **220 passed**。
-  - **⚠ (c) 窄屏選單退回兩次後由 CC 收回自做**（委派紀律：同 task 卡 2 次換手）。**健檢報告的前提是錯的**——它判「800–1018px 會溢出」，實測 800/900 原本完全正常，真正壞的只有 ≤430px。執行者照錯前提加 `@media { left:auto; right:0 }`，把右溢出換成左溢出（900px 時左緣 -77、800px -127）並打壞兩個原本正常的寬度；第二輪改 `calc(100vw - 常數)` 仍差 5px，因為包裝器偏移**會隨選單寬度變動**（97px ↔ 59px）。定案＝窄屏標籤獨佔一行、控制項與選單 `width: 100%`，不用魔術常數。**執行者寫的 T26 是同義反覆**（把自己的 CSS 字串抄成斷言），已重寫成「禁止無上界最小寬／必須有窄屏規則」並各自突變驗證。量測手法（同源 iframe 定寬七種寬度）已寫進 AGENTS.md 開發注意段。
-- [x] **B-012** (P2, resilience) 【建議 中｜延遲風險 中｜執行風險 中｜副作用 無】批次 3：WASM 引擎初始化失敗＝永久死路 — `worker.js` 把 `await ready` 與 `solve()` 包在同一 try，`ready` 一旦 reject 就永久 reject 且 worker 還活著（`onerror` 不觸發），玩家只能自己重整而站上不會說；錯誤訊息還把他導向「調整設定」。修法需重建 worker（走 `abortSolve` 才守得住世代）＋ export `solveErrorMessage` 才寫得出驗證。來源: 健檢 2026-08-01（resilience A1）
-  - **✅ 已完成 2026-08-02**（cycle 2026-08-02-B012-engine-deadend，委派 codex `gpt-5.6-luna`/xhigh、CC 驗收）：worker 把 `await ready` 從 `solve()` 的 try 拆出，兩種失敗各回 `kind: init` / `kind: solve`（兩者都原樣帶回 `gen`，不破壞世代守衛）；主執行緒對 init 失敗顯示誠實訊息＋重試鈕，重試走 `abortSolve('retry')` → `doSolve()`。`solveErrorMessage` 已 export。230 → **231 passed**。
-  - **CC 實測補的一刀**：抽掉 `pkg/*.wasm` 實跑，Chrome 吐的是 `Failed to execute 'compile' on 'WebAssembly': HTTP status code is not ok`——**不符合**執行者新增的三個 pattern。UI 之所以仍正確，是因為 `showEngineInitFailure()` 把文案**寫死**、根本沒走分類器 ⇒ 分類器是裝飾品，且訊息有兩份會漂移。已合併成單一來源（`showEngineInitFailure(raw)` 走 `solveErrorMessage`）、pattern 補上實測字串、並加測試釘住。
-- [x] **B-013** (P2, build) 【建議 中｜延遲風險 中｜執行風險 中｜副作用 部署面需 Owner 拍板】批次 4：部署面 — (a) 整個 repo 被 CF Pages 當靜態根部署（實測 `/AGENTS.md` 回 200），`docs/health-reviews/*`／`tools/*.py`／`wasm/src` 全部線上可讀，且 **`CHANGELOG.md:32` 把 2026-07-28 才清乾淨的建置者帳號名重新公開在同一網域**；(b) `pkg/` 與 `wasm/src/lib.rs` 無同步機械守 → 改引擎忘重編，VERIFY 四閘全綠而線上跑舊 WASM。修法需處理 `pkg/.gitignore` 內容為 `*` 與 `core.autocrlf` 行尾兩個坑。來源: 健檢 2026-08-01（build-release A1/A2＋sec-frontend A1）
-  - **(a) 已於 2026-08-01 獨立完成**（`deploy-prepare.sh` + `deploy-allow.txt` 允許清單，fail-closed）；`grep -c shawn_lin CHANGELOG.md` 現為 0。本輪只做 (b)。
-  - **✅ (b) 已完成 2026-08-02**（cycle 2026-08-02-B013-pkg-stamp，委派 codex `gpt-5.6-luna`/xhigh、CC 驗收）：`tools/build-wasm.ps1` 編完寫 `wasm/BUILD-STAMP.json`（`lib.rs` / `Cargo.lock` 的 hash），`tools/check-actions.py` 追加比對、不符即非零 exit。**戳記放 `wasm/` 而非 `pkg/`**——`pkg/.gitignore` 內容是 `*` 且自己也被自己忽略，改白名單會被 wasm-pack 每次 build 重新產生的該檔蓋掉；`wasm` 已在 `deploy-deny.txt`，戳記不會外流（實測 `_site` 30 檔無戳記）。**hash 先正規化 CRLF→LF 再 sha256**，兩支腳本用同一套規則。
-  - **CC 驗收（四項親跑）**：PowerShell 側算出的 hash == Python 寫進戳記的值（跨語言一致）；改 `lib.rs` 不重編 → 紅且指名是 `lib.rs`；**整檔行尾轉 CRLF → 仍綠**（`core.autocrlf=true` 的誤紅坑已避開）；`check-actions.py` 成功訊息格式未變，pre-commit gate 6 照常對帳。
-- [x] **B-014** (P3, a11y) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】批次 5：a11y — (a) 求解計時每秒 `innerHTML` 重寫整個 live region → 螢幕閱讀器整段等待期間連續播報數十次（只標秒數 `aria-hidden` 不夠，需狀態節點固定不動）；(b) 自繪 listbox `outline: none` 且焦點樣式同 hover → 100+ 筆食藥清單鍵盤看不出選到哪列，違反設計系統禁 `outline:none` 鐵則。來源: 健檢 2026-08-01（a11y-compat A1/A3）
-  - **✅ 已完成 2026-08-02**（cycle 2026-08-02-B014-a11y，委派 codex `gpt-5.6-luna`/xhigh、CC 驗收）：(a) `startSolveClock` 改成**只建立一次結構**，之後每秒只改一個 `aria-hidden="true"` 秒數節點的 `textContent`；「≥60 秒」升級文案只在跨過門檻那一次寫入。**斷言的是「狀態節點物件沒有被重建」**，不是比對字串值（字串值本來就不變，那種斷言恆綠）。(b) `.crafter-cons__opt` 移除 `outline: none`，改 `:focus-visible` + 2px accent ring，`outline-offset: -2px` 避免被 `overflow-y` 裁掉。231 → **239 passed**。
-  - **CC 驗收**：突變（paint 改回重寫父層 innerHTML → T28 紅 5 條；把 `outline:none` 加回 → CSS 哨兵紅）；**真實鍵盤實測**——按實體 ↓ 後 `:focus-visible` 為 true、outline 實際算出 `solid 2px rgb(78,201,208)`；移到非選中列時該列 `box-shadow: none` 但仍有 ring ⇒ **焦點與「已選中」視覺可區分**（原本兩者樣式相同）。
-- [x] **B-015** (P3, docs) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 跨 repo（portal／本機 only 檔）】批次 6：文件與 memory 同步（**排最後**，行數/測試數屆時才定案）— (a) `_NEW-TOOL.md` 模板缺 `/data/*` 行，使 memory `external.data-cache-must-revalidate.md:27` 的「照模板寫」機械化落空；(b) 8 項文件 drift，其中 `README.md:27-30` 重建 WASM 指令**照抄必失敗**（`cd wasm` 後 `wasm/tools/` 不存在），失敗後的自然退路正是被明令禁止的裸 `wasm-pack`；AGENTS「104 個 expert 配方」實際 536（5.15 倍）、宣告 app.js「500 行」實際 506；(c) memory 3 項處置候選待 shawn 確認。來源: 健檢 2026-08-01（docs-drift 全維／memory-audit A2/A4）
-  - **✅ 已完成 2026-08-02**（cycle 2026-08-02-B015-docs-sync）：(a) **portal `templates/_headers` 補 `/data/*` must-revalidate**（portal repo `752db3e`）——模板缺這段，新工具照抄就讓 `data/` 走預設快取，推完玩家仍看到舊資料且零訊號。**掃描發現已有活受害者**：9 個有 `data/` 的 external 站中，`ffxiv-tw-sightseeing` 漏了這條（未動，待 Owner 決定）。(b) 文件 drift：README 重建 WASM 指令（`cd wasm` 後路徑不存在 → 照抄必失敗，且失敗後的自然退路正是被禁的裸 `wasm-pack`）、AGENTS 的 expert 配方數 104→**536**、app.js 行數 500→**640**、規模描述 10 檔→**12 檔／~2.7k 行**、`tools/` 與 `_headers` 兩列補上新增項。(c) memory：刪 `external.audit-followups.md` 的 Analytics-A（**先 curl 驗證 crafter／treasure 的 beacon 都已注入才刪**）＋同步 `MEMORY.md` 索引；修 `external.data-cache-must-revalidate.md` 的「（見下）」斷鏈。
-  - **⚠ CC 退掉執行者一處改動**：它把 B-005（2026-07-27 已結案）的前提數字 4.8MB 改寫成 7.3MB。那是**當時**的資料量，且同段的「實際傳輸 536 KB」正是對那份資料量測的 —— 改了會讓同一段自相矛盾，等於竄改歷史紀錄。已還原。（現況實測 `du -ch data/*.json` ＝ 7.1M，與它寫的 7.3 也對不上。）
+✅ **全數結案**（神速技巧耐久補償／群星穩定自造譯名／raphael 升版評估「先不升」／sim-diff 差分閘收進 repo）。
+條目搬到 [`BACKLOG-archive.md`](BACKLOG-archive.md)。
 
-- [x] **B-016** (P1, bug) 【建議 高｜延遲風險 中｜執行風險 中（動 rlv 解析＝公式上游）｜副作用 無】**未滿 100 級的等級同步配方算錯**（Owner 2026-08-01 回報：「有人反應若角色等級未滿 100，月球的配方等級也會跟著變換」）。
-  - **確認為真，且資料抓得到**：`Recipe.MaxAdjustableJobLevel`＝100 的有 **768 個配方**，其中 **184 個是宇宙任務配方**（`CollectableMetadataKey==7`）。這批配方會依角色職業等級同步降級。
-  - **現況錯在哪**：`selectRecipe` 固定用 `RLV[recipe.rlv]`，等級同步配方全是 rlv 690（Lv100）。一個 90 級製作職玩家會拿到 **Lv100 的難度/品質/耐久上限**去求解 ⇒ 手法完全不對，正中本工具最痛的「算錯巨集」失敗模式。**我剛加的品質階段目標也是從滿品質推的，會一起錯。**
-  - **規則（已對標＋交叉驗證）**：對標 BestCraft `ConfirmDialog.vue:59-65` 用硬編啟發式（`recipe_notebook_list` 落在 1496–1503 或 1528–1535 且 `rlv==690`）。我拿它跟正規欄位 `MaxAdjustableJobLevel` 交叉比對：**768 vs 768，交集完全相等、兩邊各零差異** ⇒ 兩者在這份資料上等價，但 `MaxAdjustableJobLevel` 才是不會隨新內容失效的判準，應採用它。
-  - **⚠ 兩份對標實作互相矛盾，別照抄**：`static-source.ts:107` 取該職業等級對應 rlv **最大**的一筆；`src-tauri/main.rs:202` 的 SQL 取 **最小**（`order_by_asc(Id).one()`）。差距極大——Lv100 對應 42 個 rlv（690–775）、Lv90 對應 14 個（560–644）。**判準＝取最小**：等級同步配方全是 rlv 690，而 690 正是 Lv100 的最小值 ⇒ 滿等時結果不變（正確）；取最大會在滿等就把配方改掉（明顯錯）。這個 identity-at-100 就是內建的健全性檢查，實作時寫成測試。
-  - **要動的**：(a) `tools/build-data.py` 把 `max_adjustable_job_level` 從 `en_Recipe.csv` 補進 `recipes.json`（best-craft 凍結資料沒這欄）；(b) 解析生效 rlv 的縫在 `selectRecipe` 與 `refreshSelectedGear` 兩處（改角色等級後要重算，`onGearInput` 已會呼叫後者）；(c) UI 要**寫出來**「已依 Lv90 同步 → rlv 560」，不能靜默換掉玩家看到的數字。
-  - 來源: Owner 2026-08-01 轉述玩家回報，調查於 cycle 2026-08-01-recipe-quality-stages
-  - **✅ 已完成 2026-08-01**（cycle 2026-08-01-B016-level-sync）：權威改走 `game_ref.sqlite` 的 `recipe_level_sync`（新表，由 `Recipe.MaxAdjustableJobLevel` 解出）→ `data/level-sync.json`；新層 `app-level-sync.js` 解生效 rlv 並寫回 `selected.rlv`（顯示與求解共用同一入口）；**額外做了手動覆寫**（Owner 指示：「以防萬一多一個讓人手動調整的」），本機保存。identity 用**實資料全量**釘住（768 筆逐筆），T20 共 24 條。實測 Lv70 做 36165：難度 4026→658、品質 5760→1728，求解 4 步完成。
+### 健檢 2026-08-15（[報告](health-reviews/2026-08-15-全維健檢-health-review.md)／[計畫](health-reviews/2026-08-15-全維健檢-fix-plan.md)）
 
----
+> 批次 0 的 12 項**已於健檢當輪直接修完**（零拍板需求：行為缺陷／測試缺口／文件 drift；測試 334 → **385 passed**，
+> 每項先寫會紅的測試、再修、再突變驗證，另跑瀏覽器實測）。明細見 `CHANGELOG.md` 2026-08-15 段與報告「本輪已修」。
+> 以下是**需要 Owner 拍板或需要先量測**的部分，**未標 `[go]` 不得開工**。
 
-### 差分審計 2026-08-03（raphael vs Tnze 兩顆獨立引擎對打的殘留項）
+- [ ] **B-025** (P2, docs) 【建議 高｜延遲風險 低｜執行風險 低｜副作用 無】**`AGENTS.md` 瘦身 — 40,273 bytes ＝ DEVLOOP R7 護欄的 2 倍，且每 session 全文注入**。其中單行 5.5KB 是逐輪測試流水帳（30 餘輪「→ N passed」）。2026-08-03 搬過一次只減 3.4KB、從未達標，之後又漲 29%。**⚠ 拍板搬哪些**：(A 建議) 搬走流水帳＋三段已結案的長篇踩坑敘事 → 目標 <20KB／(B) 只搬流水帳（仍超標）／(C) 申請護欄例外。留下的一律是「還會被拿來做決定」的規則＋指標（本檔已有「→ 敘事見 docs/lessons.md」慣例）。來源: 健檢 2026-08-15（docs-drift A3）
 
-- [x] **B-017** (P1, bug) 【建議 高｜延遲風險 中｜執行風險 中（動求解路徑）｜副作用 無】**「工匠的神速技巧」多扣 10 點耐久** — 上游 raphael v0.26.2 把 `TrainedEye` 的 `base_durability_cost` 寫死 10，遊戲實際是 0。判準＝日文客戶端文案（每個消耗耐久的技能都寫「耐久を消費して」，本技能沒有；對照組「匠の神業」寫「耐久を消費せず」）；**英文文案只標非預設值，拿它判會得到相反結論**。上游 `main` 至今未修 ⇒ 升版救不了。影響：走查耐久少 10（玩家看得到）＋求解預算少 10 → 手法變長（實測 17 步→14 步，17 步要貼兩段巨集）；1260 組掃描**無**「判做不到但實際做得完」的情形。來源: 差分審計 2026-08-03（對標 BestCraft 逐步比對發現）
-  - **✅ 已完成 2026-08-03**（cycle 2026-08-03-trained-eye-durability）：兩處都收在 `wasm/src/lib.rs`、**raphael 一行未動**（保住「以未修改原始碼編譯」聲明，不觸發 Apache-2.0 §4(b)）——① `replay()` 事後補回 10 點 ② `solve_input()` 把神速技巧那條路拆成「神速技巧 ＋ 滿耐久/CP−250/只衝進展的子問題」。`cargo test` 2 → **5**。瀏覽器實測：神速技巧那步耐久 60→**70**，末步耐久 10／CP 367 與 BestCraft 逐格相同；不適用神速技巧的配方輸出與改動前逐格不變。
-- [x] **B-018** (P3, data) 【建議 高（名字錯是對外的）｜延遲風險 低（台服尚未有此技能）｜執行風險 低｜副作用 跨 repo（權威在 monorepo）】**「群星穩定」是自造譯名，且被標成台服已驗證** — `Stellar Steady Hand`（日文 コスモステディハンド、**国服官方 宇宙稳手**）是 7.4 宇宙探索技能，作用是讓高速製作／倉促／冒進三個隨機成功率技能必定成功。
-  - **台服目前沒有這個技能**：id 46843 只在 global 解包（en/ja），`tc_Action.csv` 與自解包 `tclocal_Action.csv` **都查無此 id**（台服本體 7.2，技能是 7.4 的）。
-  - **名字是編的**：monorepo `build_game_ref.py:190` 的 `SUPPLEMENT_CRAFT_ACTIONS` 手寫一列 `(46843, "群星稳定", "群星穩定", tc_verified=1, ...)`，但 `群星稳定` 不存在於任何解包，国服叫 **宇宙稳手**；同一個 db 的 `actions` 表存的是 **宇宙穩手**（tc_verified=0，OpenCC 機轉自国服名）⇒ **同 id、兩表、兩名，且錯的那個宣稱已驗證**。違反繁中服正名鐵則「疑慮時查，不自創」。crafter 端 `tools/build-data.py:44` 的 `FALLBACK_TC` 也硬編同一個自造名。
-  - **今天沒有使用者可見損害**（`stellar_steady_hand_charges` 寫死 0 ⇒ 這 4 個技能永不出現在巨集裡），但台服一上 7.4 就會是對外錯字。
-  - **要做的**：(a) monorepo 側把 `tc_verified` 改回 0 並用国服名機轉（或等台服解包有了再轉正）(b) crafter 側同步 `FALLBACK_TC` (c) 台服上 7.4 後才談要不要接這個技能（屆時 charges 值 **⚠ 三源不一致**：raphael 等級 90／3 charges、Tnze 一次、我們 db 寫 Lv100 —— 那時要以台服客戶端為準重查，別照抄）。來源: 差分審計 2026-08-03（查「群星穩定是什麼」時連帶發現）
-  - **✅ 名字已修 2026-08-03**（Owner 指出「月球專用、台服沒開，本來就不該當一般技能加進去」並提供灰機 wiki 佐證）：
-    改 monorepo `build_game_ref.py` 的補充列 → `name_tc="宇宙穩手"`（国服「宇宙稳手」機轉）、**`tc_verified=0`**，
-    並把判準寫進註解；crafter 側同步 `tools/build-data.py` 的 `FALLBACK_TC` 與 `data/craft-actions.json`。
-    重建後 `craft_actions` 與 `actions` 兩表終於一致。**採外科修法、不動補充列機制本身**（那是 B-004 有意加、B-009 複核過的；
-    真正的缺陷只有「自造名 + 假的已驗證標記」）。
-  - **資料形狀佐證（值得記著的判準）**：一般製作技能住 `CraftAction` sheet（id 100xxx）、有 `ClassJobLevel`、CP 走 `Cost` 欄；
-    46843 與同為月球專用的**奇迹之材 (41269)** 一樣住 **`Action`** sheet、`ClassJobLevel=0`、走 `PrimaryCostType=20`（非 CP），
-    兩者 `ClassJobCategory` 皆 33 能工巧匠、`ActionCategory` 皆 7 制作能力。**要判斷某個技能是不是月球專用，看它住哪張 sheet 就知道。**
-  - **仍未做（等台服上 7.4）**：是否真的接這個技能（`stellar_steady_hand_charges` 目前寫死 0）。屆時 charges 值三源不一致的問題要重查。
-- [x] **B-019** (P3, chore) 【建議 中｜延遲風險 低｜執行風險 中（引擎換版＝公式面回歸風險）｜副作用 無】評估升 raphael v0.26.2 → v0.28.6 — 上游 release note 明寫含 **7.55 與台服 7.2 遊戲資料**。升版**不會**修掉 B-017 的神速技巧耐久（上游 `main` 至今仍寫 10，已查證）。升之前先跑本輪的差分測試 crate 當回歸網（見下），並確認 `pkg/` 體積與 `check-actions.py` 的 35 個 Action 變體不變。來源: 差分審計 2026-08-03
-  - **✅ 已實測評估、結論「先不升」（2026-08-03，Owner 核可「可以嘗試更新」→ 試完依數據回退）**：
-  - **能升，成本很小**：只需 2 處型別修正（v0.28 起 `state.progress`／`state.quality` 由 u32 改 u16，我方 `Output` 對 JS 的契約維持 u32、在邊界 `u32::from` 即可）。`action_name` 是 exhaustive match，**編得過就證明上游沒新增 Action 變體**（仍 35 個）。
-  - **行為完全一致**：`cargo test` 5 條全綠；差分閘 12 類已知差異的**次數逐一相同**（605/669/225/1003/159/161、70963/71093/10048/8245/1463/545）；`js-golden` 對帳 3328 組＋97 格零分歧。
-  - **升的理由不成立**：release note 的「7.55 與台服 7.2 遊戲資料」在 `raphael-data` crate，**我方沒引用它**（公式在 JS 端算），所以那份更新到不了我們。
-  - **代價是實的**：`pkg/*.wasm` 286,789 → 326,054 bytes，**brotli 後 85.1 KB → 95.1 KB＝每位首訪者多 10 KB**。求解速度也沒變好——同一題（rlv690 滿品質）v0.26.2 **300ms** / v0.28.6 **346ms**，同一組解。
-  - **結論**：無收益、有成本，維持 v0.26.2。**哪天有真正理由再升**（上游修掉神速技巧耐久、或出現我們需要的求解改進），屆時照上面兩處型別修正即可，路已探過。
-- [x] **B-020** (P3, test) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】差分測試 crate 是否收進 repo 當常設閘 — 本輪把 raphael-sim 與 Tnze `ffxiv-crafting` 擺進同一個 crate 對打（958,495 次施放零分歧，唯一分歧＝神速技巧耐久），現放在 `~/_claude_scratch/crafter-sim-diff/`（**不在 repo，換機即失**）。收進來的好處＝上游換版或我方動公式時自動抓漂移（正是 B-019 需要的網）；代價＝多一個 Rust 依賴（`ffxiv-crafting` 7.4.5，crates.io）與一次約 1 分鐘的 `cargo run --release`，不適合掛進每次 commit 的 pre-commit，比較適合當「動 wasm/ 才跑」的閘。**待 shawn 拍板**。來源: 差分審計 2026-08-03
-  - **✅ 已完成 2026-08-03**（Owner 核可「可以收進去當測試標準」）：落 `tools/sim-diff/`（main.rs 323 行＋js-golden.rs＋compare-js.mjs），用法寫進 AGENTS「開發注意」。**從一次性腳本升級成閘**的三件事：① 已知差異寫成 `ALLOWED` 常數、每條附為什麼可以放行，清單外一律 `exit 1` ② 清單裡的條目某輪**沒出現**也會印警告（多半代表上游修好了 → 該移除我方 workaround，例如神速技巧那條）③ 兩份 Cargo.toml 的 raphael tag 必須相同，由 `check-actions.py` 新增的 `check_simdiff_pin()` 機械守（負對照驗過：漂移 exit 1、同版 exit 0）——版本漂開就是「綠燈但測的不是線上那顆」的假保護，且零錯誤訊號。
+- [ ] **B-026** (P1, build) 【建議 高｜延遲風險 中｜執行風險 低｜副作用 跨 repo（fleet.json 或 monorepo hook）】**`check-actions.py` 沒有任何自動入口會跑到**。它守三個不變量（35 Action 變體／`pkg/`↔`lib.rs` BUILD-STAMP 同步／sim-diff 與 wasm 釘同一 raphael tag），但 `canonicalTest` 只有 `test-formulas` + `run-all`，monorepo pre-commit 也沒有它 ⇒ 改引擎、忘記重編、safe-push 全綠、**線上跑舊 WASM**——而 BUILD-STAMP（B-013）當初就是為了防這件事做的。**⚠ 拍板修法**：(A 建議) 加進 `canonicalTest`（改 `process/fleet.json` 一行，每次推多約 1 秒；換機缺 `py -3.11` 會以「推不出去」明確失敗）／(B) monorepo pre-commit 的條件式 gate／(C) 維持紀律（＝本 finding 本身）。來源: 健檢 2026-08-15（build-release A1＝tests A5）
+
+- [ ] **B-027** (P3, design-system) 【建議 中｜延遲風險 低｜執行風險 中（動表格版面要看畫面）｜副作用 跨 repo】**設計系統三項延續債**：(a) `.result-summary`／`.consumables` 幾何與 2026-08-13 已遷的三個容器完全同形，卻仍本地宣告 background/border/border-radius＝該次遷移的直接遺漏（成本最低、零視覺變化）(b) `.crafter-qt-tag` 家族把 `.codex-badge` 重刻一次（同 repo 別處已在正確消費它）(c) 三張表（`.rt`／`.wt-table`／`.gear-table`）仍手刻未消費 `.codex-table`，且 `.rt` 重現了 portal 已修掉的 sticky+`border-collapse` 坑（前輪已列建議未做）。**⚠ 拍板範圍**：(A 建議) 只做 (a)／(B) (a)+(b)／(C) 全做。來源: 健檢 2026-08-15（design-system A1/A2/A3）
+
+- [ ] **B-028** (P3, sec) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 跨 repo（13 站同型代理）】**settings-api 代理收窄**：(a) 無路徑白名單 —— `/settings-api/<任意路徑>` 一律轉到上游根路徑 ⇒ 本站原點也是 `/feedback`／`/announcements`／`/settings/*` 的入口，即使本站只用得到 `/u/*` 與 `/health` (b) 無條件覆寫 `Origin` ⇒ 上游 `/feedback` 的第一道閘（Origin 白名單）經過本代理時**永遠不會觸發**；原註解要解的是「同源請求瀏覽器不帶 Origin」，改成「缺席才補」即可完全達成目的並把那道閘還回去。**今天不可利用**（真正的 capability 是 UUID，第二道 `application/json` 閘仍在），但這支是 13 站樣板來源，改不改要一次決定。**⚠ 拍板**：(A 建議) 兩項都做並同步回其他站／(B) 只做 Origin（一行、零風險）／(C) 不做。來源: 健檢 2026-08-15（sec A2）
+
+- [ ] **B-029** (P3, ux) 【建議 中｜延遲風險 低｜執行風險 **高（前輪同型問題退回兩次）**｜副作用 無】**職業任務交付物列的窄屏溢出**。`.crafter-qt-item` 單列 flex 塞 icon＋品名＋HQ＋數量＋複製鈕＋徽章×2＋動作鈕；reviewer 判「手機必然溢出」，verifier 標 **partial（靜態推斷、未實測）**。**⚠ 第一步是量測不是改 CSS**：B-011(c) 就是照著「800–1018px 會溢出」這個錯誤前提動工，把右溢出換成左溢出又打壞兩個原本正常的寬度，退回兩次。照 AGENTS「開發注意」的手法（同源 iframe 定寬 1400/1018/900/800/430/390/360）量完再決定。來源: 健檢 2026-08-15（ux-flows A3）
+
+- [ ] **B-030** (P3, test) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】**資料管線的不變量缺口三項**：(a) 交付數量的對帳命中率**沒有 ratchet**，退步時零訊號（同檔的 vendors／hq 都有，唯獨 qty 沒有）(b) 食藥補 icon 以繁中名對帳且 fail-open（查無就寫 None、不失敗），且完全沒有資料不變量測試 (c) `data/quality-stages.json` 無資料不變量 ⇒ `build-data.py` 若輸出新來源，`toQuality` 靜默回 0（「未知來源不猜換算」那條防線會變成靜默少一檔）。另 `build-data.py` 對缺上游輸入 fail-open（印 ⚠ 後續跑、exit 0），屬前輪延續項。來源: 健檢 2026-08-15（correctness-data A2/A3、tests A7、build-release A3）
+
+- [ ] **B-031** (P3, sec) 【建議 低｜延遲風險 低｜執行風險 中（跨 13 站 CSP 範本）｜副作用 跨 repo】**CSP `unsafe-inline` 的殘餘價值只有「哨兵」那一半**。移除 `unsafe-inline`（改用 index.html 三段 inline script 的 sha256，由 `deploy-prepare.sh` 產生）是**已拍板取捨的再提案**（2026-07-11／2026-08-01 兩輪都判過重報），本輪 verifier 亦降為 low：沒有提出新的可利用路徑。**唯一有增量價值的部分**＝加一支哨兵擋「新增第 4 段 inline script」，避免 `unsafe-inline` 的實際依賴面無聲擴大。要做就只做哨兵那一項；CSP 本體屬 portal 生態決策。來源: 健檢 2026-08-15（sec A1，partial）
 
 ## 已完成（保留紀錄）
 

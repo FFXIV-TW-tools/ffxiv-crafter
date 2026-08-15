@@ -2,6 +2,64 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-15 — 健檢批次 0：四個「零回饋訊號」的行為缺陷 ＋ 三段最靠近玩家的程式碼補測試
+
+**為什麼**：全維健檢（11 維／31 agent／對抗驗證）發現**前輪修好的四類問題，兩週內以「新路徑繞過既有保護」的形式復發**。
+共同形狀是：畫面完全正常、測試全綠、無錯誤，只有玩家貼進遊戲或關掉分頁才會發現。
+
+### 行為修復（每項先寫會紅的測試 → 修 → 突變驗證）
+
+- **手動指定同步等級會靜默清空已填的 HQ 素材與目標品質**（correctness-core／perf-ux／ux-flows 三維獨立命中同一根因）。
+  `CraftSync.onChange` 直呼 `refreshSelectedGear()`，繞過 `refreshGearNote()` 裡「先記成果、重繪後套回並收斂到新上限」那段
+  ——而那段正是 B-011 為「改角色數值」那條路修的。→ 改走 `refreshGearNote()`。
+  同時補上「**生效 rlv 沒變也要重繪等級同步說明**」：`CraftSync.render` 原本只在 `refreshSelectedGear` 裡被呼叫，
+  不補這一刀就會修一個 bug 換一個 bug（面板停在舊等級）。T37。
+- **生效 rlv 改變時，品質階段以「絕對品質數字」被保留**。宇宙任務的門檻是**滿品質的百分比**，rlv 一變同一檔就是不同數字
+  ⇒ 下拉翻成「自訂」、求解照一個不存在的門檻算。→ 改為保留**檔次**、由新滿品質重推
+  （新增 `CraftStages.stageSelection`／`applyStageSelection`，換算仍收斂在該層一處）。
+  線上實測：Lv70→Lv90 三階由 1563 正確重推為 **3125**（修復前停在 1563，差一倍）。T38（**含接線層斷言**——
+  只驗那兩支 API 的話，把呼叫端改回保留絕對值照樣全綠）。
+- **NQ 模式殘留的目標品質產生假的「未達目標品質」警告**。`setTargetMode` 停用欄位但不清值，`render()` 直接讀 `.value`；
+  `shortfallHtml` 的註解本來就寫著「NQ ⇒ 不警告」——壞的是接線。→ 以「欄位是否被停用」為準（單一決定者＝`setTargetMode`）。
+  順帶把**品質階段下拉一併停用**：原本選了完全不生效，「按了沒反應」比停用更難懂。T39／T14。
+- **製造清單與等級同步保存失敗不通知玩家**。六個保存點裡只有這兩個是靜默的 —— 玩家會一路加十幾個配方、關掉分頁才發現整份不見。
+  → 一次性 toast（沿用既有慣例，不每次操作都轟炸）。T40。
+- **專家之證閘關閉時吃掉玩家保存的偏好**。init 順序是 `loadSolveOpts()` → `refreshSpecialistGate()`，那時還沒選配方
+  ⇒ 閘一律關、剛讀回的勾選當場被清掉；之後閘打開也只是「可勾」而不會勾回去 ⇒ 這個偏好**永遠套不回**。
+  → 把「想不想用」與「能不能用」分開（`specWanted`），閘關著時存檔也寫回偏好本身。T43。
+- **`level-sync.json` 被歸為選配資料，載不到就靜默退回六倍難度**。其他選配載不到只是少一個快捷；
+  這一份載不到會讓宇宙探索配方沿用 rlv 690 ＝ Lv70 玩家看到六倍難度，正是 B-016 修掉的病從另一條路回來。
+  → 仍不拖垮整站，但**降級要看得見**（明確 toast）。T41 另含對照組：食藥／品質階段載不到刻意不打擾玩家。
+- **資料載完前四個分頁按鈕完全沒有事件，而首次使用提示正指著它們**。綁定排在 `await loadData()` 之後，
+  慢網路上那是好幾秒。→ 移到 await 之前（`switchTab` 只切 class 與 hidden，不碰資料）。T42。
+
+### 測試網（334 → **385 passed**）
+
+- **靜默-catch 哨兵宣稱掃「全部手寫 JS」，實際只掃 10/13** —— 手打的清單漏了 `app-quests.js`（第二大模組）／`app-gear.js`／
+  `app-recipe.js`，而**漏掃的症狀就是全綠**。→ 改為掃描產生，並補「掃到 0 支也算失敗」的涵蓋率閘。
+- **巨集組裝與結果渲染先前零覆蓋** —— `renderMacro`（遊戲 15 行硬上限、超過切段補 `/echo`）與 `render()`
+  （AGENTS 明訂的 expert 中性措辭、未達標警語）都可以整段刪掉而 334 條全綠。→ 建 render harness 補 12 條。
+- **`functions/settings-api` 代理零測試** —— 它自己的檔頭寫著「🔴 改壞了完全沒有訊號」（改成 `fetch(URL)` 會讓
+  per-IP 額度變成全站共用），而 `export const __test` 連消費端都沒有。→ 新增 `tests/settings-api.test.mjs`（16 條）。
+- **測試 harness 的保真度修正**：`app-level-sync.js` 在真實頁面是 classic script、**早於** `app.js` module，
+  T25 的 harness 卻反過來載 ⇒ `CraftSync.init` 從來沒被接上、手動指定等級那條路徑**在測試裡等於不存在**。
+  這比沒有測試更危險（測試存在，但測的不是線上那條路）。
+
+### 清理與文件
+
+- 刪三支確認死碼的 proxy（`saveGear`／`gearValid`／`onGearInput`）—— **逐一 Grep 反查全 repo**（含 inline handler
+  與字串拼接）後才刪；`anyGear`／`markListState` 有呼叫點，未動。
+- 文件 drift 八處：開篇「無後端」（已有兩支 Pages Function）／架構表補 `functions/` 一列／規模 14 檔 2.84k 行 → 15 檔 3.47k／
+  `app.js` 424 → 485 行／VERIFY 的 `node --check` 清單改萬用字元（手維護的清單已漏 `app-quests.js`）／
+  `.qt-list` → `.crafter-qt-list`／商人涵蓋率同段自相矛盾（172 vs 247）／`CLAUDE.md`＋`AGENTS.md` 移除寫死的 `C:\FFXIVProject\…`
+  絕對路徑（違反 external 層明訂的跨機規則）。
+
+**驗收**：`node --check *.js`／`test-formulas` **385 passed**／`run-all` **2/2**／`check-actions.py` 三項／
+`deploy-prepare.sh` 40 檔／`check-test-baseline` 三項相符；**突變測試 7/7 皆紅**；
+瀏覽器實測（深連結 → 等級同步 → 手動改等級 → 求解 → 巨集 → 四分頁）crafter 自身零 console 錯誤。
+
+**未做（需拍板／需先量測）**：B-025〜B-031，見 [修復計畫](docs/health-reviews/2026-08-15-全維健檢-fix-plan.md)。
+
 ## 2026-08-13 — 三個中性分組容器遷共用 `.codex-tint-panel--neutral`（portal B-017d／B3 消費端）
 
 **為什麼**：`.filter-group`／`.cfg-card`／`.cl-card` 三個容器各自在本地寫了一份「8px 圓角＋1px 中性邊＋一種底色」，
