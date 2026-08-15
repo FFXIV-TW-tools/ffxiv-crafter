@@ -35,6 +35,20 @@
 // 也讓「這個站連到哪個後端」grep 得到。
 const UPSTREAM = 'https://ffxiv-tw-tools-settings-api.ffxiv-tw-tools.workers.dev';
 
+// 【路徑白名單】本站實際用得到的只有這兩條（**逐一查過消費端，不是照描述寫**）：
+//   `GET|PUT /settings/<uuid>` —— portal `settings-client.js` 的 pullOnce／push，
+//                                 同源站台走 `location.origin + '/settings-api'`（SAME_ORIGIN_SETTINGS_HOSTS 含本站）
+//   `GET /health`             —— 診斷用，無使用者資料
+// ⚠️ 別照「應該是 /u/<uuid>/<docId>」這種印象寫：那條路徑在這套 API 裡**不存在**，
+//    白名單寫錯的症狀是雲端設定同步全部 404，而畫面上只是「設定沒跟著走」——零錯誤訊號。
+//    `portal-announcements.js` 打的是 workers.dev 直連、不經本代理，故不需列入。
+// 沒有白名單時 `/settings-api/<任意路徑>` 一律轉到上游根路徑 ⇒ 本站原點**同時也是**
+// `/feedback`（Discord webhook relay）、`/announcements`、`/settings/*` 的入口，即使本站永遠不會用到它們。
+// 與 `deploy-allow.txt` 同一套教義：預設不開放、要開放就明確列舉——列舉「要擋的」的預設是全開，
+// 新增的上游端點天生外露、只能靠人記得補。
+// 順帶讓「本站到底把哪些上游端點暴露在自己網域下」grep 得到。
+const ALLOW = [/^\/health$/, /^\/settings\/[^/]+$/];
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -48,11 +62,23 @@ export async function onRequest(context) {
     });
   }
 
-  const target = UPSTREAM + url.pathname.replace(/^\/settings-api/, '') + url.search;
+  // 先正規化再比對：`/u/../feedback` 這種爬回根的寫法必須在**白名單判斷之前**被攤平，
+  // 否則白名單看到的是 `/u/...`（過）而上游收到的是 `/feedback`（不該過）。
+  const rest = new URL(url.pathname.replace(/^\/settings-api/, '') || '/', 'https://x').pathname;
+  if (!ALLOW.some((re) => re.test(rest))) {
+    return new Response(JSON.stringify({ error: 'not_allowed' }), {
+      status: 404,                                  // 404 而非 403：不對外界確認上游有沒有這條路徑
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    });
+  }
+
+  const target = UPSTREAM + rest + url.search;
   // 用原 request 當第二引數：method / headers / body 逐字沿用（含 CF-Connecting-IP、If-Match）。
   const req = new Request(target, request);
-  // 上游有 Origin 白名單；同源代理要表明自己是哪個站（瀏覽器同源請求可能根本不帶 Origin）。
-  req.headers.set('Origin', url.origin);
+  // 上游有 Origin 白名單；同源代理要表明自己是哪個站——**但只在 client 根本沒帶時才補**。
+  // 無條件覆寫會讓上游那道以 Origin 為判準的閘在經過本代理時永遠不會觸發（等於替第三方漂白），
+  // 而原本要解決的問題只是「瀏覽器的同源請求可能不帶 Origin」，缺席才補就完全達成目的。
+  if (!req.headers.get('Origin')) req.headers.set('Origin', url.origin);
 
   // 這一跳的實測成本 —— 就是決定架構的那個數字（同機直呼 vs 又跨海一次）
   const t0 = Date.now();

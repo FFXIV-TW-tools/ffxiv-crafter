@@ -26,7 +26,7 @@ const ok = (c, m, extra) => { console.log((c ? '✓ ' : '✗ ') + m + (c || !ext
 let globalFetchCalls = 0;
 globalThis.fetch = (...a) => { globalFetchCalls += 1; throw new Error('代理不得呼叫 global fetch：' + a[0]); };
 
-const mkCtx = ({ url = 'https://crafter.xivtc.com/settings-api/u/abc/doc1?x=1', method = 'GET',
+const mkCtx = ({ url = 'https://crafter.xivtc.com/settings-api/settings/abc-uuid?x=1', method = 'GET',
   headers = {}, body = null, binding = true, upstream } = {}) => {
   const seen = {};
   const env = binding ? {
@@ -49,7 +49,7 @@ const mkCtx = ({ url = 'https://crafter.xivtc.com/settings-api/u/abc/doc1?x=1', 
   const res = await onRequest(context);
   ok(res.status === 200, '有 binding → 直接回上游狀態碼', `status=${res.status}`);
   ok(globalFetchCalls === 0, '全程不得呼叫 global fetch（那條路會蓋掉 client IP，讓 per-IP 額度變全站共用）');
-  ok(seen.url === `${UPSTREAM}/u/abc/doc1?x=1`,
+  ok(seen.url === `${UPSTREAM}/settings/abc-uuid?x=1`,
     'target ＝ UPSTREAM + 去掉 /settings-api 前綴的路徑 + 原 query', `got=${seen.url}`);
 }
 
@@ -92,7 +92,54 @@ const mkCtx = ({ url = 'https://crafter.xivtc.com/settings-api/u/abc/doc1?x=1', 
     'Server-Timing 帶上這一跳的實測成本（當初決定架構的就是這個數字）');
 }
 
-// ---------- ⑥ 源碼哨兵：不得出現第二條出境路徑 ----------
+// ---------- ⑥ 路徑白名單：本站只用得到 /settings/<uuid> 與 /health（B-028，fail-closed）----------
+// 沒有白名單時 `/settings-api/<任意路徑>` 一律轉到上游根路徑 ⇒ 本站原點也是 /feedback（Discord relay）、
+// /announcements 的入口，即使本站永遠不會用到它們。與 deploy-allow.txt 同一套教義：
+// 預設不開放、要開放就明確列舉，而不是列舉要擋的東西。
+// ⚠️ 白名單的內容是**查消費端查出來的**（portal settings-client.js 的 pullOnce/push），
+//    不是照健檢 finding 的描述寫——那份寫的是 `/u/<uuid>/<docId>`，而那條路徑根本不存在，
+//    照著寫的話雲端設定同步會全部 404 而畫面上只是「設定沒跟著走」。正向案例故意列 PUT，鎖住寫入路徑。
+{
+  for (const p of ['/settings-api/health', '/settings-api/settings/abc-uuid', '/settings-api/settings/abc-uuid?x=1']) {
+    const { context, seen } = mkCtx({ url: `https://crafter.xivtc.com${p}` });
+    const res = await onRequest(context);
+    ok(res.status === 200 && !!seen.url, `白名單內的 ${p} 照常代理`, `status=${res.status}`);
+  }
+  {  // 寫入路徑（push）同樣要過——只驗 GET 會讓「白名單擋掉 PUT」這種壞法溜過去
+    const { context, seen } = mkCtx({ url: 'https://crafter.xivtc.com/settings-api/settings/abc-uuid',
+      method: 'PUT', body: '{"a":1}', headers: { 'Content-Type': 'application/json' } });
+    const res = await onRequest(context);
+    ok(res.status === 200 && seen.method === 'PUT', 'PUT /settings/<uuid>（雲端設定 push）必須過白名單', `status=${res.status}`);
+  }
+  for (const p of ['/settings-api/feedback', '/settings-api/announcements', '/settings-api/', '/settings-api/settings/a/b']) {
+    const { context, seen } = mkCtx({ url: `https://crafter.xivtc.com${p}` });
+    const res = await onRequest(context);
+    ok(res.status === 404, `白名單外的 ${p} 回 404`, `status=${res.status}`);
+    ok(seen.url === undefined, `白名單外的 ${p} 根本不打上游`);
+  }
+  // 路徑穿越不得繞過白名單（/u/ 開頭但實際爬回根）
+  const { context, seen } = mkCtx({ url: 'https://crafter.xivtc.com/settings-api/settings/../feedback' });
+  const res = await onRequest(context);
+  ok(res.status === 404 && seen.url === undefined, '路徑穿越（/settings/../feedback）不得繞過白名單', `status=${res.status}`);
+}
+
+// ---------- ⑦ Origin 只在缺席時補（B-028）----------
+// 無條件覆寫會讓上游 /feedback 的第一道閘（Origin 白名單）在經過本代理時**永遠不會觸發**——
+// 未來上游任何以 Origin 為判準的邏輯都會在 13 個站的代理後面被靜默漂白，而症狀是完全正常。
+// 原註解要解決的問題是「同源請求瀏覽器可能不帶 Origin」，只在缺席時補完全達成目的。
+{
+  const a = mkCtx({ url: 'https://crafter.xivtc.com/settings-api/health' });
+  await onRequest(a.context);
+  ok(a.seen.headers.get('Origin') === 'https://crafter.xivtc.com',
+    'client 沒帶 Origin → 補上本站 origin（上游 CORS 判斷需要）', a.seen.headers.get('Origin'));
+
+  const b = mkCtx({ url: 'https://crafter.xivtc.com/settings-api/health', headers: { Origin: 'https://evil.example' } });
+  await onRequest(b.context);
+  ok(b.seen.headers.get('Origin') === 'https://evil.example',
+    'client 有帶 Origin → 原樣穿透，讓上游自己判（不替第三方漂白）', b.seen.headers.get('Origin'));
+}
+
+// ---------- ⑧ 源碼哨兵：不得出現第二條出境路徑 ----------
 {
   const body = SRC.replace(/^\s*\/\/.*$/gm, '');   // 註解裡本來就會提到 fetch('https://…')，只掃程式碼
   ok(!/\bfetch\s*\(\s*['"`]https?:/.test(body) && !/\bfetch\s*\(\s*UPSTREAM/.test(body),
