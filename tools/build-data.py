@@ -17,6 +17,19 @@ for _s in (sys.stdout, sys.stderr):
     try: _s.reconfigure(encoding="utf-8", errors="replace")
     except (AttributeError, ValueError): pass  # best-effort 編碼設定：stream 無 reconfigure / 不支援編碼（窄 except，符合 except:pass 鐵則豁免 a）
 
+# 缺上游輸入時的處理（B-030，2026-08-16）：以前是印一行 ⚠ 然後照跑到底、**exit 0**。
+# 那等於「我以為我重建了資料，其實 data/ 還是上一輪的舊檔」——而且輸出末尾照樣一整排 ✓。
+# 現在改成：問題全部收集起來（一次看完所有缺件，不是修一個跑一次），跑完印總表並 **exit 1**。
+# 刻意**不**在缺件當下就中止：既有行為是「缺的那份不覆蓋」＝前一個好狀態原地保留，這點正確，
+# 要改的只有「回報成功」這件事（對外邊界 fail-closed 的同一條教義：失敗要看得見、好狀態要留著）。
+PROBLEMS = []
+
+
+def problem(msg):
+    print("⚠ " + msg, file=sys.stderr)
+    PROBLEMS.append(msg)
+
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 # 預設由本檔位置推導（tools → ffxiv-crafter → external → monorepo 根），不寫死 `C:/FFXIVProject`：
 # 磁碟機代號依機器而異（external 層明訂的跨機規則），寫死的話換一台機器就靜默指到不存在的路徑。
@@ -85,7 +98,7 @@ def enrich_consumables():
     for fn in ("meals.json", "medicine.json"):
         p = os.path.join(OUT, fn)
         if not os.path.exists(p):
-            print("⚠ 缺 " + p + "（先跑完整 build-data.py）", file=sys.stderr); continue
+            problem("缺 " + p + "（先跑完整 build-data.py）"); continue
         rows = json.load(open(p, encoding="utf-8"))
         miss = 0
         for e in rows:
@@ -146,7 +159,7 @@ def _to_sc(name):
             import opencc
             _T2S = opencc.OpenCC("t2s")
         except ImportError:
-            print("⚠ 無 opencc → 社群名的繁→簡橋接停用，數量未知的件數會變多", file=sys.stderr)
+            problem("無 opencc → 社群名的繁→簡橋接停用，數量未知的件數會變多")
             _T2S = False
     return _T2S.convert(name) if _T2S else None
 
@@ -199,7 +212,7 @@ def write_job_quests():
     if os.path.exists(qty_path):
         qty_src = json.load(open(qty_path, encoding="utf-8")).get("jobs", {})
     else:
-        print("⚠ 缺 tools/job-quest-qty.json（跑 fetch-quest-qty.py）→ 本輪不帶交付數量", file=sys.stderr)
+        problem("缺 tools/job-quest-qty.json（跑 fetch-quest-qty.py）→ 本輪不帶交付數量")
     con = sqlite3.connect(ITEM_LOOKUP)
     out, miss_item, qty_hit, qty_miss, hq_hit = [], 0, 0, 0, 0
     recipes = json.load(open(os.path.join(OUT, "recipes.json"), encoding="utf-8"))
@@ -293,7 +306,7 @@ def write_vendors(quests_path):
     if os.path.exists(shop_path):
         shop_npc = json.load(open(shop_path, encoding="utf-8"))
     else:
-        print("⚠ 缺 gil_shop_npc.json → 只能標「有沒有得買」，沒有販售地點", file=sys.stderr)
+        problem("缺 gil_shop_npc.json → 只能標「有沒有得買」，沒有販售地點")
     by_item = {}
     for r in recipes:
         if r.get("item_id"):
@@ -389,7 +402,7 @@ def main():
             shutil.copy(src, os.path.join(OUT, fn))
             print("✓ 複製 %s (%.1f MB)" % (fn, os.path.getsize(src) / 1024 / 1024))
         else:
-            print("⚠ 缺 static-data 來源：" + src + "（先跑 best-craft 的 build-static-data.py）", file=sys.stderr)
+            problem("缺 static-data 來源：" + src + "（先跑 best-craft 的 build-static-data.py）")
 
     enrich_consumables()
 
@@ -482,3 +495,10 @@ def write_quality_stages(recipes):
 
 if __name__ == "__main__":
     main()
+    if PROBLEMS:
+        print(file=sys.stderr)
+        print("✗ 上游輸入有 %d 項缺件，data/ 的對應檔案**維持上一輪的舊內容**：" % len(PROBLEMS),
+              file=sys.stderr)
+        for m in PROBLEMS:
+            print("   - " + m, file=sys.stderr)
+        sys.exit(1)

@@ -55,13 +55,19 @@
     const { $, esc, b64urlEncode, copyText, MACRO_BUILDER_BASE, getSelected } = deps;
     const selected = getSelected();
     const lines = steps.map(s => `/ac "${actionName(s.action)}" <wait.${s.time}>`);
+    // 遊戲巨集一格上限 15 行，**最後一行永遠留給帶音效的 /echo**（2026-08-16 Owner 需求）
+    // ⇒ 單段的容量是 14 步不是 15。玩家貼進遊戲後是盯著角色動作跑完的，沒有音效就得一直看著畫面；
+    //    兩段以上時更關鍵——不知道第一段何時結束就不知道該按第二段。所以**每一段都補**，不是只補最後一段。
+    const CHUNK = 14;
     const macros = [];
-    if (lines.length <= 15) macros.push(lines.slice());
-    else for (let i = 0; i < lines.length; i += 14) {
-      const c = lines.slice(i, i + 14);
-      c.push(`/echo 第 ${macros.length + 1} 段完成 <se.${(macros.length % 8) + 1}>`);
-      macros.push(c);
-    }
+    if (lines.length <= CHUNK) macros.push(lines.slice());
+    else for (let i = 0; i < lines.length; i += CHUNK) macros.push(lines.slice(i, i + CHUNK));
+    macros.forEach((m, i) => {
+      const last = i === macros.length - 1;
+      // 中段講「還有下一段」、末段講「整個做完了」——兩者的下一步動作不同，文案不能共用。
+      // 音效逐段輪替（se.1..8）：連續貼兩段時聽得出剛才響的是哪一段。
+      m.push(`/echo ${last ? '製作完成' : `第 ${i + 1} 段完成`} <se.${(i % 8) + 1}>`);
+    });
     // 存進巨集庫深連結（named target 共用分頁、不加 noopener——生態內互跳鐵則；收端經確認 modal 絕不自動寫入）
     const itemName = (selected && selected.recipe && selected.recipe.item_name) || '製作巨集';
     const payload = b64urlEncode(JSON.stringify(macros.map((m, i) => {

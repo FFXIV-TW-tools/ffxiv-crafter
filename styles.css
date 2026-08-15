@@ -219,7 +219,12 @@ body {
 .ri-icon { width: 52px; height: 52px; flex: 0 0 auto;
   background: var(--color-bg-deep, #03060c); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--color-border));
   border-radius: var(--radius-sm, 6px); }
-.ri-main { display: flex; flex-direction: column; gap: var(--space-1, 4px); min-width: 0; flex: 1; }
+/* 品名欄要有**收縮下限**：`min-width: 0` + `flex: 1` 時它是同列裡唯一能縮的東西，
+   動作鈕一多（製作鏈的「← 回『長配方名』」是第 4 顆）就把它壓成一個字寬、品名直排、
+   三個數值各自折行 —— 與 B-029 交付物列同一個形狀。給下限後放不下的是**動作群整條換行**
+   （`.ri-head` 本來就 flex-wrap），那正是 540 門檻以下的既有版面。T55 守。 */
+.ri-main { display: flex; flex-direction: column; gap: var(--space-1, 4px);
+  flex: 1 1 260px; min-width: min(260px, 100%); }
 .ri-name { font-size: var(--fs-h3); color: var(--accent); font-weight: var(--fw-bold, 700); line-height: var(--lh-tight, 1.15); }
 .ri-name .codex-small { color: var(--color-warn); font-weight: var(--fw-regular, 400); }
 /* 難度/品質/耐久 收成同一行的 label+值（格子化只是把三個小數字撐成三個大方塊）*/

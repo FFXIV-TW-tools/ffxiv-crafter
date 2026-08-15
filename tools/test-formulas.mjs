@@ -1884,6 +1884,13 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     const wood10 = jq.find((j) => j.job === '木工師').quests.find((q) => q.lv === 10);
     eq('T31 木工 Lv10 交付物與數量（試算表 × 解包對帳過的 golden）',
       JSON.stringify(wood10.items.map((i) => [i.name, i.qty])), JSON.stringify([['梣木木材', 12]]));
+    // 交付數量的對帳命中率 ratchet（B-030）：同檔的 vendors／hq 早就有，唯獨 qty 沒有。
+    // 對帳是「社群名 → item id，且 id 要與解包相符」三段查詢——上游任一段退步（opencc 沒裝、
+    // 試算表換欄位、item_lookup 改名）都會讓命中數掉下來，而畫面只是多幾件標「數量未知」。
+    // 兩個 fail-open 疊在一起：build 端不當錯誤、前端把未知當 1 份估算 ⇒ 採購量整批偏掉而全程零訊號。
+    const qtyKnown = items.filter((it) => it.qty != null).length;
+    check(`T31 交付數量的對帳命中率不得倒退（現況 228/290，實測 ${qtyKnown}）`, qtyKnown >= 228, qtyKnown);
+    check('T31 交付物總數不得縮水（解包任務表變少要有人知道）', items.length >= 290, items.length);
   }
 }
 
@@ -2252,17 +2259,31 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   R.render(mkResult(3, { complete: false }), false);
   check('T39 未完成 → 紅色「✗ 未完成」', /codex-badge--danger[^>]*>✗ 未完成/.test(summary()));
 
-  // (c) 巨集組裝：遊戲的巨集一格上限 15 行。超過要切段，且每段補一行 /echo 提示才知道該貼下一段
-  //     ——切錯的後果是玩家貼進遊戲少做最後幾步，而站上一切正常。
-  R.render(mkResult(15), false);
-  check('T39 15 步 → 單一巨集、不切段', /巨集 1 \/ 1（15 行）/.test(macro()));
-  check('T39 未切段時不得插入 /echo（那會佔掉一行）', !/\/echo/.test(macro()));
+  // (c) 巨集組裝：遊戲的巨集一格上限 15 行，且最後一行永遠是帶音效的 /echo（Owner 2026-08-16）
+  //     ⇒ 單段容量是 14 步。切錯的後果是玩家貼進遊戲少做最後幾步，而站上一切正常。
+  const macroLineCounts = () => (macro().match(/（(\d+) 行）/g) || []).map(s => +s.replace(/\D/g, ''));
+  R.render(mkResult(14), false);
+  check('T39 14 步 → 單一巨集、不切段', /巨集 1 \/ 1（15 行）/.test(macro()));
   check('T39 巨集行格式＝/ac "技能" <wait.秒>', macro().includes('/ac &quot;製作&quot; &lt;wait.3&gt;'));
+  // 單段也要有完成提示音——沒有的話玩家得盯著畫面才知道跑完了（這正是本次需求）
+  check('T39 單段結尾＝帶音效的「製作完成」', /\/echo 製作完成 &lt;se\.1&gt;/.test(macro()));
+  R.render(mkResult(15), false);
+  check('T39 15 步 → 塞不下（14 步 + echo 已滿）→ 切兩段', /巨集 1 \/ 2/.test(macro()));
   R.render(mkResult(16), false);
   check('T39 16 步 → 切成兩段', /巨集 1 \/ 2/.test(macro()) && /巨集 2 \/ 2/.test(macro()));
   check('T39 切段後每段仍不得超過 15 行（14 步 + 1 行 /echo）', /巨集 1 \/ 2（15 行）/.test(macro()));
   check('T39 末段行數＝剩餘步數 + /echo', /巨集 2 \/ 2（3 行）/.test(macro()));
-  check('T39 切段時每段結尾要有 /echo 提示第幾段完成', (macro().match(/\/echo 第 \d+ 段完成/g) || []).length === 2);
+  check('T39 中段講「第 N 段完成」（提示還要按下一段）', (macro().match(/\/echo 第 \d+ 段完成/g) || []).length === 1);
+  check('T39 末段一律講「製作完成」而非「第 N 段完成」', /\/echo 製作完成 &lt;se\.2&gt;/.test(macro()));
+  check('T39 每一段都要有一行帶音效的 /echo', (macro().match(/\/echo [^<]*&lt;se\.\d+&gt;/g) || []).length === 2);
+  // 遊戲上限是硬限制：超過 15 行的巨集貼不進遊戲，而站上完全看不出來
+  for (const n of [1, 13, 14, 15, 16, 28, 29, 40]) {
+    R.render(mkResult(n), false);
+    const counts = macroLineCounts();
+    check(`T39 ${n} 步：每段 ≤15 行`, counts.length > 0 && counts.every(c => c <= 15), counts.join(','));
+    check(`T39 ${n} 步：步數不漏不重（總行數 − 段數 == 步數）`,
+      counts.reduce((a, b) => a + b, 0) - counts.length === n, counts.join(','));
+  }
 }
 
 // ===== T44：職業任務交付物列的窄屏形狀（B-029）=====
@@ -2442,6 +2463,91 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T52 CraftRecipe 導出 recipesForItem / pickRecipeForItem',
     typeof CR.recipesForItem === 'function' && typeof CR.pickRecipeForItem === 'function');
   void R; void byId; void byItemAll;
+}
+
+// ===== T55：配方詳情標題列不得被動作鈕壓垮（Owner 2026-08-16 回報）=====
+// 與 T44（交付物列）同一個形狀：一列 flex 裡動作群是 `flex: 0 1 auto`、品名欄是唯一能縮的東西，
+// 而 `min-width: 0` 讓它可以縮到 0 ⇒ 製作鏈把「← 回『長配方名』」加成第 4 顆鈕之後，
+// 品名被壓成一個字寬、直排，三個數值各自折行。實測（欄寬 618px，配方＝卡扎納爾錠）：
+//   min-width:0 → .ri-name 寬 27px、.ri-head 高 248px
+//   有下限     → .ri-name 寬 553px、.ri-head 高 104px（動作群整條換到下一行）
+// 真正的驗收是量測（同源 iframe 1400→320px 十種寬度：零水平溢出、品名寬 276–590px），紀錄在 CHANGELOG；
+// 這條防的是被順手改回 `min-width: 0`。**CSS 文字比對驗不了 layout**（同 T26／T44 的教訓）。
+{
+  const main = (CSS_SRC.match(/^\.ri-main\s*\{[\s\S]*?\}/m) || [''])[0];
+  check('T55 .ri-main 規則存在', main.length > 0);
+  check('T55 品名欄不得可縮到 0（min-width: 0 正是壓垮它的那一行）',
+    !/min-width:\s*0\s*[;}]/.test(main), main);
+  check('T55 品名欄要有收縮下限（min-width 帶實際長度）',
+    /min-width:\s*min\(\s*\d+px/.test(main) || /min-width:\s*\d+px/.test(main), main);
+  check('T55 動作群仍可整條換行（放不下時退回獨佔一列，而不是繼續擠品名）',
+    /\.ri-head\s*\{[^}]*flex-wrap:\s*wrap/.test(CSS_SRC));
+}
+
+// ===== T54：食藥與品質階段的資料不變量（B-030）=====
+// 這兩份資料的產生端都是 fail-open：查不到就寫 null／輸出新來源就照寫，`build-data.py` 一路 ✓。
+// 消費端也不會出錯——食藥少了 icon 就是「那一列沒圖」，品質階段來源不認得就是 toQuality 回 0、
+// 該檔從下拉裡消失。**兩邊都不報錯**，所以只有在這裡對資料本身斷言才擋得住。
+{
+  const readData = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', f), 'utf8'));
+
+  // (a) 食物／藥水：icon 與 item id 靠繁中名對 item_lookup，查無就寫 null（build 端不當錯誤）。
+  //     現況 100/24 筆全中 ⇒ ratchet 直接釘在「一筆都不准缺」，退步時才有人知道。
+  for (const [f, n] of [['meals.json', 100], ['medicine.json', 24]]) {
+    const rows = readData(f);
+    check(`T54 ${f} 筆數不得縮水（現況 ${n}）`, rows.length >= n, rows.length);
+    const noIcon = rows.filter((e) => !e.icon);
+    check(`T54 ${f} 每筆都要對到 icon（繁中名對帳退步時這裡會紅）`,
+      noIcon.length === 0, noIcon.map((e) => e.name).join(','));
+    check(`T54 ${f} 每筆都要對到 item id`, rows.every((e) => Number.isSafeInteger(e.id) && e.id > 0));
+    check(`T54 ${f} icon 是 /i/NNNNNN/NNNNNN.png 形狀（iconUrl 轉 v2 CDN 靠這個形狀）`,
+      rows.every((e) => /^\/i\/\d{6}\/\d{6}\.png$/.test(e.icon)),
+      (rows.find((e) => !/^\/i\/\d{6}\/\d{6}\.png$/.test(e.icon)) || {}).icon);
+    check(`T54 ${f} 每筆都有繁中品名`, rows.every((e) => e.name && String(e.name).trim()));
+  }
+
+  // (b) 品質階段：`src` 的字彙由**消費端** app-quality-stages.js 的 toQuality 決定。
+  //     資料端哪天多輸出一種（如 root B-041 的 key 2/3/4/6），toQuality 走 `return 0`
+  //     → 那一檔靜默從下拉消失，玩家看到的是「這個配方只能衝滿品質」而不是錯誤。
+  //     故不在這裡寫死清單，改成從消費端原始碼抽出它認得的 src，再要求資料 ⊆ 它。
+  const QS_SRC = fs.readFileSync(path.join(ROOT, 'app-quality-stages.js'), 'utf8');
+  const known = new Set([...QS_SRC.matchAll(/src === '([a-z]+)'/g)].map((m) => m[1]));
+  check('T54 抽得到 toQuality 認得的來源（抽不到＝這條哨兵失效，不是資料沒問題）', known.size >= 2, [...known].join(','));
+  const qs = Object.values(readData('quality-stages.json'));
+  const unknownSrc = [...new Set(qs.map((e) => e.src))].filter((s) => !known.has(s));
+  check('T54 quality-stages.json 的每一種 src 前端都會換算（否則該檔靜默消失）',
+    unknownSrc.length === 0,
+    `前端認得 [${[...known].join(',')}]，資料出現 [${unknownSrc.join(',')}]`);
+  check('T54 quality-stages.json 筆數不得縮水（現況 992）', qs.length >= 992, qs.length);
+  check('T54 每筆恰好三檔門檻', qs.every((e) => Array.isArray(e.stages) && e.stages.length === 3));
+  check('T54 門檻值是非負整數（0＝該配方沒有那一檔，負數/小數＝資料壞了）',
+    qs.every((e) => e.stages.every((v) => Number.isSafeInteger(v) && v >= 0)));
+  check('T54 門檻由低到高（順序反了會讓「二階」比「三階」還難）',
+    qs.every((e) => e.stages.filter(Boolean).every((v, i, a) => i === 0 || v > a[i - 1])),
+    JSON.stringify(qs.find((e) => e.stages.filter(Boolean).some((v, i, a) => i > 0 && v <= a[i - 1])) || null));
+}
+
+// ===== T53：CSP `unsafe-inline` 的依賴面不得無聲擴大（B-031）=====
+// 移除 `unsafe-inline`（改 sha256）已被兩輪判為重報、本輪 verifier 也降 low —— 沒有新的可利用路徑。
+// **唯一有增量價值的是這支哨兵**：`unsafe-inline` 之所以留著，理由是「head 那兩段 bootstrap 非留不可」。
+// 那個理由只在段數不變時成立；哪天有人順手加第 3 段可執行 inline script，`unsafe-inline` 的實際依賴面
+// 就從「兩段查得到出處的 bootstrap」變成「任何人都能往頁面裡塞」，而 **CSP 檔一個字都不用改、零訊號**。
+// 加新的 inline script 不是不行，但要在這裡明講它是什麼、為什麼不能改成外部檔。
+{
+  const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const opens = HTML.match(/<script\b[^>]*>/g) || [];
+  // 有 src 的是外部檔（CSP 走 host 白名單，不吃 unsafe-inline）；ld+json 是資料不是可執行碼。
+  const inlineExec = opens.filter(t => !/\bsrc=/.test(t) && !/type=["']application\/ld\+json["']/.test(t));
+  check('T53 index.html 的可執行 inline script 恰為 2 段（舊網域交接 + portal CDN bootstrap）',
+    inlineExec.length === 2,
+    `實測 ${inlineExec.length} 段：${inlineExec.join(' | ')}\n` +
+    '→ 新增可執行 inline script 會擴大 CSP unsafe-inline 的依賴面。' +
+    '能改成外部 .js 就改（外部檔走 script-src self，不需要 unsafe-inline）；' +
+    '真的非 inline 不可（如必須在 CDN bootstrap 之前跑）就更新本條的預期值並在此註明用途。');
+  // `unsafe-inline` 還在＝上面那兩段確實靠它；哪天 CSP 收緊了，這條會提醒回來重估本哨兵
+  const csp = fs.readFileSync(path.join(ROOT, '_headers'), 'utf8');
+  check('T53 script-src 仍帶 unsafe-inline（本哨兵存在的前提）',
+    /script-src[^;]*'unsafe-inline'/.test(csp));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
