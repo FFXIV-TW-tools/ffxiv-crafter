@@ -36,19 +36,39 @@
     **停在 30.6KB 的原因**：剩下的 `工具鐵則`＋`開發注意` 逐條看過都是可執行規則，再砍就是 R7 自己警告的
     「為壓 byte 刪有效規則」。**要繼續降需 Owner 再拍一次**：(a) 把已有機械測試守的條目降成一行＋測試編號
     （風險：測試擋回歸、擋不住一開始就寫錯）(b) 依 R7 既有出口申請本 repo 豁免。
+  - **第二輪 2026-08-16（Owner：請降，看合理性判搬移或移除）——36.1KB → 28.3KB（−22%）**，
+    照 R7 規定的順序做、**沒有刪任何有效規則**：**移除**第二事實源（規模段的 15 個檔名清單／
+    架構表與檔頭註解重複的敘述／「先 Read `_DESIGN-SYSTEM.md`」與中性容器規則的重複段）；
+    **搬移**敘事到 `docs/lessons.md`（canonicalTest 合併理由／交接頁測試為何不併 runner／
+    為何不能跑裸 `wasm-pack`／巨集提示音的由來）；有測試守的條目改成「規則一行 + 測試編號」。
+  - **⚠ 仍超標 8.3KB，剩下的兩個選項都需要 Owner 拍板**（我不自決，兩者都跨出本 repo 或違反 R7 自身警告）：
+    - **(A) 把「部署面鐵則」段（3.8KB）移出 AGENTS.md** → 各 repo `docs/deploy-boundary.md`，AGENTS 留一行指標。
+      實測 **13 個 external repo 的 AGENTS.md 全部內嵌這一段**且明文寫「本段為共用權威版本，改請同步全部副本」
+      ⇒ 只改本 repo 就是讓它與另外 12 份分岔，**這是 13 repo 的一致決定，不該單邊做**。
+      做了之後約 24.5KB，仍未達標。
+    - **(B) 依 R7 既有出口申請本 repo 豁免**並記一行依據。
+    - 不建議的第三條：再砍 4.5KB 的現行規則。剩下的每一條都是可執行規則，R7 自己寫著
+      「為壓 byte 刪有效紅線＝優化錯指標，比超線更糟」。
+
 
 - [x] **B-026** (P1, build) 【建議 高｜延遲風險 中｜執行風險 低｜副作用 跨 repo（fleet.json 或 monorepo hook）】**`check-actions.py` 沒有任何自動入口會跑到**。它守三個不變量（35 Action 變體／`pkg/`↔`lib.rs` BUILD-STAMP 同步／sim-diff 與 wasm 釘同一 raphael tag），但 `canonicalTest` 只有 `test-formulas` + `run-all`，monorepo pre-commit 也沒有它 ⇒ 改引擎、忘記重編、safe-push 全綠、**線上跑舊 WASM**——而 BUILD-STAMP（B-013）當初就是為了防這件事做的。**⚠ 拍板修法**：(A 建議) 加進 `canonicalTest`（改 `process/fleet.json` 一行，每次推多約 1 秒；換機缺 `py -3.11` 會以「推不出去」明確失敗）／(B) monorepo pre-commit 的條件式 gate／(C) 維持紀律（＝本 finding 本身）。來源: 健檢 2026-08-15（build-release A1＝tests A5）
   - **✅ 已完成 2026-08-15（Owner 選 A）**：`process/fleet.json` 的 `canonicalTest` 加上 `&& py -3.11 tools/check-actions.py`，
     `AGENTS.md` 的逐字對照行同步更新並註明代價（每次推多約 1 秒；換機缺 `py -3.11` 會以「推不出去」明確失敗）。三段實跑全綠。
     ⚠️ `fleet.json` 住在 **claude-skills repo**（`~/.claude/process` 連結過去），那份改動要在該 repo 另外 commit／push。
 
-- [ ] **B-027** (P3, design-system) 【建議 中｜延遲風險 低｜執行風險 中（動表格版面要看畫面）｜副作用 跨 repo】**設計系統三項延續債**：(a) `.result-summary`／`.consumables` 幾何與 2026-08-13 已遷的三個容器完全同形，卻仍本地宣告 background/border/border-radius＝該次遷移的直接遺漏（成本最低、零視覺變化）(b) `.crafter-qt-tag` 家族把 `.codex-badge` 重刻一次（同 repo 別處已在正確消費它）(c) 三張表（`.rt`／`.wt-table`／`.gear-table`）仍手刻未消費 `.codex-table`，且 `.rt` 重現了 portal 已修掉的 sticky+`border-collapse` 坑（前輪已列建議未做）。**⚠ 拍板範圍**：(A 建議) 只做 (a)／(B) (a)+(b)／(C) 全做。來源: 健檢 2026-08-15（design-system A1/A2/A3）
+- [x] **B-027** (P3, design-system) 【建議 中｜延遲風險 低｜執行風險 中（動表格版面要看畫面）｜副作用 跨 repo】**設計系統三項延續債**：(a) `.result-summary`／`.consumables` 幾何與 2026-08-13 已遷的三個容器完全同形，卻仍本地宣告 background/border/border-radius＝該次遷移的直接遺漏（成本最低、零視覺變化）(b) `.crafter-qt-tag` 家族把 `.codex-badge` 重刻一次（同 repo 別處已在正確消費它）(c) 三張表（`.rt`／`.wt-table`／`.gear-table`）仍手刻未消費 `.codex-table`，且 `.rt` 重現了 portal 已修掉的 sticky+`border-collapse` 坑（前輪已列建議未做）。**⚠ 拍板範圍**：(A 建議) 只做 (a)／(B) (a)+(b)／(C) 全做。來源: 健檢 2026-08-15（design-system A1/A2/A3）
   - **部分完成 2026-08-15（Owner：A 先修）**：`.result-summary` 已遷共用中性面板——它與共用版幾何逐項相同，
     瀏覽器實測 computed style（`rgb(3,6,12)`／`1px solid rgb(43,63,86)`／`8px`／`12px`）**與遷移前完全一致，零視覺變化**。
     **但 `.consumables` 沒遷、也不該算遺漏**：它是 6px（`--radius-sm`）不是共用版的 8px，巢狀在 `.cfg-card`（8px）裡
     用小一級圓角是合理的設計選擇；遷過去＝視覺會變 2px，那是設計決定不是補遷 → **留給 Owner**。
     已加負向哨兵（T36）：有人順手統一時會紅。**剩餘待拍板**：① `.consumables` 6px→8px 要不要統一
     ② DS-02 `.crafter-qt-tag` 改消費 `.codex-badge` ③ DS-01 三張表 → `.codex-table`（動版面，需看畫面）。
+  - **✅ 全數結案 2026-08-16（Owner：27 結案）**：三項都已完成——(a) `.result-summary` 遷共用中性面板
+    （computed style 逐項與遷移前相同、零視覺變化）＋`.consumables` 統一 8px 並顯式寫 `--panel-bg`
+    （T36 釘住「巢狀會繼承父層底色」那個坑）／(b) `.crafter-qt-tag` 改消費 `.codex-badge`／
+    (c) 三張表遷 `.codex-table`（`--fixed`／`--sticky`），`.rt` 原本自刻的 sticky 確實重現了 portal
+    記錄的 `border-collapse: collapse` 坑（捲動時列穿到表頭下方沒有分隔線，截圖實證），共用變體用
+    `separate` 解掉。T50 守。**無剩餘項。**
 
 - [x] **B-028** (P3, sec) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 跨 repo（13 站同型代理）】**settings-api 代理收窄**：(a) 無路徑白名單 —— `/settings-api/<任意路徑>` 一律轉到上游根路徑 ⇒ 本站原點也是 `/feedback`／`/announcements`／`/settings/*` 的入口，即使本站只用得到 `/u/*` 與 `/health` (b) 無條件覆寫 `Origin` ⇒ 上游 `/feedback` 的第一道閘（Origin 白名單）經過本代理時**永遠不會觸發**；原註解要解的是「同源請求瀏覽器不帶 Origin」，改成「缺席才補」即可完全達成目的並把那道閘還回去。**今天不可利用**（真正的 capability 是 UUID，第二道 `application/json` 閘仍在），但這支是 13 站樣板來源，改不改要一次決定。**⚠ 拍板**：(A 建議) 兩項都做並同步回其他站／(B) 只做 Origin（一行、零風險）／(C) 不做。來源: 健檢 2026-08-15（sec A2）
   - **✅ 已完成 2026-08-15（Owner：A 都做）——⚠ 白名單內容與提案時寫的不同**：提案（沿用 finding 措辭）寫「只用得到 `/u/*`」，
@@ -69,9 +89,21 @@
     修法＝窄屏讓 `__src` 落到第二行、品名拿回整行；斷點沿用本檔既有的 **760px**，不發明新數字。
     修後複驗 10 種寬度：截斷數全為 0、最小品名寬 48–52px，800px 以上數值與修改前逐項相同（無回歸）。T44 守形狀。
 
-- [ ] **B-030** (P3, test) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】**資料管線的不變量缺口三項**：(a) 交付數量的對帳命中率**沒有 ratchet**，退步時零訊號（同檔的 vendors／hq 都有，唯獨 qty 沒有）(b) 食藥補 icon 以繁中名對帳且 fail-open（查無就寫 None、不失敗），且完全沒有資料不變量測試 (c) `data/quality-stages.json` 無資料不變量 ⇒ `build-data.py` 若輸出新來源，`toQuality` 靜默回 0（「未知來源不猜換算」那條防線會變成靜默少一檔）。另 `build-data.py` 對缺上游輸入 fail-open（印 ⚠ 後續跑、exit 0），屬前輪延續項。來源: 健檢 2026-08-15（correctness-data A2/A3、tests A7、build-release A3）
+- [x] **B-030** (P3, test) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】**資料管線的不變量缺口三項**：(a) 交付數量的對帳命中率**沒有 ratchet**，退步時零訊號（同檔的 vendors／hq 都有，唯獨 qty 沒有）(b) 食藥補 icon 以繁中名對帳且 fail-open（查無就寫 None、不失敗），且完全沒有資料不變量測試 (c) `data/quality-stages.json` 無資料不變量 ⇒ `build-data.py` 若輸出新來源，`toQuality` 靜默回 0（「未知來源不猜換算」那條防線會變成靜默少一檔）。另 `build-data.py` 對缺上游輸入 fail-open（印 ⚠ 後續跑、exit 0），屬前輪延續項。來源: 健檢 2026-08-15（correctness-data A2/A3、tests A7、build-release A3）
+  - **✅ 已完成 2026-08-16**：(a) 交付數量對帳命中率 ratchet 228/290（T31）(b) 食藥資料不變量——筆數／
+    icon 全中／item id／icon 路徑形狀／繁中品名（T54）(c) quality-stages 不變量，其中 `src` 字彙
+    **從消費端 `toQuality` 的原始碼抽出**、要求資料 ⊆ 它（不在測試裡寫死清單，否則哨兵自己也會漂）
+    ＋筆數／三檔／非負整數／由低到高（T54）(d) `build-data.py` 缺上游輸入改 **fail-closed**：
+    收集全部缺件、跑完印總表並 exit 1；**刻意不在缺件當下中止**——既有的「缺的那份不覆蓋」保留了
+    前一個好狀態，要改的只有「回報成功」。端到端實測（scratch 副本缺兩檔 → 印 2 項 + exit 1，
+    正常路徑仍 exit 0）＋三個資料突變各自轉紅。
 
-- [ ] **B-031** (P3, sec) 【建議 低｜延遲風險 低｜執行風險 中（跨 13 站 CSP 範本）｜副作用 跨 repo】**CSP `unsafe-inline` 的殘餘價值只有「哨兵」那一半**。移除 `unsafe-inline`（改用 index.html 三段 inline script 的 sha256，由 `deploy-prepare.sh` 產生）是**已拍板取捨的再提案**（2026-07-11／2026-08-01 兩輪都判過重報），本輪 verifier 亦降為 low：沒有提出新的可利用路徑。**唯一有增量價值的部分**＝加一支哨兵擋「新增第 4 段 inline script」，避免 `unsafe-inline` 的實際依賴面無聲擴大。要做就只做哨兵那一項；CSP 本體屬 portal 生態決策。來源: 健檢 2026-08-15（sec A1，partial）
+- [x] **B-031** (P3, sec) 【建議 低｜延遲風險 低｜執行風險 中（跨 13 站 CSP 範本）｜副作用 跨 repo】**CSP `unsafe-inline` 的殘餘價值只有「哨兵」那一半**。移除 `unsafe-inline`（改用 index.html 三段 inline script 的 sha256，由 `deploy-prepare.sh` 產生）是**已拍板取捨的再提案**（2026-07-11／2026-08-01 兩輪都判過重報），本輪 verifier 亦降為 low：沒有提出新的可利用路徑。**唯一有增量價值的部分**＝加一支哨兵擋「新增第 4 段 inline script」，避免 `unsafe-inline` 的實際依賴面無聲擴大。要做就只做哨兵那一項；CSP 本體屬 portal 生態決策。來源: 健檢 2026-08-15（sec A1，partial）
+  - **✅ 已完成 2026-08-16（只做哨兵那一半）**：T53 釘住「index.html 的可執行 inline script 恰為 2 段」
+    （有 `src` 的走 host 白名單、`ld+json` 不是可執行碼，兩者都不算）＋一條「`unsafe-inline` 仍在」
+    的前提斷言（哪天 CSP 收緊了會提醒回來重估本哨兵）。**CSP 本體不動**——移除 `unsafe-inline` 是
+    兩輪判過重報的已拍板取捨，本輪 verifier 亦降 low、無新的可利用路徑。失敗訊息直接寫出建議
+    （能改成外部 `.js` 就改；真的非 inline 不可就更新預期值並註明用途）。突變（附加一段 inline）轉紅。
 
 ## 已完成（保留紀錄）
 

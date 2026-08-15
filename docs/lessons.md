@@ -72,3 +72,37 @@
 ③ 兩份 `Cargo.toml` 的 raphael tag 必須相同，由 `check-actions.py` 機械守：版本漂開就是
 「綠燈但測的不是線上那顆」的假保護，而且零錯誤訊號。
 
+
+## 為什麼 `check-actions.py` 與 `tests/run-all.mjs` 被併進 canonicalTest（2026-08-04／08-15；敘事於 2026-08-16 自 AGENTS.md 搬入）
+
+兩者的病因相同：**測試存在，但沒有任何自動入口會跑到它**。
+
+- `tests/` 底下的測試檔（handoff、settings-api）先前只有人記得時才跑 → 2026-08-04 加 `tests/run-all.mjs`
+  自動掃描 `tests/*.test.{js,mjs}`，新增測試檔不必再記得掛進來。跨 repo 稽核＝claude-skills
+  `process/tools/check-orphan-tests.mjs`。
+- `check-actions.py` 守的三個不變量（35 個 Action 變體 == `craft-actions.json` 鍵／`pkg/` 與 `lib.rs` 的
+  BUILD-STAMP 同步／sim-diff 與 wasm 釘同一個 raphael tag）先前也沒有自動入口
+  ⇒ 改引擎、忘記重編、safe-push 全綠，**玩家拿到的是舊引擎算的巨集**——而 BUILD-STAMP（B-013）
+  當初就是為了防這件事做的。2026-08-15 健檢 B-026、Owner 選 A：併進 `canonicalTest`。
+  代價＝每次推多約 1 秒；換機少了 `py -3.11` 會以「推不出去」明確失敗，不是靜默略過。
+
+## 交接頁測試為什麼刻意不併進 run-all（B-048 Task 4）
+
+`tests/handoff.test.mjs` 與 `functions/_middleware.js` 是 13 站**逐站複製**的樣板（每站只換 `OLD_HOST`／
+`NEW_ORIGIN` 兩個常數），檔名與介面必須跨站一致，不能為配合各站慣例改寫——改寫等於每站手動調整，
+正是 monorepo 交接頁一致性哨兵要防的漏抄。（`run-all.mjs` 掃描 `tests/*.test.mjs` 時仍會撿到它，
+這裡說的是「不得為了併進去而改寫它的介面」。）
+
+## 為什麼不能直接跑裸 `wasm-pack`（2026-07-28）
+
+Rust 把 panic 的原始碼路徑編進二進位，crate 住在 `%USERPROFILE%\.cargo\`
+⇒ 產物會帶**建置者的 Windows 帳號名**，而 `pkg/*.wasm` 是公開可下載的（瀏覽器必須抓它才能跑）。
+`tools/build-wasm.ps1` 用 `--remap-path-prefix` 把家目錄改寫成 `~`，並在編完驗收「產物不含建置者路徑」。
+
+## 巨集為什麼一定要有完成提示音（Owner 2026-08-16）
+
+玩家貼進遊戲後是**盯著角色動作**跑完的：沒有音效就得一直看著畫面，兩段以上時更關鍵——
+不知道第一段何時結束就不知道該按第二段。所以每一段結尾都補一行 `/echo … <se.N>`，
+中段講「第 N 段完成」、末段講「製作完成」（兩者的下一步動作不同，文案不能共用）。
+連帶的硬限制：遊戲巨集一格上限 15 行，最後一行既然永遠留給 echo，**單段的容量就是 14 步不是 15**。
+T39 逐一驗 1/13/14/15/16/28/29/40 步的「每段 ≤15 行」與「總行數 − 段數 == 步數」。
