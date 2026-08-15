@@ -252,7 +252,7 @@ body {
    「未填」標記讓玩家一眼看出哪些職業按下去會被擋在角色數值頁，而不是按了才知道。*/
 .ri-jobs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1, 4px);
   margin-top: var(--space-2, 8px); }
-.ri-jobs__label { color: var(--color-text-dim, #8ba0b8); margin-right: var(--space-1, 4px); }
+.ri-jobs__label { color: var(--color-text-muted); margin-right: var(--space-1, 4px); }
 .ri-job-btn { height: 28px; padding: 0 var(--space-2, 8px); }
 .ri-job-btn__no { opacity: .7; }
 /* 製作鏈：可製作的素材給「先做這個」入口，做完由 ri-actions 的「← 回…」回上一層 */
