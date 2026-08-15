@@ -55,17 +55,23 @@
     if (rlvChanged) {
       // 完整重繪會重建素材列／目標欄；先記住玩家成果，重繪後再套回（目標超過新上限則收斂）。
       const targetBefore = deps.$('opt-target').value;
+      // 選的是「某一檔」時要依**檔次**重推新 rlv 下的門檻，不是保留舊的絕對數字
+      // （宇宙任務門檻＝滿品質的百分比，rlv 一變數字就不同 → T38 守）
+      const stageBefore = globalThis.CraftStages?.stageSelection?.() ?? null;
       const hqBefore = {};
       deps.$('ingredients').querySelectorAll('.ing-hq-in').forEach((inp) => { hqBefore[inp.dataset.iid] = inp.value; });
       refreshSelectedGear();
       const { max_quality: maxQ } = deps.recipeMaxes(recipe, selected.rlv);
       const target = deps.$('opt-target');
-      if (targetBefore === '') target.value = '';
-      else {
-        const n = Number(targetBefore);
-        target.value = Number.isFinite(n) ? String(Math.min(Math.max(0, n), maxQ)) : targetBefore;
+      // 檔次套得回去就用檔次（新門檻由新滿品質重推）；自訂數字才退回「保留絕對值並收斂到新上限」
+      if (!globalThis.CraftStages?.applyStageSelection?.(stageBefore)) {
+        if (targetBefore === '') target.value = '';
+        else {
+          const n = Number(targetBefore);
+          target.value = Number.isFinite(n) ? String(Math.min(Math.max(0, n), maxQ)) : targetBefore;
+        }
+        globalThis.CraftStages?.syncFromInput?.();
       }
-      globalThis.CraftStages?.syncFromInput?.();
       deps.$('ingredients').querySelectorAll('.ing-hq-in').forEach((inp) => {
         const old = hqBefore[inp.dataset.iid];
         if (old == null) return;
@@ -75,6 +81,10 @@
       updateInitial(recipe, maxQ);
       return;
     }
+    // 生效 rlv 沒變也要重繪等級同步說明：說明文字裡有「依角色等級 Lv 91」「手動指定 Lv 92」這種
+    // 會變、但不改變 rlv 級距的東西。原本唯一呼叫 CraftSync.render 的地方在 refreshSelectedGear 裡，
+    // 走不到這條路 ⇒ 面板會停在舊等級（T37 守）。
+    globalThis.CraftSync?.render?.(recipe, sync, g && Number(g.level), deps.recipeMaxes(recipe, nextRlv));
     // 專家之證已移到「角色數值」分頁（每職一份、上限 3）→ 這行是求解頁唯一看得到它的地方，必須寫出來
     const spec = g && g.specialist ? ' · <b>專家之證 ✔</b>' : '';
     const note = g

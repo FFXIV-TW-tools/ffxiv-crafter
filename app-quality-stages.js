@@ -84,6 +84,36 @@
     if (idx >= 0) stage.selectedIndex = idx;
   }
 
+  /** 目前選的是哪一檔：0/1/2、'full'（滿品質）、或 null（自訂／無分階）。
+   *  給「生效 rlv 改變」時保留選擇用。**保留絕對品質數字是錯的**——宇宙任務的門檻是滿品質的
+   *  百分比，rlv 一變同一檔就是不同數字，保留舊值等於照一個不存在的門檻求解（且下拉會翻成「自訂」，
+   *  畫面上看不出哪裡不對）。索引用 targets 的原始位置，與 STAGE_LABEL 對齊。 */
+  function stageSelection() {
+    const stage = $('opt-target-stage');
+    if (!stage || !current) return null;
+    const v = stage.value;
+    if (v === CUSTOM) return null;
+    if (v === FULL) return 'full';
+    const i = current.targets.findIndex((q) => q && String(q) === v);
+    return i >= 0 ? i : null;
+  }
+
+  /** 把 stageSelection() 的結果套回（setRecipe 依新 maxQ 重建之後）：依檔次重推新的絕對品質。
+   *  回 false ＝套不回（自訂／該檔在新 rlv 下不存在），由呼叫端沿用既有的絕對值收斂法，不硬湊。
+   *  刻意不呼叫 invalidateResults：呼叫端（refreshGearNote）那條路本來就已經在作廢舊結果了。 */
+  function applyStageSelection(sel) {
+    const stage = $('opt-target-stage'), target = $('opt-target');
+    if (sel == null || !stage || !target || !current) return false;
+    const want = sel === 'full' ? FULL : String(current.targets[sel] || '');
+    if (sel !== 'full' && !want) return false;
+    const idx = [...stage.options].findIndex((o) => o.value === want);
+    if (idx < 0) return false;
+    stage.selectedIndex = idx;
+    stage.value = want;
+    target.value = want;
+    return true;
+  }
+
   function onStageChange() {
     const stage = $('opt-target-stage');
     const target = $('opt-target');
@@ -99,7 +129,7 @@
       if (stage) stage.addEventListener('change', onStageChange);
     },
     setData(stages) { STAGES = stages || {}; },
-    setRecipe, syncFromInput,
+    setRecipe, syncFromInput, stageSelection, applyStageSelection,
     // 測試面：純函式，不碰 DOM
     _toQuality: toQuality,
   };

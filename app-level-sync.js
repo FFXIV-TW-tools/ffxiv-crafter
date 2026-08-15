@@ -15,7 +15,8 @@
 // **不靜默換數字**：只要生效等級不等於配方原始等級，畫面就要寫出「依 Lv X 同步 → rlv Y」
 // 與配方原始值。玩家對不上遊戲畫面時，才分得出是等級選錯還是工具算錯。
 (function () {
-  let deps = null;         // app.js 注入：{ $, onChange }
+  let deps = null;         // app.js 注入：{ $, toast, onChange }
+  let saveWarned = false;  // 保存失敗只提醒一次（同 crafting-list / app-quests 的慣例）
   let SYNC = {};           // recipe id → max_adjustable_job_level
   let override = null;     // 手動指定的等級；null ＝ 跟隨角色等級
   let last = null;         // 最近一次 apply 的結果（給 UI 重繪與測試查詢）
@@ -71,7 +72,11 @@
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(override === null ? {} : { level: override })); }
-    catch (e) { console.warn('[crafter] 等級同步設定儲存失敗（可能是無痕模式）:', e); }
+    catch (e) {
+      console.warn('[crafter] 等級同步設定儲存失敗（可能是無痕模式）:', e);
+      // 同其他保存點：一次性告知，別讓玩家以為指定的等級跟著他走（同 crafting-list 的 T40 教訓）
+      if (!saveWarned) { saveWarned = true; deps?.toast?.('無法保存手動指定的等級（可能是無痕/私密模式），重整後會回到跟隨角色等級', 'warn'); }
+    }
   }
 
   /** 重繪說明。呼叫端（app.js refreshSelectedGear）先 resolve 取生效 rlv 算出 maxes，再把兩者一起交回來

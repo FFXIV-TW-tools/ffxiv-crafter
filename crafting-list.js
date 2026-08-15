@@ -9,6 +9,7 @@
   let deps = null;      // app.js 注入：{ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, toast }
   let byId = new Map(); // recipe id → recipe
   let list = [];        // [{ id, qty }]（qty＝製作次數）
+  let saveWarned = false; // 保存失敗只提醒一次（每次加減都跳 toast 會變成噪音）
 
   // 移除鈕＝功能性小圖示 → 走 portal 共用元件（`FFXIVIcons.btnHTML('close', …)` → `.codex-icon-btn` ＋內嵌 SVG）。
   // 自刻 ✕ 字元的問題與 emoji 同型：字型相依、視覺重量跟旁邊的 SVG 圖示不一致。
@@ -73,7 +74,12 @@
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(list)); }
-    catch (e) { console.warn('[crafter] 製造清單儲存失敗（可能是無痕模式）:', e); }
+    catch (e) {
+      console.warn('[crafter] 製造清單儲存失敗（可能是無痕模式）:', e);
+      // 只 console.warn 等於沒說：玩家會一路加十幾個配方、關掉分頁才發現整份清單不見了。
+      // 一次性 toast（同 app-gear / app-consumable / app-quests 的既有慣例，別每次操作都轟炸）。
+      if (!saveWarned) { saveWarned = true; deps?.toast?.('無法保存製造清單（可能是無痕/私密模式），重整後會遺失', 'warn'); }
+    }
   }
 
   function add(recipeId) {

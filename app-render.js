@@ -106,7 +106,11 @@
     // 而 `complete` 只看進展有沒有做完 ⇒ 會出現「✓ 可完成」配上達不到門檻的品質。
     // 玩家選「三階」就是衝著門檻來的，少了這行就是拿到一份達不到門檻的巨集而不自知
     // （2026-08-01 實測：三階 12665、實際 8488，畫面全綠）。
-    const shortLine = shortfallHtml(Number($('opt-target').value) || 0, r.final_quality);
+    // 目標品質欄被**停用**＝這個模式不吃目標品質（NQ 只求完成），此時欄位裡殘留的數字不是玩家的目標。
+    // 直接讀 .value 會產生假的「未達目標品質 900」警告（shortfallHtml 的註解本來就寫著 NQ 不警告，
+    // 壞的是這條接線）。停用與否的唯一決定者＝CraftFlow.setTargetMode，故以它為準、不再判一次模式。
+    const targetEl = $('opt-target');
+    const shortLine = shortfallHtml(targetEl.disabled ? 0 : Number(targetEl.value) || 0, r.final_quality);
     $('result-summary').innerHTML = `
       <div class="sum-row">
         ${completeBadge}

@@ -74,6 +74,10 @@
   function setTargetMode() {
     const nq = $('solve-mode').value === 'nq';
     $('opt-target').disabled = nq;
+    // 階段下拉也要一起停：它的作用就是往目標品質欄寫一個數字，欄位停用時等於「按了沒反應」——
+    // 那比停用更難懂（玩家會以為選了三階卻求解不理他）。T14 守。
+    const stage = $('opt-target-stage');
+    if (stage) stage.disabled = nq;
     $('target-why').hidden = !nq;
   }
   // 消耗品摺疊起來時也看得到現值（Owner：不要塞一個欄位在那邊等人發現）

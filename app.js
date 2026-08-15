@@ -65,6 +65,18 @@ async function loadData() {
   // 七檔同一輪併發：meals/medicine 原本排第二輪 await，白等一個 RTT 只換 2.5KB（fetchOpt 自己吞錯，不會拖垮必要資料）
   // 品質階段同為選配：載不到只是少了「一階/二階/三階」快捷，目標品質仍可手打 → 不拖垮整站
   const fetchOptObj = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return {}; } };
+  // 等級同步**不是普通選配資料**：其他選配載不到只是少一個快捷（品質階段）或少一份加成（食藥），
+  // 這一份載不到會讓宇宙探索配方沿用資料裡的 rlv 690 ＝ Lv100 版本的難度/品質/耐久
+  // —— Lv70 玩家看到的是六倍難度，求解直接回「做不到」，而畫面上一切正常（零回饋訊號，B-016 的原病）。
+  // 故降級要**看得見**：仍不拖垮整站（其餘 99% 配方不受影響），但必須告訴玩家數字可能不對。
+  const fetchLevelSync = async () => {
+    try { return await fetchJson('data/level-sync.json'); }
+    catch (e) {
+      console.warn('[crafter] 等級同步資料載入失敗:', e);
+      toast('等級同步資料載入失敗 — 宇宙探索配方可能顯示 Lv100 的難度與品質，重整可重試', 'warn');
+      return {};
+    }
+  };
   const [recipes, rlv, actions, items, ingredients, meals, medicine, stages, levelSync, quests, vendors] = await Promise.all([
     fetchJson('data/recipes.json'),
     fetchJson('data/recipe_levels.json'),
@@ -74,7 +86,7 @@ async function loadData() {
     fetchOpt('data/meals.json'),
     fetchOpt('data/medicine.json'),
     fetchOptObj('data/quality-stages.json'),
-    fetchOptObj('data/level-sync.json'),
+    fetchLevelSync(),
     fetchOpt('data/job-quests.json'),
     fetchOptObj('data/vendors.json'),
   ]);
@@ -103,13 +115,12 @@ async function loadData() {
 
 // ---------- 角色數值（localStorage，已抽到 app-gear.js：globalThis.CraftGear）----------
 // proxy：既有呼叫點 / 事件綁定沿用同名，實體在 CraftGear（init 注入依賴：DOM/工具/職業資料/輸入後回呼）。
+// 只留**真的還有人呼叫**的三支；saveGear／gearValid／onGearInput 的 proxy 已於 2026-08-15 刪除
+// （零呼叫點，各自的呼叫端都在 app-gear.js 內部；測試改直接走 CraftGear，不需要 app.js 再轉一手）。
 function loadGear() { return globalThis.CraftGear.loadGear(); }
-function saveGear() { return globalThis.CraftGear.saveGear(); }
 function gearFor(job) { return globalThis.CraftGear.gearFor(job); }
-function gearValid(g) { return globalThis.CraftGear.gearValid(g); }
 function anyGear() { return globalThis.CraftGear.anyGear(); }
 function renderGearsets() { return globalThis.CraftGear.renderGearsets(); }
-function onGearInput(e) { return globalThis.CraftGear.onGearInput(e); }
 
 // ---------- 職業 chips + 配方表（已抽到 app-browse.js：globalThis.CraftBrowse；jobFilter 為該層私有狀態）----------
 // proxy：既有呼叫點 / 事件綁定 / CraftList onChange 沿用同名，實體在 CraftBrowse（init 注入依賴：getter 取 live RINDEX/selected）。
@@ -157,7 +168,9 @@ function refreshSpecialistGate() {
   $('opt-qi').disabled = !enabled;
   $('heart-why').hidden = enabled;
   $('qi-why').hidden = enabled;
-  if (!enabled) {
+  if (enabled) {
+    SPEC_GATED_IDS.forEach(id => { $(id).checked = specWanted[id]; });   // 閘打開 → 把玩家原本的選擇還他
+  } else {
     $('opt-heart').checked = false;
     $('opt-qi').checked = false;
   }
@@ -272,18 +285,26 @@ function updateHint() { $('first-run-hint').hidden = anyGear(); }
 // 保存讓「選一次就好」，否則每次重整都要重勾一輪（食藥區早有同樣的本地保存）。
 const SOLVE_OPTS_KEY = 'ffxiv-crafter-solve-opts-v1';
 const SOLVE_OPT_IDS = ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-adversarial'];
+// 需要專家之證的兩個選項：「玩家想不想用」與「現在能不能用」是兩件事。
+// 閘會強制取消勾選（對的——沒插證卻排進「專心致志」＝產出他按不出來的巨集），但那次強制取消
+// 不能把偏好吃掉：換到有證的職業時要能回來。原本沒有人把它套回去 ⇒ 保存的偏好**永遠套不回**
+// （init 時 selected 還是 null，閘一律關 → 勾選被清掉，之後閘打開也只是「可勾」而不會勾回來）。
+const SPEC_GATED_IDS = ['opt-heart', 'opt-qi'];
+const specWanted = { 'opt-heart': false, 'opt-qi': false };
 function loadSolveOpts() {
   try {
     const s = JSON.parse(localStorage.getItem(SOLVE_OPTS_KEY)) || {};
     // 只認布林：localStorage 被竄改成別的型別時退回 HTML 的預設值，不硬套
     SOLVE_OPT_IDS.forEach(id => { if (typeof s[id] === 'boolean') $(id).checked = s[id]; });
   } catch (e) { console.warn('[crafter] 求解選項讀取失敗，使用預設值:', e); }
+  SPEC_GATED_IDS.forEach(id => { specWanted[id] = $(id).checked; });   // 記住偏好本身，閘關了也不會遺失
 }
 let solveOptsSaveWarned = false;
 function saveSolveOpts() {
   try {
     const s = {};
-    SOLVE_OPT_IDS.forEach(id => { s[id] = $(id).checked; });
+    // 閘關著時 DOM 是被強制取消的，寫它等於把玩家的偏好洗掉（他只是暫時拔了專家之證）→ 寫回偏好本身
+    SOLVE_OPT_IDS.forEach(id => { s[id] = ($(id).disabled && id in specWanted) ? specWanted[id] : $(id).checked; });
     localStorage.setItem(SOLVE_OPTS_KEY, JSON.stringify(s));
   } catch (e) {                                 // 無痕/配額滿：至少 warn（禁靜默吞）＋一次性提醒
     console.warn('[crafter] 求解選項儲存失敗（可能是無痕模式）:', e);
@@ -357,8 +378,12 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 等級同步層（app-level-sync.js classic script）：手動指定等級 → 重算三上限並作廢舊巨集
   // （生效 rlv 變了，先前那份手法是照別的難度算的）
   globalThis.CraftSync?.init?.({
-    $,
-    onChange: () => { if (selected) refreshSelectedGear(); invalidateResults(); },
+    $, toast,
+    // 走 refreshGearNote 而非 refreshSelectedGear：後者無條件重建素材列與目標欄
+    // ⇒ 玩家在這裡打一個等級，已填的 HQ 素材數量與目標品質就靜默歸零（健檢 2026-08-15，T37 守）。
+    // refreshGearNote 只有在生效 rlv 真的變了才完整重繪，且會先記成果、重繪後套回並收斂到新上限
+    // ——與「改角色數值」共用同一條路（B-011 修的就是那條，這條後來才加、漏接上）。
+    onChange: () => { if (selected) refreshGearNote(); invalidateResults(); },
   });
   // gear 只讀 localStorage（同步）→ 刻意早於 await：首次使用提示要在資料回來前就定案，
   // 否則等 fetch 完才 unhide 會把下方整段推開一次（CLS）
@@ -368,6 +393,15 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 讓深連結路徑（init 後立刻 selectRecipe→求解）拿到的就是玩家上次的選擇
   loadSolveOpts();
   refreshSpecialistGate();
+  // 分頁切換**必須在 await 之前接好**：updateHint 已經在畫面上叫玩家「去填角色數值」並指著這幾顆按鈕，
+  // 而 loadData 在慢網路上是好幾秒 —— 綁在 await 之後等於那段時間按鈕是死的，玩家照著提示點卻毫無反應
+  // 且沒有任何訊號說「還在載」（健檢 2026-08-15 ux-flows，T42 守）。
+  // switchTab 只切 class 與 hidden、完全不碰資料，早綁沒有副作用。
+  document.querySelectorAll('#main-tabs .codex-tab').forEach(t => {
+    t.onclick = () => switchTab(t.dataset.tab);
+    t.onkeydown = onTabKey;
+    t.tabIndex = t.classList.contains('is-active') ? 0 : -1; // 初始 roving tabindex（tablist a11y）
+  });
   await loadData();
   // 配方瀏覽層（app-browse.js classic script）：注入依賴後才能 render（getter 取 live RINDEX/selected——loadData 會重賦值綁定）
   if (!globalThis.CraftBrowse) throw new Error('app-browse.js 未載入（部署不完整）'); // 明確早報 → 落 catch 顯錯誤橫幅，非等 render 才 undefined.X 白屏（對抗審 grok F3）
@@ -398,7 +432,10 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // HQ 勾選仍是原生 checkbox；食物/藥水本體是 CraftConsumable 的自繪選單（無 change 事件 → 走 onChange 回呼）
   ['food-hq', 'potion-hq'].forEach(id => $(id).addEventListener('change', onConsumableChange));
   // 任一求解輸入變更 → 舊結果過期（gate：集中失效，涵蓋程式化改值與 gear 傳播）＋保存選擇
-  SOLVE_OPT_IDS.forEach(id => $(id).addEventListener('change', () => { saveSolveOpts(); invalidateResults(); }));
+  SOLVE_OPT_IDS.forEach(id => $(id).addEventListener('change', () => {
+    if (id in specWanted) specWanted[id] = $(id).checked;   // 玩家自己動的才算偏好（程式化的強制取消不觸發 change）
+    saveSolveOpts(); invalidateResults();
+  }));
   $('opt-target').addEventListener('input', () => {
     const el = $('opt-target'), max = +el.max || 0;
     if (max && +el.value > max) el.value = max; // 超配方品質上限即時回填 maxQ（求解本就 clamp，先讓 UI 誠實一致，ux-5）
@@ -418,11 +455,6 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   });
   $('change-recipe').addEventListener('click', showPicker);
   const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats', true);
-  document.querySelectorAll('#main-tabs .codex-tab').forEach(t => {
-    t.onclick = () => switchTab(t.dataset.tab);
-    t.onkeydown = onTabKey;
-    t.tabIndex = t.classList.contains('is-active') ? 0 : -1; // 初始 roving tabindex（tablist a11y）
-  });
   // 結果渲染（app-render.js classic script）：注入 getter 取 live 狀態（loadData 會重賦值 ITEMS/ACTIONS 綁定）
   if (globalThis.CraftRender) globalThis.CraftRender.init({ $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE,
     getSelected: () => selected, getItems: () => ITEMS, getActions: () => ACTIONS });
