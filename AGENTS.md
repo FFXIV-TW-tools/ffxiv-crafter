@@ -4,6 +4,13 @@ FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引
 
 **規模級別：S**（DEVLOOP §5）——單一子系統、約 3.9k 行手寫碼、單一部署目標、無 cron／多機協作／即時資料管線。**不設 ROADMAP 分解層**（直接 Plan→Build）。判 S 偏 M（有 Rust/WASM 一層非顯而易見），但無跨子系統協調需求 → 維持 S。**檔案清單看下方架構表**（本段刻意不列，那會是第二份會漂移的名單）。
 
+R7-exempt: 2026-11-16 依據：2026-08-16 Owner 拍板（B-025 第二輪）。已照 R7 規定的順序做完前兩步——
+**移除**第二事實源、**搬移**敘事到 `docs/lessons.md`／`docs/test-baseline-history.md`、有測試守的條目降成
+「規則一行＋測試編號」，36.1KB → 28.3KB。剩下的每一條都是可執行規則，再砍就是 R7 自己警告的
+「為壓 byte 刪有效紅線」。唯一剩下的結構性選項是把「部署面鐵則」段（3.8KB）移出常駐層，但**13 個
+external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本** ⇒ 那是 13 repo 的一致決定、不該單邊做，
+而且做完約 24.5KB **仍未達標**。到期時重評：屆時若該段已在艦隊層集中化，本豁免即應撤銷。
+
 > 設計＆決策不在本 repo：spec `external/ffxiv-tw-tools-portal/docs/specs/` 的 `2026-06-22-craft-solver-spec.md`（公式 §4 對抗驗證）+ ADR-013。重建 / 部署見 `README.md`。踩坑敘事＝[`docs/lessons.md`](docs/lessons.md)、測試數字沿革＝[`docs/test-baseline-history.md`](docs/test-baseline-history.md)。
 
 ---

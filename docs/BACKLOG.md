@@ -49,6 +49,13 @@
     - **(B) 依 R7 既有出口申請本 repo 豁免**並記一行依據。
     - 不建議的第三條：再砍 4.5KB 的現行規則。剩下的每一條都是可執行規則，R7 自己寫著
       「為壓 byte 刪有效紅線＝優化錯指標，比超線更糟」。
+  - **✅ 結案 2026-08-16（Owner 選 B：申請豁免）**：AGENTS.md 開頭加
+    `R7-exempt: 2026-11-16 依據：…`（格式＝`residency-governance.md` §1.5；三個月，比照白名單衛生
+    「最長 3 個月後 review」）。實跑正典的 `parseR7Exempt()` 驗過：今天 `expired:false`、
+    2026-11-17 起 `expired:true`。
+    ⚠ **豁免只免掉「連續 2 個月稽核超標升級成違規」那一段，不會讓 `⚠ R7 …` 警示行消失**
+    （那行走 `warningsOf`，刻意不受豁免影響）——護欄維持可見是刻意的，看到它不等於漏做。
+    到期時的重評判準已寫進戳裡：屆時若「部署面鐵則」段已在艦隊層集中化，本豁免即應撤銷。
 
 
 - [x] **B-026** (P1, build) 【建議 高｜延遲風險 中｜執行風險 低｜副作用 跨 repo（fleet.json 或 monorepo hook）】**`check-actions.py` 沒有任何自動入口會跑到**。它守三個不變量（35 Action 變體／`pkg/`↔`lib.rs` BUILD-STAMP 同步／sim-diff 與 wasm 釘同一 raphael tag），但 `canonicalTest` 只有 `test-formulas` + `run-all`，monorepo pre-commit 也沒有它 ⇒ 改引擎、忘記重編、safe-push 全綠、**線上跑舊 WASM**——而 BUILD-STAMP（B-013）當初就是為了防這件事做的。**⚠ 拍板修法**：(A 建議) 加進 `canonicalTest`（改 `process/fleet.json` 一行，每次推多約 1 秒；換機缺 `py -3.11` 會以「推不出去」明確失敗）／(B) monorepo pre-commit 的條件式 gate／(C) 維持紀律（＝本 finding 本身）。來源: 健檢 2026-08-15（build-release A1＝tests A5）
