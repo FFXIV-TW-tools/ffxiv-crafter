@@ -2,6 +2,68 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-08-15（二）— 健檢拍板項執行：B-025〜B-029（385 → 396 passed）
+
+Owner 拍板後執行五項。**其中兩項的量測／查證結果與拍板時的假設不同**，都不是照提案做完就算數的那種。
+
+### B-028 settings-api 代理收窄 — 差一點靜默弄壞雲端設定
+
+提案（沿用健檢 finding 的措辭）寫「本站只用得到 `/u/*` 與 `/health`」。實際去查消費端才發現
+**`/u/<uuid>/<docId>` 這條路徑根本不存在**：真實面是 portal `settings-client.js` 的
+`SETTINGS_BASE + '/settings/' + uuid`（GET pull／PUT push），而同源站台的 `SETTINGS_BASE`
+就是 `location.origin + '/settings-api'`。**照提案寫白名單會 404 掉每一次雲端設定同步，
+而畫面上只是「設定沒跟著走」——零錯誤訊號。**
+
+定案：`/^\/health$/` 與 `/^\/settings\/[^/]+$/`；路徑**先正規化再比對**（擋 `/settings/../feedback`
+這種爬回根的寫法——不先攤平的話白名單看到的是 `/settings/…`（過）而上游收到的是 `/feedback`）；
+清單外回 404 而非 403（不對外界確認上游有沒有那條路徑）；`Origin` 改成**缺席才補**
+（無條件覆寫會讓上游那道以 Origin 為判準的閘永遠不觸發＝替第三方漂白）。
+測試 +7（含 PUT 正向案例：只驗 GET 的話「白名單擋掉寫入」會溜過去），突變兩種各自轉紅。
+
+⚠️ **部署後要人工確認一次**：本機 dev server 不跑 Pages Functions，且 `localhost` 不在
+`SAME_ORIGIN_SETTINGS_HOSTS` 裡 ⇒ 這條路徑**本機無法端到端驗**。推上去後在 crafter 改一個設定、
+重整，確認雲端同步正常。
+
+### B-029 職業任務窄屏 — 量測推翻了報告的前提，但抓到更糟的
+
+報告判「手機寬度必然溢出」，verifier 標 partial（靜態推斷）。照 AGENTS 的 SOP 實測 16 種寬度：
+**文件層級在任何寬度都沒有水平溢出**。真正的缺陷是 `.crafter-qt-item__src`（徽章＋動作鈕，實測 222px）
+是 `flex: 0 0 auto` 不收縮，而品名是唯一能縮的 ⇒ 它吸收全部不足：
+截斷從 ≤560px 開始（3/27）、460px 有 11/27、**≤390px 是 27/27 且品名寬度為 0**
+——玩家看到「圖 + ×1 + 複製鈕 + 徽章」而**完全沒有品名**，這一列最重要的資訊被犧牲掉。
+
+修法＝窄屏讓 `__src` 落到第二行、品名拿回整行；斷點沿用本檔既有的 **760px**，不發明新數字。
+修後複驗 10 種寬度：截斷全為 0、最小品名寬 48–52px，且 800px 以上與修改前逐項相同（無回歸）。T44 守形狀。
+
+### B-026 `check-actions.py` 併入 canonicalTest（Owner 選 A）
+
+`process/fleet.json` 的 `canonicalTest` 加 `&& py -3.11 tools/check-actions.py`，`AGENTS.md` 逐字對照行同步。
+它守的三個不變量先前**沒有任何自動入口會跑到**——改引擎、忘記重編、safe-push 全綠，玩家拿到舊引擎算的巨集。
+代價每次推約 1 秒；換機缺 `py -3.11` 會以「推不出去」明確失敗，不是靜默略過。
+⚠️ `fleet.json` 在 claude-skills repo，那份改動要另外 commit／push。
+
+### B-027(a) `.result-summary` 遷共用中性面板
+
+與共用版幾何逐項相同，屬 2026-08-13 那輪的純遺漏。瀏覽器實測 computed style
+（`rgb(3,6,12)`／`1px solid rgb(43,63,86)`／`8px`／`12px`）**與遷移前完全一致**。
+**`.consumables` 沒遷、也不該算遺漏**：它是 6px（`--radius-sm`），巢狀在 8px 的 `.cfg-card` 裡用小一級圓角
+是合理的設計選擇，遷過去是「視覺會變 2px 的設計決定」而不是補遷 → 留給 Owner。
+已加負向哨兵，有人順手統一時 T36 會紅。
+
+### B-025 AGENTS.md 瘦身：43.2KB → 30.6KB（−29%，**未達 <20KB**）
+
+搬走逐輪測試流水帳（單行 6.6KB → `docs/test-baseline-history.md`）、職業任務 HQ／商人的推導證據與
+sim-diff 長篇說明（→ `docs/lessons.md`），並把**架構表壓成一句話職責 + 指向檔頭**（9.9KB→6.0KB）。
+架構表那項的理由不是省 byte 而是 **DRY**：每支模組的檔頭註解本來就更完整，那張表是第二份事實源——
+本輪健檢正好抓到它漂移兩次（`app.js` 行數、`.crafter-qt-list` 類名）外加 `functions/` 整列漏列。
+
+**停在 30.6KB 是刻意的**：剩下的 `工具鐵則` 與 `開發注意` 逐條看過都是可執行規則（「不要改回 X」「新增 Y 要記得 Z」），
+再砍就是 DEVLOOP R7 自己警告的「為壓 byte 刪有效規則（護欄非 KPI）」。要繼續降需要 Owner 再拍一次，
+選項寫在 B-025 條目裡。
+
+**驗收**：`test-formulas` **396 passed**／`run-all` 2/2／`check-actions` 三項／`deploy-prepare` 40 檔／
+`check-test-baseline` 三項相符／`check-devloop-artifacts` 工件格式合格；本輪 4 個新修復各自突變驗證轉紅。
+
 ## 2026-08-15 — 健檢批次 0：四個「零回饋訊號」的行為缺陷 ＋ 三段最靠近玩家的程式碼補測試
 
 **為什麼**：全維健檢（11 維／31 agent／對抗驗證）發現**前輪修好的四類問題，兩週內以「新路徑繞過既有保護」的形式復發**。

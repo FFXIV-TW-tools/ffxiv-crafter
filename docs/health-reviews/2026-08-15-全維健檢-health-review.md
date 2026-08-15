@@ -151,6 +151,10 @@ init 順序是 `loadSolveOpts()` → `refreshSpecialistGate()`，那時還沒選
 5. **[專案·sec·low（但屬 fail-closed 教義）] settings-api 代理無路徑白名單且無條件覆寫 Origin** — 見計畫 B-028。
    今天不可利用（上游真正的 capability 是 UUID，Origin 只做 CORS），但它讓上游 `/feedback` 的第一道閘在經過本站時**永遠不會觸發**，
    且未來上游任何以 Origin 為判準的邏輯都會在 13 個站的代理後面被靜默漂白。
+   > **⚠️ 勘誤（2026-08-15 執行 B-028 時發現）**：reviewer 與 verifier 都寫「本站只用得到 `/u/*` 與 `/health`」，
+   > **那個路徑不存在**。實際查 portal `settings-client.js` 的消費端，真實面是 `GET|PUT /settings/<uuid>` 與 `/health`。
+   > 照 finding 的措辭寫白名單會 404 掉**每一次雲端設定同步**，而畫面上只是「設定沒跟著走」——零錯誤訊號。
+   > 這是本輪對抗驗證**唯一漏掉的事實錯誤**（兩層都沒查消費端），也是「審計結果必須逐一驗證」那條鐵則的又一個實例。
 
 ## 建議修改項目（可選，未做）
 

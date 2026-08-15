@@ -27,15 +27,47 @@
 > 每項先寫會紅的測試、再修、再突變驗證，另跑瀏覽器實測）。明細見 `CHANGELOG.md` 2026-08-15 段與報告「本輪已修」。
 > 以下是**需要 Owner 拍板或需要先量測**的部分，**未標 `[go]` 不得開工**。
 
-- [ ] **B-025** (P2, docs) 【建議 高｜延遲風險 低｜執行風險 低｜副作用 無】**`AGENTS.md` 瘦身 — 40,273 bytes ＝ DEVLOOP R7 護欄的 2 倍，且每 session 全文注入**。其中單行 5.5KB 是逐輪測試流水帳（30 餘輪「→ N passed」）。2026-08-03 搬過一次只減 3.4KB、從未達標，之後又漲 29%。**⚠ 拍板搬哪些**：(A 建議) 搬走流水帳＋三段已結案的長篇踩坑敘事 → 目標 <20KB／(B) 只搬流水帳（仍超標）／(C) 申請護欄例外。留下的一律是「還會被拿來做決定」的規則＋指標（本檔已有「→ 敘事見 docs/lessons.md」慣例）。來源: 健檢 2026-08-15（docs-drift A3）
+- [x] **B-025** (P2, docs) 【建議 高｜延遲風險 低｜執行風險 低｜副作用 無】**`AGENTS.md` 瘦身 — 40,273 bytes ＝ DEVLOOP R7 護欄的 2 倍，且每 session 全文注入**。其中單行 5.5KB 是逐輪測試流水帳（30 餘輪「→ N passed」）。2026-08-03 搬過一次只減 3.4KB、從未達標，之後又漲 29%。**⚠ 拍板搬哪些**：(A 建議) 搬走流水帳＋三段已結案的長篇踩坑敘事 → 目標 <20KB／(B) 只搬流水帳（仍超標）／(C) 申請護欄例外。留下的一律是「還會被拿來做決定」的規則＋指標（本檔已有「→ 敘事見 docs/lessons.md」慣例）。來源: 健檢 2026-08-15（docs-drift A3）
+  - **✅ 已完成 2026-08-15（Owner：移）——但**沒有**達到 <20KB，43.2KB → **30.6KB**（−29%）**：搬走逐輪測試流水帳
+    （→ `docs/test-baseline-history.md`，帶歸檔檔頭／分年段／`.rgignore`）、職業任務的 HQ 與商人推導證據（→ `docs/lessons.md`）、
+    sim-diff 的長篇說明（→ 同上），並把**架構表壓成一句話職責 + 指向檔頭**（9.9KB→6.0KB）。
+    架構表那一項的理由不是省 byte 而是 **DRY**：檔頭註解本來就更完整，那張表是第二份事實源，
+    而本輪正好抓到它漂移兩次（`app.js` 行數、`.crafter-qt-list` 類名）外加 `functions/` 整列漏列。
+    **停在 30.6KB 的原因**：剩下的 `工具鐵則`＋`開發注意` 逐條看過都是可執行規則，再砍就是 R7 自己警告的
+    「為壓 byte 刪有效規則」。**要繼續降需 Owner 再拍一次**：(a) 把已有機械測試守的條目降成一行＋測試編號
+    （風險：測試擋回歸、擋不住一開始就寫錯）(b) 依 R7 既有出口申請本 repo 豁免。
 
-- [ ] **B-026** (P1, build) 【建議 高｜延遲風險 中｜執行風險 低｜副作用 跨 repo（fleet.json 或 monorepo hook）】**`check-actions.py` 沒有任何自動入口會跑到**。它守三個不變量（35 Action 變體／`pkg/`↔`lib.rs` BUILD-STAMP 同步／sim-diff 與 wasm 釘同一 raphael tag），但 `canonicalTest` 只有 `test-formulas` + `run-all`，monorepo pre-commit 也沒有它 ⇒ 改引擎、忘記重編、safe-push 全綠、**線上跑舊 WASM**——而 BUILD-STAMP（B-013）當初就是為了防這件事做的。**⚠ 拍板修法**：(A 建議) 加進 `canonicalTest`（改 `process/fleet.json` 一行，每次推多約 1 秒；換機缺 `py -3.11` 會以「推不出去」明確失敗）／(B) monorepo pre-commit 的條件式 gate／(C) 維持紀律（＝本 finding 本身）。來源: 健檢 2026-08-15（build-release A1＝tests A5）
+- [x] **B-026** (P1, build) 【建議 高｜延遲風險 中｜執行風險 低｜副作用 跨 repo（fleet.json 或 monorepo hook）】**`check-actions.py` 沒有任何自動入口會跑到**。它守三個不變量（35 Action 變體／`pkg/`↔`lib.rs` BUILD-STAMP 同步／sim-diff 與 wasm 釘同一 raphael tag），但 `canonicalTest` 只有 `test-formulas` + `run-all`，monorepo pre-commit 也沒有它 ⇒ 改引擎、忘記重編、safe-push 全綠、**線上跑舊 WASM**——而 BUILD-STAMP（B-013）當初就是為了防這件事做的。**⚠ 拍板修法**：(A 建議) 加進 `canonicalTest`（改 `process/fleet.json` 一行，每次推多約 1 秒；換機缺 `py -3.11` 會以「推不出去」明確失敗）／(B) monorepo pre-commit 的條件式 gate／(C) 維持紀律（＝本 finding 本身）。來源: 健檢 2026-08-15（build-release A1＝tests A5）
+  - **✅ 已完成 2026-08-15（Owner 選 A）**：`process/fleet.json` 的 `canonicalTest` 加上 `&& py -3.11 tools/check-actions.py`，
+    `AGENTS.md` 的逐字對照行同步更新並註明代價（每次推多約 1 秒；換機缺 `py -3.11` 會以「推不出去」明確失敗）。三段實跑全綠。
+    ⚠️ `fleet.json` 住在 **claude-skills repo**（`~/.claude/process` 連結過去），那份改動要在該 repo 另外 commit／push。
 
 - [ ] **B-027** (P3, design-system) 【建議 中｜延遲風險 低｜執行風險 中（動表格版面要看畫面）｜副作用 跨 repo】**設計系統三項延續債**：(a) `.result-summary`／`.consumables` 幾何與 2026-08-13 已遷的三個容器完全同形，卻仍本地宣告 background/border/border-radius＝該次遷移的直接遺漏（成本最低、零視覺變化）(b) `.crafter-qt-tag` 家族把 `.codex-badge` 重刻一次（同 repo 別處已在正確消費它）(c) 三張表（`.rt`／`.wt-table`／`.gear-table`）仍手刻未消費 `.codex-table`，且 `.rt` 重現了 portal 已修掉的 sticky+`border-collapse` 坑（前輪已列建議未做）。**⚠ 拍板範圍**：(A 建議) 只做 (a)／(B) (a)+(b)／(C) 全做。來源: 健檢 2026-08-15（design-system A1/A2/A3）
+  - **部分完成 2026-08-15（Owner：A 先修）**：`.result-summary` 已遷共用中性面板——它與共用版幾何逐項相同，
+    瀏覽器實測 computed style（`rgb(3,6,12)`／`1px solid rgb(43,63,86)`／`8px`／`12px`）**與遷移前完全一致，零視覺變化**。
+    **但 `.consumables` 沒遷、也不該算遺漏**：它是 6px（`--radius-sm`）不是共用版的 8px，巢狀在 `.cfg-card`（8px）裡
+    用小一級圓角是合理的設計選擇；遷過去＝視覺會變 2px，那是設計決定不是補遷 → **留給 Owner**。
+    已加負向哨兵（T36）：有人順手統一時會紅。**剩餘待拍板**：① `.consumables` 6px→8px 要不要統一
+    ② DS-02 `.crafter-qt-tag` 改消費 `.codex-badge` ③ DS-01 三張表 → `.codex-table`（動版面，需看畫面）。
 
-- [ ] **B-028** (P3, sec) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 跨 repo（13 站同型代理）】**settings-api 代理收窄**：(a) 無路徑白名單 —— `/settings-api/<任意路徑>` 一律轉到上游根路徑 ⇒ 本站原點也是 `/feedback`／`/announcements`／`/settings/*` 的入口，即使本站只用得到 `/u/*` 與 `/health` (b) 無條件覆寫 `Origin` ⇒ 上游 `/feedback` 的第一道閘（Origin 白名單）經過本代理時**永遠不會觸發**；原註解要解的是「同源請求瀏覽器不帶 Origin」，改成「缺席才補」即可完全達成目的並把那道閘還回去。**今天不可利用**（真正的 capability 是 UUID，第二道 `application/json` 閘仍在），但這支是 13 站樣板來源，改不改要一次決定。**⚠ 拍板**：(A 建議) 兩項都做並同步回其他站／(B) 只做 Origin（一行、零風險）／(C) 不做。來源: 健檢 2026-08-15（sec A2）
+- [x] **B-028** (P3, sec) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 跨 repo（13 站同型代理）】**settings-api 代理收窄**：(a) 無路徑白名單 —— `/settings-api/<任意路徑>` 一律轉到上游根路徑 ⇒ 本站原點也是 `/feedback`／`/announcements`／`/settings/*` 的入口，即使本站只用得到 `/u/*` 與 `/health` (b) 無條件覆寫 `Origin` ⇒ 上游 `/feedback` 的第一道閘（Origin 白名單）經過本代理時**永遠不會觸發**；原註解要解的是「同源請求瀏覽器不帶 Origin」，改成「缺席才補」即可完全達成目的並把那道閘還回去。**今天不可利用**（真正的 capability 是 UUID，第二道 `application/json` 閘仍在），但這支是 13 站樣板來源，改不改要一次決定。**⚠ 拍板**：(A 建議) 兩項都做並同步回其他站／(B) 只做 Origin（一行、零風險）／(C) 不做。來源: 健檢 2026-08-15（sec A2）
+  - **✅ 已完成 2026-08-15（Owner：A 都做）——⚠ 白名單內容與提案時寫的不同**：提案（沿用 finding 措辭）寫「只用得到 `/u/*`」，
+    但去查消費端才發現**那條路徑不存在**：真實面是 portal `settings-client.js` 的 `SETTINGS_BASE + '/settings/' + uuid`
+    （GET pull／PUT push），而同源站的 `SETTINGS_BASE` 就是 `location.origin + '/settings-api'`。
+    **照原提案寫會 404 掉每一次雲端設定同步，而畫面上只是「設定沒跟著走」＝零錯誤訊號。**
+    定案＝`/^\/health$/` 與 `/^\/settings\/[^/]+$/`；路徑先正規化再比對（擋 `/settings/../feedback`）；
+    清單外回 404 不回 403（不對外確認上游有沒有那條路徑）；`Origin` 改成缺席才補。
+    測試補 7 條（含 PUT 正向案例——只驗 GET 的話「白名單擋掉寫入」會溜過去），兩個突變各自轉紅。
+    ⚠️ **部署後要人工確認**：本機 dev server 不跑 Functions 且 localhost 不在 `SAME_ORIGIN_SETTINGS_HOSTS`，
+    這條路徑**本機無法端到端驗**——推上去後在 crafter 改一個設定、重整，確認雲端同步仍正常。
 
-- [ ] **B-029** (P3, ux) 【建議 中｜延遲風險 低｜執行風險 **高（前輪同型問題退回兩次）**｜副作用 無】**職業任務交付物列的窄屏溢出**。`.crafter-qt-item` 單列 flex 塞 icon＋品名＋HQ＋數量＋複製鈕＋徽章×2＋動作鈕；reviewer 判「手機必然溢出」，verifier 標 **partial（靜態推斷、未實測）**。**⚠ 第一步是量測不是改 CSS**：B-011(c) 就是照著「800–1018px 會溢出」這個錯誤前提動工，把右溢出換成左溢出又打壞兩個原本正常的寬度，退回兩次。照 AGENTS「開發注意」的手法（同源 iframe 定寬 1400/1018/900/800/430/390/360）量完再決定。來源: 健檢 2026-08-15（ux-flows A3）
+- [x] **B-029** (P3, ux) 【建議 中｜延遲風險 低｜執行風險 **高（前輪同型問題退回兩次）**｜副作用 無】**職業任務交付物列的窄屏溢出**。`.crafter-qt-item` 單列 flex 塞 icon＋品名＋HQ＋數量＋複製鈕＋徽章×2＋動作鈕；reviewer 判「手機必然溢出」，verifier 標 **partial（靜態推斷、未實測）**。**⚠ 第一步是量測不是改 CSS**：B-011(c) 就是照著「800–1018px 會溢出」這個錯誤前提動工，把右溢出換成左溢出又打壞兩個原本正常的寬度，退回兩次。照 AGENTS「開發注意」的手法（同源 iframe 定寬 1400/1018/900/800/430/390/360）量完再決定。來源: 健檢 2026-08-15（ux-flows A3）
+  - **✅ 已完成 2026-08-15（Owner：先量測再修）——⚠ 量測推翻了報告前提**：文件層級在 1400〜360px **任何寬度都沒有水平溢出**。
+    真正的缺陷是另一件事：`.crafter-qt-item__src`（徽章＋動作鈕，實測 222px）是 `flex: 0 0 auto` 不收縮，
+    品名是唯一能縮的 ⇒ 吸收全部不足。**≤390px 時品名寬度是 0**——玩家看到「圖 + ×1 + 複製鈕 + 徽章」而完全沒有品名。
+    截斷從 ≤560px 開始（3/27）、460px 有 11/27、≤390px 是 27/27。
+    修法＝窄屏讓 `__src` 落到第二行、品名拿回整行；斷點沿用本檔既有的 **760px**，不發明新數字。
+    修後複驗 10 種寬度：截斷數全為 0、最小品名寬 48–52px，800px 以上數值與修改前逐項相同（無回歸）。T44 守形狀。
 
 - [ ] **B-030** (P3, test) 【建議 中｜延遲風險 低｜執行風險 低｜副作用 無】**資料管線的不變量缺口三項**：(a) 交付數量的對帳命中率**沒有 ratchet**，退步時零訊號（同檔的 vendors／hq 都有，唯獨 qty 沒有）(b) 食藥補 icon 以繁中名對帳且 fail-open（查無就寫 None、不失敗），且完全沒有資料不變量測試 (c) `data/quality-stages.json` 無資料不變量 ⇒ `build-data.py` 若輸出新來源，`toQuality` 靜默回 0（「未知來源不猜換算」那條防線會變成靜默少一檔）。另 `build-data.py` 對缺上游輸入 fail-open（印 ⚠ 後續跑、exit 0），屬前輪延續項。來源: 健檢 2026-08-15（correctness-data A2/A3、tests A7、build-release A3）
 
