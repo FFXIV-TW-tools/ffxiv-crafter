@@ -29,6 +29,10 @@
   }
 
   function showPicker() {
+    // 返回配方列表＝離開這次求解 → 作廢飛行中的那一份。少了這行：UI 狀態（solve-btn 藏著、
+    // cancel-btn 亮著）會殘留到新配方頁面，舊求解還在燒 CPU，而 app-solve 的註解早就宣告涵蓋這條路
+    // ——契約寫在註解裡而程式碼另一套（T25 守，與 selectRecipe 那條並列）。
+    globalThis.CraftSolve?.invalidateInFlight?.('invalidated');
     deps.setOpenedFromList(false);   // 返回瀏覽即結束「從清單進入」情境 → 下次選配方不殘留「← 回製造清單」
     // selected 刻意保留（返回列表仍要標示原選中列 is-sel + 還焦）；流程位置改看 picker 是否展開
     deps.$('picker').hidden = false;
@@ -158,7 +162,7 @@
     const items = deps.getItems();
     const mf = recipe.material_quality_factor || 0;
     const hqable = (iid) => mf > 0 && !!(items[String(iid)] && items[String(iid)].can_be_hq);
-    const isCrystal = (iid) => { const nm = (items[String(iid)] || {}).name || ''; return iid < 20 || /晶簇|水晶|碎晶/.test(nm); };
+    const isCrystal = (iid) => deps.isCrystal(iid, (items[String(iid)] || {}).name);   // 規則單一出口在 app.js（Q-02）
     // 遊戲原順序（ingredients.json 序），但晶體移到最後（對齊遊戲製作筆記呈現）
     const ordered = [...ings.filter(([iid]) => !isCrystal(iid)), ...ings.filter(([iid]) => isCrystal(iid))];
     const anyHq = ings.some(([iid]) => hqable(iid));
@@ -213,7 +217,7 @@
   const REQUIRED = ['$', 'esc', 'iconUrl', 'toast', 'PH_HTML', 'JOB_ICON', 'mbItem', 'mbCraft', 'recipeMaxes', 'switchTab',
     'renderTable', 'getRecipes', 'getRlvTable', 'getItems', 'getIngredients', 'getSelected', 'setSelected',
     'getComputedInitial', 'setComputedInitial', 'getOpenedFromList', 'setOpenedFromList', 'invalidateResults',
-    'updateEff', 'gearFor', 'refreshSpecialistGate'];
+    'updateEff', 'gearFor', 'refreshSpecialistGate', 'isCrystal'];
   globalThis.CraftRecipe = {
     init(d) {
       const miss = REQUIRED.filter(k => d == null || d[k] == null);

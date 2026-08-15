@@ -201,8 +201,8 @@
       if (!btn) return;
       e.preventDefault();                       // 鈕在連結旁邊，別讓事件繼續跑到 <a>
       const name = btn.dataset.copyName;
-      if (globalThis.FFXIVClipboard && globalThis.FFXIVClipboard.copy) globalThis.FFXIVClipboard.copy(name);
-      else deps.copyText(name, `✓ 已複製「${name}」`);
+      // 分派（共用優先 → 本地退場）留在 copyText 一處，這裡不再自己判一次（DS-06）
+      deps.copyText(name, `✓ 已複製「${name}」`);
     });
   }
 
@@ -225,6 +225,9 @@
           card.classList.toggle('is-done', c.checked);
           if (state.hideDone && c.checked) card.remove();   // 「只顯示未完成」模式：勾完就收走那一列
         }
+        // 收走最後一列之後要補空狀態：局部移除不會產生「🎉 都標記完成了」那段文字，
+        // 玩家看到的是一片空白（以為壞了）。清單已空時捲動位置本來就沒東西要保，重繪是安全的。
+        if (!$('quest-body').querySelector('.crafter-qt-quest')) { render(); return; }
         refreshSummary();
       };
     });
@@ -248,7 +251,10 @@
       hide.addEventListener('change', () => { state.hideDone = hide.checked; save(); render(); });
     }
   }
-  function setVendors(map) { VENDORS = (map && typeof map === 'object') ? map : {}; render(); }
+  // 只寫入不重繪：呼叫端（app.js loadData）保證緊接著 setData，由它一次繪到位。
+  // 這裡自己 render 的話 app.js 那句「先給商人資料，setData 一次繪到位（省一次重繪）」就是假的
+  // ——契約留在註解裡而程式碼另一套（CF-07）。
+  function setVendors(map) { VENDORS = (map && typeof map === 'object') ? map : {}; }
 
   // 複製品名鈕：**用 portal 的共用元件**（`FFXIVIcons.btnHTML('copy', …)` → `.codex-icon-btn` ＋內嵌 SVG，
   // B-027 已從 marketboard 升格到 header.js）。不自刻 📋 emoji —— 那正是 B-027 要收掉的東西

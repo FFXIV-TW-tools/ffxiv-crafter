@@ -22,6 +22,22 @@ const CSS_SRC = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');       //
 // （pkg/ 是 wasm-pack 產物、tools/ 與 tests/ 是工具鏈、functions/ 是 CF Pages Functions，都不在此範圍。）
 const HANDWRITTEN_JS = fs.readdirSync(ROOT).filter((f) => f.endsWith('.js')).sort();
 
+// ---------- 分層 stub（app.js init 對每一支分層檔都硬失敗，RES-02）----------
+// 真實頁面一定同時載入全部分層；harness 只載其中幾支，所以缺的用 no-op stub 補。
+// 收成一份共用常數：新增分層檔時只要改這裡，不必逐個 harness 補（先前 T23/T24 就是各自漏了 CraftSolve）。
+// ⚠ 各 harness 要覆寫的（例如 T25 的 invalidateInFlight 計數器）用展開覆蓋，不要改這份。
+const LAYER_STUBS = () => ({
+  CraftSolve: { init() {}, newWorker() {}, invalidateInFlight() { return false; } },
+  CraftRender: { init() {}, render() {} },
+  CraftFlow: { setTargetMode() {}, update() {}, updateConsumableSummary() {} },
+  CraftConsumable: { init() {}, setData() {}, label() { return ''; }, get() { return { food: null, potion: null }; } },
+  CraftQuests: { init() {}, setData() {}, setVendors() {} },
+  CraftStages: { init() {}, setData() {}, setRecipe() {}, syncFromInput() {}, stageSelection: () => null, applyStageSelection: () => false },
+  CraftSync: { init() {}, setData() {}, resolve: () => null, render() {} },
+  CraftBrowse: { init() {}, renderChips() {}, renderTable() {}, markListState() {} },
+  CraftList: { init() {}, add() {}, has: () => false, count: () => 0 },
+});
+
 // ---------- 可控 DOM stub ----------
 const dom = {};
 function makeEl() {
@@ -39,6 +55,7 @@ function makeEl() {
 const getEl = (id) => dom[id] || (dom[id] = makeEl());
 
 const sandbox = {
+  ...LAYER_STUBS(),
   console,
   document: {
     getElementById: getEl, querySelector() { return null; }, querySelectorAll() { return []; },
@@ -200,6 +217,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       addEventListener() {}, removeEventListener() {}, querySelectorAll: () => [], querySelector: () => null,
       appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, focus() {}, scrollIntoView() {}, select() {} });
     const ctx = {
+      ...LAYER_STUBS(),
       console, document: { getElementById: (id) => els[id] || (els[id] = el()), querySelector: () => null,
         querySelectorAll: () => [], createElement: el, body: el() },
       location: { hostname: 'localhost', search: '' }, window: {},
@@ -244,6 +262,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       addEventListener() {}, removeEventListener() {}, querySelectorAll: () => [], querySelector: () => null,
       appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, focus() {}, scrollIntoView() {}, select() {} });
     const ctx = {
+      ...LAYER_STUBS(),
       console, document: { getElementById: (id) => els[id] || (els[id] = el()), querySelector: () => null,
         querySelectorAll: () => [], createElement: el, body: el() },
       location: { hostname: 'localhost', search: '' }, window: {},
@@ -342,6 +361,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       addEventListener() {}, append(...xs) { stageEl.options.push(...xs); } };
     Object.defineProperty(stageEl, 'innerHTML', { get: () => '', set: () => { stageEl.options.length = 0; } });
     const ctx = {
+      ...LAYER_STUBS(),
       console: { log() {}, error() {}, warn() {} },
       Option: function (text, value) { return { textContent: text, value: String(value), disabled: false }; },
       document: { getElementById: (id) => id === 'ingredients' ? ingredients
@@ -359,6 +379,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       // app.js init 對 app-consumable.js 是硬失敗（部署不完整就早報）→ 少了這個 stub，init 會在 :348 拋出，
       // 後面的 CraftSync.init（接 ls-level 輸入事件）就永遠接不上，T37 那條路在測試裡等於不存在。
       CraftConsumable: { init() {}, setData() {}, label() { return ''; }, get() { return { food: null, potion: null }; } },
+      // showPicker → deps.renderTable() → CraftBrowse（T45 走真路徑，不能只呼叫內部函式）
+      CraftBrowse: { init() {}, renderChips() {}, renderTable() {}, markListState() {} },
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
@@ -447,6 +469,35 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     const last = manual.ctx.CraftSync._last();
     eq('T37 手動指定等級 → 等級同步說明跟著重繪（生效等級）', last && last.info && last.info.level, 70);
     eq('T37 手動指定等級 → 說明標明是手動指定', last && last.info && last.info.manual, true);
+  }
+
+  // ===== T45：返回配方列表也要作廢飛行中的求解（CF-04）=====
+  // app-solve.js 的註解早就宣告「供外部（換配方 / 返回配方列表）作廢當前求解」，但 showPicker 沒有呼叫它
+  // ⇒ 返回列表後 UI 狀態（solve-btn 藏著、cancel-btn 亮著）殘留到新配方頁面，舊求解還在燒 CPU。
+  // 契約寫在註解裡而程式碼另一套——與 2026-08-02 那次「selectRecipe 是否真的作廢」同型。
+  {
+    const before = invalidated;
+    stable.ctx.showPicker();
+    eq('T45 返回配方列表 → 作廢飛行中的求解', invalidated, before + 1);
+  }
+
+  // ===== T46：手動指定等級的 clamp 要回寫輸入框（CF-06）=====
+  // 不回寫的話畫面停在 150 而實際生效的是 100，兩個數字不一致且沒有訊號
+  // （之後的重繪刻意不覆寫使用者正聚焦的欄位，所以不會自己更正）。同 app-gear.js 的等級 clamp 行為。
+  {
+    const c = mkT25Ctx({ recipe: syncRecipe, rlvTable: { 70: rlv70, 100: rlv100 }, syncMap: { '2': 100 }, level: 100 });
+    c.ctx.loadGear(); c.ctx.selectRecipe(2);
+    const inp = c.ctx.document.getElementById('ls-level');
+    // **必須模擬「使用者正聚焦在這一欄」**：CraftSync.render 對聚焦中的欄位刻意不覆寫，
+    // 而那正是真實情境（人剛打完字）。不設 activeElement 的話 render 會順手把值寫回去、
+    // 把 bug 遮掉 —— 這條斷言就變成恆綠的空殼（第一版就是這樣寫的，突變測試抓到）。
+    c.ctx.document.activeElement = inp;
+    inp.value = '150'; inp._fire('input');
+    eq('T46 超上限 → 回寫成 100', inp.value, '100');
+    inp.value = '0'; inp._fire('input');
+    eq('T46 低於下限 → 回寫成 1', inp.value, '1');
+    inp.value = ''; inp._fire('input');
+    eq('T46 清空 → 維持空（＝跟隨角色等級，不硬填數字）', inp.value, '');
   }
 
   // ===== T43：需要專家之證的兩個選項，保存的偏好要套得回來 =====
@@ -615,6 +666,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       setAttribute() {}, getAttribute() { return null; }, querySelectorAll() { return []; } });
     const store = { 'ffxiv-crafter-gearsets-v1': raw };
     const ctx = {
+      ...LAYER_STUBS(),
       console: { log() {}, error() {}, warn(...args) { warnings.push(args); } },
       document: { getElementById: () => el(), querySelector() { return null; }, querySelectorAll() { return []; }, body: el() },
       location: { hostname: 'localhost', search: '' }, window: { FFXIVToast: { show(...args) { toasts.push(args); } } },
@@ -1443,6 +1495,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       addEventListener() {}, removeEventListener() {}, querySelectorAll: () => [], querySelector: () => null,
       appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, focus() {}, scrollIntoView() {}, select() {} });
     const ctx = {
+      ...LAYER_STUBS(),
       console: { log() {}, warn() {}, error() {} },
       document: { getElementById: (id) => els[id] || (els[id] = el()), querySelector: () => null,
         querySelectorAll: () => [], createElement: el, body: el() },
@@ -1490,6 +1543,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   const mkCtx = (store) => {
     const els = {};
     const ctx = {
+      ...LAYER_STUBS(),
       console,
       document: { getElementById: (id) => els[id] || (els[id] = mkEl()), activeElement: null },
       localStorage: {
@@ -1644,6 +1698,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       addEventListener() {}, removeEventListener() {}, querySelectorAll: () => [], querySelector: () => null,
       appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, focus() {}, scrollIntoView() {}, select() {} });
     const ctx = {
+      ...LAYER_STUBS(),
       // app.js 的 init 會因缺 CraftConsumable 而早炸（本測只需 CraftGear，那之前已 init 完）→ 吞掉那行噪音
       console: { log: console.log, warn() {}, error() {} },
       document: { getElementById: (id) => els[id] || (els[id] = el()), querySelector: () => null,
@@ -1745,6 +1800,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   // 配方 1：成品 100（一次產 3 個）← 素材 200×2 + 素材 300×1
   // 配方 2：中間材 200 ← 底層 400×5
   const ctx = {
+    ...LAYER_STUBS(),
     recipesById: { 1: { id: 1, item_amount: 3 }, 2: { id: 2, item_amount: 1 } },
     recipeByItem: { 100: 1, 200: 2 },
     ingredients: { 1: [[200, 2], [300, 1]], 2: [[400, 5]] },
@@ -1942,8 +1998,21 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     /class="crafter-qt-mat"/.test(QSRC) && /crafter-qt-mat__link/.test(QSRC));
   check('T34 複製鈕的點擊不得冒泡到旁邊的連結（preventDefault）',
     /data-copy-name/.test(QSRC) && /preventDefault\(\)/.test(QSRC));
-  check('T34 複製優先走 portal 共用 clipboard、缺 CDN 才退回本地',
-    /FFXIVClipboard/.test(QSRC) && /deps\.copyText/.test(QSRC));
+  // 2026-08-15（DS-06）改為：分派（共用優先 → 本地退場）**只留在 copyText 一處**，
+  // 各層一律走 deps.copyText。原本 app-quests 自己再判一次 FFXIVClipboard 是第二份同樣的邏輯。
+  check('T34 複製走 deps.copyText（不在各層自己判一次 FFXIVClipboard）',
+    /deps\.copyText\(/.test(QSRC) && !/FFXIVClipboard\s*&&/.test(QSRC));
+  {
+    const APP = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+    check('T34 共用優先的分派存在且只有一處（在 copyText 內）',
+      /FFXIVClipboard\?\.copy|FFXIVClipboard\s*&&\s*|FFXIVClipboard\.copy/.test(APP));
+    // 數**檔案數**不是出現次數：app.js 那支自然會提到兩次（一行註解 + 一行程式碼）。
+    // 這條要擋的是「又有第二支檔案自己判一次共用實作在不在」。
+    const files = fs.readdirSync(ROOT).filter((f) => f.endsWith('.js'))
+      .filter((f) => /FFXIVClipboard/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
+    check('T34 只有 app.js 提到 FFXIVClipboard（分派唯一出口，其餘層走 copyText）',
+      files.length === 1 && files[0] === 'app.js', `實際：${files.join(', ') || '無'}`);
+  }
 }
 
 
@@ -2051,6 +2120,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       'data/quality-stages.json': {}, 'data/level-sync.json': { 2: 100 }, 'data/job-quests.json': [], 'data/vendors.json': {},
     };
     const ctx = {
+      ...LAYER_STUBS(),
       console: { log() {}, warn() {}, error() {} },
       document: { getElementById: (id) => els[id] || (els[id] = stub()), querySelector() { return null; },
         querySelectorAll: (sel) => (sel === '#main-tabs .codex-tab' ? tabs : []), body: stub() },
@@ -2187,6 +2257,66 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     media ? media[1] : '找不到含 crafter-qt-item 的 @media');
   check('T44 窄屏要允許換行（flex-wrap: wrap）',
     /@media \(max-width: 760px\)[\s\S]{0,500}?crafter-qt-item\s*\{[^}]*flex-wrap:\s*wrap/.test(CSS_SRC));
+}
+
+// ===== T47：把玩家丟到別的分頁時要移焦（UX-08）＋ 收走最後一列要補空狀態（CF-05）=====
+{
+  // (a) 程式化切頁一律帶第二引數 true（移焦）。少了它，鍵盤／螢幕閱讀器使用者被丟回頁面開頭，
+  //     而這幾條路徑全是「被擋下 → 去補資料」的補救動線，正是最需要焦點跟過去的時候。
+  //     `switchTab('x')` 只允許出現在 tab 本身的 click handler（那裡焦點已經在 tab 上）。
+  const srcs = ['app.js', 'app-solve.js', 'app-recipe.js', 'app-quests.js', 'crafting-list.js', 'app-browse.js'];
+  const bare = [];
+  for (const f of srcs) {
+    const t = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    for (const line of t.split(String.fromCharCode(10))) {
+      if (!/switchTab\(\s*'[a-z]+'\s*\)/.test(line)) continue;
+      if (/t\.dataset\.tab/.test(line)) continue;        // tablist 自己的 click handler
+      if (/^\s*\/\//.test(line)) continue;                 // 註解裡提到函式名不算呼叫
+      bare.push(f + ': ' + line.trim().slice(0, 70));
+    }
+  }
+  check('T47 程式化切頁一律移焦（switchTab 帶第二引數）', bare.length === 0, bare.join(' | '));
+
+  // (b) 「只顯示未完成」收走最後一列後必須補空狀態，否則玩家看到一片空白會以為壞了。
+  //     局部移除那條路徑不會經過 questsHtml，所以要顯式偵測「清單已空 → 重繪」。
+  const Q = fs.readFileSync(path.join(ROOT, 'app-quests.js'), 'utf8');
+  check('T47 勾完最後一列 → 偵測清單已空並重繪（不留空白）',
+    /querySelector\('\.crafter-qt-quest'\)\)\s*\{\s*render\(\);/.test(Q.replace(/\s+/g, ' ').replace(/ \{ /g, ' { '))
+    || /!\$\('quest-body'\)\.querySelector\('\.crafter-qt-quest'\)/.test(Q));
+}
+
+// ===== T48：晶體判定只有一份實作（Q-02）＋ 硬編值不得繞過 token（DS-04/05）=====
+{
+  const js = fs.readdirSync(ROOT).filter((f) => f.endsWith('.js'));
+  const owners = js.filter((f) => /晶簇\|水晶\|碎晶/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
+  check('T48 晶體判定規則只在 app.js 定義一次（配方原料排序與清單彙總共用）',
+    owners.length === 1 && owners[0] === 'app.js', `實際：${owners.join(', ') || '無'}`);
+  for (const f of ['app-recipe.js', 'crafting-list.js']) {
+    check(`T48 ${f} 走注入的 deps.isCrystal`, /deps\.isCrystal\(/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
+  }
+  // DS-04：斑馬紋值要與本檔其餘處一致（原本 rgba(255,255,255,.02) 與共用層的 .035 也對不上）
+  check('T48 食藥選單斑馬紋不得自寫 rgba（與本檔其餘斑馬紋同一個值）',
+    !/crafter-cons__opt:nth-child\(even\)[^}]*rgba\(/.test(CSS_SRC));
+  check('T48 icon 圓角走 token 不寫死 4px',
+    !/crafter-cons__ico[^}]*border-radius:\s*4px/.test(CSS_SRC));
+  // DS-05：錯誤橫幅不得用 inline style
+  const APP48 = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+  check('T48 資料載入失敗橫幅不用 inline style（走 tint panel + 具名 class）',
+    !/資料載入失敗[^<]*<\/div>/.test(APP48.replace(/\s+/g, ' ')) || !/style="margin/.test(APP48));
+}
+
+// ===== T49：每一支分層 classic script 都要有硬失敗守衛（RES-02）=====
+// 原本只有 gear/recipe/consumable/browse/flow 五支硬擋，solve/render/quests/stages/sync/list 是 `?.` 軟略過
+// ⇒ 那些檔案 404 時玩家拿到的是「看起來正常、按下去無聲 TypeError」的頁面，而不是一句「部署不完整」。
+// 這條掃 index.html 的 script 清單反推：新增分層檔而忘了加守衛會直接紅。
+{
+  const HTML49 = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const APP49 = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+  const files = [...HTML49.matchAll(/<script src="((?:app-|crafting-)[^"]+\.js)"><\/script>/g)].map((m) => m[1]);
+  check('T49 掃到全部分層 script（至少 11 支，掃到 0 支也算失敗）', files.length >= 11, `${files.length} 支`);
+  const missing = files.filter((f) => !APP49.includes(`throw new Error('${f} 未載入`));
+  check('T49 每一支分層檔在 app.js 都有「未載入（部署不完整）」硬擋',
+    missing.length === 0, `缺守衛：${missing.join(', ')}`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

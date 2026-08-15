@@ -345,7 +345,7 @@ body {
 }
 .crafter-cons__opt { display: flex; align-items: center; gap: var(--space-2, 8px);
   padding: var(--space-1, 4px) var(--space-2, 8px); border-radius: var(--radius-sm, 6px); cursor: pointer; }
-.crafter-cons__opt:nth-child(even) { background: rgba(255, 255, 255, .02); }   /* 斑馬紋掃視（表格穩定鐵則同精神：不加實線） */
+.crafter-cons__opt:nth-child(even) { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }   /* 斑馬紋掃視（表格穩定鐵則同精神：不加實線）；值與本檔其餘 6 處斑馬紋一致，不另寫 rgba */
 .crafter-cons__opt:hover { background: var(--color-surface-hover); }
 .crafter-cons__opt:focus-visible {
   background: var(--color-surface-hover);
@@ -353,7 +353,7 @@ body {
   outline-offset: -2px; /* 選單可捲動，負 offset 讓 ring 不被 overflow-y 裁掉 */
 }
 .crafter-cons__opt.is-sel { box-shadow: inset 2px 0 0 var(--accent); }
-.crafter-cons__ico { width: 24px; height: 24px; flex: 0 0 24px; border-radius: 4px; }
+.crafter-cons__ico { width: 24px; height: 24px; flex: 0 0 24px; border-radius: var(--radius-xs, 4px); }
 .crafter-cons__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .crafter-cons__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 功效不換行：換行會讓每列高度不一，掃視時上下對不齊（表格佈局穩定鐵則同精神） */
@@ -409,6 +409,9 @@ body {
 .crafter-actionbar__hint--warn { color: var(--color-warn); font-weight: var(--fw-semibold, 600); }
 .solve-status { margin-top: var(--space-2, 8px); min-height: 1.4em; display: flex; align-items: center; gap: var(--space-2, 8px); }
 .solve-status:empty { display: none; margin-top: 0; min-height: 0; }
+
+/* 資料載入失敗橫幅：語意與配色走共用 tint panel，本地只留外距（DS-05：原本是 inline style）*/
+.crafter-loaderr { margin: var(--space-4, 16px) 0; }
 
 /* ---- 結果 + 摺疊 ---- */
 /* 結果摘要＝獨立的 inset 面板（徽章 + 步數/秒數 metric + 兩條進度條），與下方摺疊區塊分開。

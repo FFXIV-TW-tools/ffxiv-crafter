@@ -28,7 +28,9 @@
     const selected = getSelected();
     if (!selected) return;
     const gear = gearFor(selected.recipe.job);
-    if (!gear) { toast('請先設定「' + selected.recipe.job + '」的角色數值', 'error'); switchTab('stats'); return; }
+    // 移焦（第二引數）：這是「被擋下 → 去補資料」的補救路徑，鍵盤使用者不移焦就被丟回頁面開頭。
+    // 其餘三個 switchTab 呼叫點（goto-stats-hint／去填角色數值連結／回製造清單）都已經帶了。
+    if (!gear) { toast('請先設定「' + selected.recipe.job + '」的角色數值', 'error'); switchTab('stats', true); return; }
     const settings = computeSettings(selected.recipe, selected.rlv, gear);
     if (settings.base_progress <= 0 || settings.base_quality <= 0) { toast('作業/加工數值過低', 'error'); return; }
     setSolving(true);

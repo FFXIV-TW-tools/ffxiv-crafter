@@ -312,6 +312,11 @@ function saveSolveOpts() {
   }
 }
 
+// 晶體判定（水晶/碎晶/晶簇）——**單一出口**：配方原料排序（app-recipe）與製造清單彙總（crafting-list）
+// 各自需要它，兩份平行實作只要有人改了規則就會分岔（Q-02）。規則本身是「低 id 段」＋三個關鍵字：
+// 低 id 是遊戲把水晶類放在最前面的事實，關鍵字是保險（新增的晶體若 id 不在低段仍抓得到）。
+function isCrystal(iid, name) { return iid < 20 || /晶簇|水晶|碎晶/.test(name || ''); }
+
 // ---------- utils ----------
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); } // 含單引號 → 無例外通用轉義（防 attribute 用單引號時破格）
 function toast(msg, v) {
@@ -342,8 +347,13 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
 // ---------- init ----------
 (async function () {
   try {
+  // ⚠ 分層檔缺席一律**硬失敗**（RES-02）：每一支都是必經路徑，缺了就是部署不完整。
+  // 早報會落到下面的 catch 顯示錯誤橫幅；用 `?.` 軟略過的話玩家看到的是一個少了功能、
+  // 按下去才無聲 TypeError 的頁面。各層**內部**的 `globalThis.CraftXxx?.` 選擇性呼叫不在此列
+  // （那是給測試 sandbox 只載部分層用的）。新增分層檔時這裡要一起加，T49 機械守。
   // 求解編排（app-solve.js classic script）：注入依賴後預熱 WASM（提前於 loadData，讓 download 與 fetch 並行）
-  if (globalThis.CraftSolve) {
+  if (!globalThis.CraftSolve) throw new Error('app-solve.js 未載入（部署不完整）');
+  {
     globalThis.CraftSolve.init({ $, toast, PH_HTML, getSelected: () => selected, gearFor, computeSettings, switchTab });
     globalThis.CraftSolve.newWorker();
   }
@@ -358,7 +368,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     } });
   // 配方詳情層（app-recipe.js classic script）：狀態仍由 app.js 持有，透過 getter/setter 注入取 live 資料
   if (!globalThis.CraftRecipe) throw new Error('app-recipe.js 未載入（部署不完整）');
-  globalThis.CraftRecipe.init({ $, esc, iconUrl, toast, PH_HTML, JOB_ICON, mbItem, mbCraft, recipeMaxes, switchTab,
+  globalThis.CraftRecipe.init({ $, esc, iconUrl, toast, PH_HTML, JOB_ICON, mbItem, mbCraft, recipeMaxes, switchTab, isCrystal,
     renderTable, getRecipes: () => RECIPES, getRlvTable: () => RLV, getItems: () => ITEMS, getIngredients: () => INGREDIENTS,
     getSelected: () => selected, setSelected: (v) => { selected = v; },
     getComputedInitial: () => computedInitial, setComputedInitial: (v) => { computedInitial = v; },
@@ -369,15 +379,18 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   if (!globalThis.CraftConsumable) throw new Error('app-consumable.js 未載入（部署不完整）');
   globalThis.CraftConsumable.init({ $, esc, iconUrl, toast, onChange: onConsumableChange });
   // 職業任務層（app-quests.js classic script）：**必須早於 loadData**——loadData 尾端會 setData 繪清單
-  globalThis.CraftQuests?.init?.({ $, esc, iconUrl, toast, mbItem, selectRecipe, switchTab, copyText,
+  if (!globalThis.CraftQuests) throw new Error('app-quests.js 未載入（部署不完整）');
+  globalThis.CraftQuests.init({ $, esc, iconUrl, toast, mbItem, selectRecipe, switchTab, copyText,
     getItems: () => ITEMS, getIngredients: () => INGREDIENTS,
     getRecipesById: () => RECIPE_BY_ID, getRecipeByItem: () => RECIPE_BY_ITEM });
   // 品質階段層（app-quality-stages.js classic script）：**必須早於 loadData**——loadData 尾端 setData、
   // 且深連結路徑會在 init 之後立刻 selectRecipe → refreshSelectedGear → setRecipe，監聽器要先掛好
-  globalThis.CraftStages?.init?.({ $, invalidateResults });
+  if (!globalThis.CraftStages) throw new Error('app-quality-stages.js 未載入（部署不完整）');
+  globalThis.CraftStages.init({ $, invalidateResults });
   // 等級同步層（app-level-sync.js classic script）：手動指定等級 → 重算三上限並作廢舊巨集
   // （生效 rlv 變了，先前那份手法是照別的難度算的）
-  globalThis.CraftSync?.init?.({
+  if (!globalThis.CraftSync) throw new Error('app-level-sync.js 未載入（部署不完整）');
+  globalThis.CraftSync.init({
     $, toast,
     // 走 refreshGearNote 而非 refreshSelectedGear：後者無條件重建素材列與目標欄
     // ⇒ 玩家在這裡打一個等級，已填的 HQ 素材數量與目標品質就靜默歸零（健檢 2026-08-15，T37 守）。
@@ -456,11 +469,13 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   $('change-recipe').addEventListener('click', showPicker);
   const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats', true);
   // 結果渲染（app-render.js classic script）：注入 getter 取 live 狀態（loadData 會重賦值 ITEMS/ACTIONS 綁定）
-  if (globalThis.CraftRender) globalThis.CraftRender.init({ $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE,
+  if (!globalThis.CraftRender) throw new Error('app-render.js 未載入（部署不完整）');
+  globalThis.CraftRender.init({ $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE,
     getSelected: () => selected, getItems: () => ITEMS, getActions: () => ACTIONS });
   // 製造清單（crafting-list.js classic script，先於本 module 執行）：注入依賴後接手 #craft-list 分頁
-  if (globalThis.CraftList) {
-    globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, showPicker, toast, copyText, mbItem, mbCraft, MARKETBOARD_BASE, onChange: markListState,
+  if (!globalThis.CraftList) throw new Error('crafting-list.js 未載入（部署不完整）');
+  {
+    globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, showPicker, toast, copyText, mbItem, mbCraft, MARKETBOARD_BASE, isCrystal, onChange: markListState,
       goSolve: (id) => { if (selectRecipe(id, true)) switchTab('solve', true); } }); // 前往求解：selectRecipe 失敗（缺 rlv）就不切頁；成功才切+移焦，詳情顯示「← 回製造清單」
     markListState(); // 初載：清單已 load，回填首屏配方表的「已加入」標示（renderTable 早於 init 執行時清單尚空）
   }
@@ -480,6 +495,6 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     $('picker').classList.remove('is-loading'); // 失敗路徑也要卸下，否則空的篩選區留一整片預留高度
     const main = document.querySelector('main');
     if (main) main.insertAdjacentHTML('afterbegin',
-      '<div class="codex-tablet panel" style="margin:16px 0;color:var(--color-warn)">⚠ 資料載入失敗，請重新整理頁面或稍後再試。</div>');
+      '<div class="codex-tint-panel codex-tint-panel--warn crafter-loaderr">⚠ 資料載入失敗，請重新整理頁面或稍後再試。</div>');
   }
 })();

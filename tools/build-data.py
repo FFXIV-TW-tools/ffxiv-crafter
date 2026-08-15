@@ -8,7 +8,8 @@
 3. quality-stages.json：配方的三段品質門檻（**權威=game_ref.sqlite 的 recipe_quality_stages**，
    由 build_game_ref.py 從 Recipe.CollectableMetadata 解出。DRY 鐵則：禁自建收藏值對照表）。
 
-跨機：monorepo 根 env FFXIV_PROJECT_ROOT（預設 C:/FFXIVProject）。用 py -3.11 跑。
+跨機：monorepo 根預設**由本檔位置上溯三層推導**（<root>/external/ffxiv-crafter/tools → <root>），
+env FFXIV_PROJECT_ROOT 仍可覆寫。**不要寫死磁碟機代號**——external 層明訂代號依機器而異。用 py -3.11 跑。
 """
 import json, os, shutil, sqlite3, sys
 
@@ -16,7 +17,10 @@ for _s in (sys.stdout, sys.stderr):
     try: _s.reconfigure(encoding="utf-8", errors="replace")
     except (AttributeError, ValueError): pass  # best-effort 編碼設定：stream 無 reconfigure / 不支援編碼（窄 except，符合 except:pass 鐵則豁免 a）
 
-ROOT = os.environ.get("FFXIV_PROJECT_ROOT", "C:/FFXIVProject")
+HERE = os.path.dirname(os.path.abspath(__file__))
+# 預設由本檔位置推導（tools → ffxiv-crafter → external → monorepo 根），不寫死 `C:/FFXIVProject`：
+# 磁碟機代號依機器而異（external 層明訂的跨機規則），寫死的話換一台機器就靜默指到不存在的路徑。
+ROOT = os.environ.get("FFXIV_PROJECT_ROOT") or os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 GAME_REF = os.path.join(ROOT, "data", "item_dict", "game_ref.sqlite")
 ITEM_LOOKUP = os.path.join(ROOT, "data", "item_dict", "item_lookup.sqlite")
 DUMP_TC = os.path.join(ROOT, "data", "item_dict", "datamining_tc")

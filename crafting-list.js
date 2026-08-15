@@ -96,7 +96,7 @@
     deps.toast(found ? `✓「${nm}」已在清單 · 數量 +1（共 ${found.qty} 次）` : `✓ 已加入「${nm}」到製造清單`, 'ok');
   }
 
-  const isCrystal = (iid, name) => iid < 20 || /晶簇|水晶|碎晶/.test(name || '');
+  const isCrystal = (iid, name) => deps.isCrystal(iid, name);   // 規則單一出口在 app.js（Q-02）
 
   function renderTabCount() {
     const tab = document.querySelector('#main-tabs .codex-tab[data-tab="list"]');

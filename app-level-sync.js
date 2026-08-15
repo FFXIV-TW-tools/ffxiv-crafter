@@ -126,8 +126,11 @@
       if (inp) inp.addEventListener('input', () => {
         const n = parseInt(inp.value, 10);
         // 清空＝回到「跟隨角色等級」（不用另設一顆按鈕當唯一出口）
-        setOverride(inp.value.trim() === '' || !Number.isFinite(n) ? null
-          : Math.min(100, Math.max(1, n)));
+        const next = inp.value.trim() === '' || !Number.isFinite(n) ? null : Math.min(100, Math.max(1, n));
+        // clamp 後要**回寫輸入框**：不寫的話畫面停在 150 而實際生效的是 100，兩個數字不一致而沒有訊號。
+        // （之後的重繪不會更正它——render 刻意不覆寫使用者正聚焦的欄位。同 app-gear.js 的等級 clamp 作法。）
+        if (next !== null && String(next) !== inp.value.trim()) inp.value = String(next);
+        setOverride(next);
       });
       const auto = $('ls-auto');
       if (auto) auto.addEventListener('click', () => {
