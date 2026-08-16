@@ -39,6 +39,7 @@
     // selected 刻意保留（返回列表仍要標示原選中列 is-sel + 還焦）；流程位置改看 picker 是否展開
     deps.$('picker').hidden = false;
     deps.$('change-recipe').hidden = true;
+    deps.$('next-craft').hidden = true;   // 同 change-recipe：離開配方就沒有「這個成品」可以繼續做
     deps.$('selected-bar').hidden = true;
     deps.$('work').hidden = true;
     globalThis.CraftFlow?.update?.();
@@ -104,14 +105,37 @@
   let chain = [];
   function craftIngredient(rid) {
     const cur = deps.getSelected();
-    if (cur && cur.recipe) chain.push({ id: cur.recipe.id, name: cur.recipe.item_name });
+    if (cur && cur.recipe) chain.push({ id: cur.recipe.id, itemId: cur.recipe.item_id, name: cur.recipe.item_name });
     if (!selectRecipe(rid, false, true)) chain.pop();   // 選失敗就還原堆疊，不留下假的返回點
+  }
+  // 「繼續做」＝往上一階前進（用這個成品去做別的東西），與「先做這個」方向相反。
+  // **不推堆疊**（Owner 2026-08-17 拍板）：那不是「先做這個再回來」，一路往上做會堆出一長串
+  // 永遠用不到的返回點。特例＝選中的正好是堆疊最上層（你剛才鑽下來的來源）⇒ 等同按「← 回」，
+  // 把它彈掉；不然畫面會出現「← 回 A」而你人就站在 A 上。
+  function continueWith(rid) {
+    const top = chain[chain.length - 1];
+    const r = deps.getRecipesById()[rid];
+    if (top && r && (top.id === rid || (r.item_id != null && top.itemId === r.item_id))) return backInChain();
+    selectRecipe(rid, false, true);   // 其餘的鏈保留：底下那條「做完中間材回去做成品」還沒完成
   }
   function backInChain() {
     const prev = chain.pop();
     if (prev) selectRecipe(prev.id, false, true);
   }
   function chainDepth() { return chain.length; }
+
+  // 「繼續做」入口（住頂部「目前配方」那一列，不佔配方詳情的高度）。
+  // 沒有下一階時**整顆收起來**：出一顆點了只會說「沒有」的鈕等於騙玩家點一次。
+  function renderNextBtn(recipe) {
+    const nb = deps.$('next-craft');
+    if (!nb) return;
+    const n = (recipe && globalThis.CraftNext?.countFor?.(recipe.item_id)) || 0;
+    nb.hidden = !n;
+    if (!n) return;
+    nb.textContent = `⚒ 繼續做（${n}）`;
+    nb.setAttribute('data-help', `用「${recipe.item_name}」還能做 ${n} 種東西 — 挑一個接著做`);
+    nb.onclick = () => globalThis.CraftNext?.open?.(recipe.item_id, recipe.item_name, nb);
+  }
 
   function refreshGearNote() {
     const selected = deps.getSelected();
@@ -189,7 +213,7 @@
     const jico = deps.JOB_ICON[recipe.job] ? `<img class="ri-jico" src="${deps.iconUrl(deps.JOB_ICON[recipe.job])}" alt="">` : '';
     // 動作列：統一 ghost 按鈕群（設計系統，取代自寫 link-button）。marketboard 連結只在有 item_id 時出（防壞連結）。
     const mbLink = recipe.item_id
-      ? `<a class="codex-btn codex-btn--ghost" href="${deps.mbCraft(recipe.item_id)}" target="ffxiv-marketboard" data-help="到市場板看材料多層樹｜各材料即時價｜成本與利潤試算。共用同一分頁。">💰 材料樹與利潤</a>`
+      ? `<a class="codex-btn codex-btn--ghost" href="${deps.mbCraft(recipe.item_id)}" target="ffxiv-marketboard" data-help="到市場板看材料多層樹｜各材料即時價｜成本與利潤試算。共用同一分頁。">💰 查價</a>`
       : '';
     // 多職業：給切換鈕。**不是裝飾**——宇宙探索那批中間材動輒 3〜12 個職業可做，
     // 站台若替玩家選了一個他沒練的職業，他按求解只會被擋在「請先設定角色數值」。
@@ -220,7 +244,7 @@
         <div class="ri-stats"><span class="ri-job">${jico}${deps.esc(recipe.job)}</span><span class="ri-stat">難度<b>${maxP}</b></span><span class="ri-stat">品質<b>${maxQ}</b></span><span class="ri-stat">耐久<b>${maxD}</b></span></div>
       </div>
       <div class="ri-actions">
-        <button id="add-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="加進「製造清單」分頁，彙總所有成品的素材總需求">📋 加入製造清單</button>
+        <button id="add-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="加進「製造清單」分頁，彙總所有成品的素材總需求">📋 加入清單</button>
         ${backChain}
         ${mbLink}
         ${backToList}
@@ -232,6 +256,7 @@
     // 回清單：switchTab('list') 已集中清 openedFromList + 收返回鈕（見 switchTab），此處只需切頁+移焦
     const bl = deps.$('back-to-list'); if (bl) bl.onclick = () => deps.switchTab('list', true);
     const bc = deps.$('back-in-chain'); if (bc) bc.onclick = backInChain;
+    renderNextBtn(recipe);
     // 換職業**保留製作鏈**（換的是「用哪個職業做同一件東西」，不是放棄這條鏈）
     deps.$('recipe-info').querySelectorAll('.ri-job-btn').forEach((b) => {
       b.onclick = () => { if (+b.dataset.rid !== recipe.id) selectRecipe(+b.dataset.rid, deps.getOpenedFromList(), true); };
@@ -324,7 +349,7 @@
     'updateEff', 'gearFor', 'refreshSpecialistGate', 'isCrystal',
     'getRecipesById', 'getRecipeByItem', 'getRecipesByItem', 'gearOkFor'];
   globalThis.CraftRecipe = {
-    craftPlan, craftIngredient, backInChain, chainDepth, recipesForItem, pickRecipeForItem,
+    craftPlan, craftIngredient, backInChain, chainDepth, continueWith, recipesForItem, pickRecipeForItem,
     init(d) {
       const miss = REQUIRED.filter(k => d == null || d[k] == null);
       if (miss.length) throw new Error('CraftRecipe.init 缺依賴: ' + miss.join(', '));

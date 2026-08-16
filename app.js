@@ -94,6 +94,7 @@ async function loadData() {
   globalThis.CraftConsumable?.setData?.(meals, medicine);
   globalThis.CraftStages?.setData?.(stages);
   globalThis.CraftSync?.setData?.(levelSync);
+  globalThis.CraftNext?.setData?.();   // INGREDIENTS 換了新綁定 → 反查索引作廢（下次用到再建）
   RECIPE_BY_ID = {}; RECIPE_BY_ITEM = {}; RECIPES_BY_ITEM = {};
   for (const r of RECIPES) {
     RECIPE_BY_ID[r.id] = r;
@@ -379,6 +380,12 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     invalidateResults, updateEff, gearFor, refreshSpecialistGate,
     getRecipesById: () => RECIPE_BY_ID, getRecipeByItem: () => RECIPE_BY_ITEM,
     getRecipesByItem: () => RECIPES_BY_ITEM, gearOkFor: (job) => !!gearFor(job) });
+  // 「繼續做」反查層（app-nextcraft.js classic script）：索引在資料載完後才建（setData 作廢重建）
+  if (!globalThis.CraftNext) throw new Error('app-nextcraft.js 未載入（部署不完整）');
+  globalThis.CraftNext.init({ $, esc, iconUrl, JOB_ICON,
+    getItems: () => ITEMS, getIngredients: () => INGREDIENTS, getRecipesById: () => RECIPE_BY_ID,
+    gearOkFor: (job) => !!gearFor(job),
+    onPick: (rid) => globalThis.CraftRecipe.continueWith(rid) });
   // 食物/藥水選擇層（app-consumable.js classic script）：**必須早於 loadData**——loadData 尾端會 setData 繪按鈕，
   // 且本層 init 才會把保存值套回 HQ / 專家之證 checkbox（保存值要先就位，後續公式與摘要才讀得到）
   if (!globalThis.CraftConsumable) throw new Error('app-consumable.js 未載入（部署不完整）');

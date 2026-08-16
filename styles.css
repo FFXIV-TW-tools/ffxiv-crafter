@@ -650,3 +650,29 @@ body {
   filter: brightness(0) invert(1); }
 .crafter-qt-hq--unknown { color: var(--color-warn); font-weight: var(--fw-bold, 700); cursor: help; }
 .crafter-qt-hq--unknown .crafter-qt-hq { opacity: .5; }
+
+/* ---- 「繼續做」選取視窗 ---- */
+/* 殼與按鈕全走 portal 共用 .codex-modal / .codex-btn / .codex-input；本地只留這扇窗的版面特化。*/
+.crafter-next-modal { max-width: 720px; }                    /* 一列有 品名／職業／用量 三欄，600px 會逼品名截斷 */
+.crafter-next-count { margin-left: auto; margin-right: var(--space-2, 8px); color: var(--color-text-muted); }
+.crafter-next-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-2, 8px); }
+/* 共用 .codex-input／.codex-select 預設 width:100% ⇒ 不覆寫的話三個篩選各佔一整行（實測 114px 高，
+   清單被推到摺線下）。只改版面（寬度／收縮），視覺仍全走共用元件。*/
+.crafter-next-search { flex: 1 1 200px; width: auto; min-width: min(200px, 100%); }   /* 同 .ri-main 教訓：唯一能縮的那欄要有收縮下限 */
+.crafter-next-filters .codex-select { flex: 0 1 160px; width: auto; }
+.crafter-next-filters .opt { flex: 0 0 auto; }
+.crafter-next-list { display: flex; flex-direction: column; gap: var(--space-1, 4px); }
+/* 整列可點（button）：與素材列同一套視覺，右側資訊靠右對齊成直行 */
+.crafter-next-row { display: flex; align-items: center; gap: var(--space-2, 8px); width: 100%; min-height: 40px;
+  padding: 0 var(--space-2, 8px); text-align: left; cursor: pointer; font: inherit; font-size: var(--fs-small);
+  color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+.crafter-next-row:hover { border-color: var(--accent); }
+.crafter-next-ico { width: 24px; height: 24px; flex: 0 0 auto; }
+.crafter-next-name { font-weight: var(--fw-semibold, 600); flex: 1 1 auto; min-width: min(120px, 100%); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crafter-next-job { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; color: var(--color-text-muted); }
+.crafter-next-jico { width: 18px; height: 18px; }
+.crafter-next-more { color: var(--color-text-muted); }
+.crafter-next-amt { flex: 0 0 auto; min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+.crafter-next-no { flex: 0 0 auto; color: var(--color-text-muted); }
+.crafter-next-note { margin-bottom: var(--space-2, 8px); color: var(--color-text-muted); }
+.crafter-next-empty { margin: var(--space-3, 12px) 0; }

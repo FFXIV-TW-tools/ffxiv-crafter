@@ -5,6 +5,7 @@ app-consumable.js
 app-flow.js
 app-gear.js
 app-level-sync.js
+app-nextcraft.js
 app-quality-stages.js
 app-quests.js
 app-recipe.js

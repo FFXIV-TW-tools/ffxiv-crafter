@@ -45,6 +45,7 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 | `app-browse.js` | 配方瀏覽表：職業篩選 chips／每頁 60 筆分頁／已加入清單標示 |
 | `app-gear.js` | 角色數值：localStorage 讀寫與型別驗證／等級 clamp／專家之證逐職勾選 |
 | `app-recipe.js` | 配方詳情狀態機：選配方／原料與初始品質／**製作鏈**（`craftPlan` 純函式＋返回堆疊）／**多職業切換** |
+| `app-nextcraft.js` | 「用這個成品還能做什麼」：由 `ingredients.json` 倒建反查索引＋下一階配方選取視窗（**無新資料檔**）|
 | `app-quests.js` | 職業任務分頁：11 職任務清單／完成勾選／素材遞迴展開／商人徽章 |
 | `app-consumable.js` | 食物／藥水自繪 listbox（原生 `<option>` 放不了 icon／品級／功效）＋本區本地保存 |
 | `app-quality-stages.js` | 品質階段 → 目標品質。**兩種來源單位不同，換算只有這裡一份** |
@@ -75,17 +76,17 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="528" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="577" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **528**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
+> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **577**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
 > 逐輪沿革＝[`docs/test-baseline-history.md`](docs/test-baseline-history.md)；「為什麼這幾支被併進 canonicalTest」＝[`docs/lessons.md`](docs/lessons.md)。
 
 ```bash
 node --check *.js                       # JS 語法（用萬用字元，不列清單——手維護的清單會漏掉新模組）
-node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T1〜T55，各條用途寫在測試檔內）
+node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T1〜T57，各條用途寫在測試檔內）
 py -3.11 tools/check-actions.py         # 不變量：Action 變體對照 ＋ pkg/ 同步戳記 ＋ sim-diff 與 wasm 同一 raphael tag
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一 + 神速技巧三條
 ```
@@ -129,6 +130,8 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 - **晶體判定只有 `app.js` 的 `isCrystal(iid, name)` 一份**：各層經 deps 注入取用，**不得自己寫那個正則**（T48 守）。
 - **程式化切頁一律帶移焦**（`switchTab(name, true)`）：那幾條路徑都是「被擋下 → 去補資料」的補救動線。只有 tablist 自己的 click handler 例外（T47 掃描）。
 - **製作鏈：中間材要能「先做這個 → 一鍵回來」**：可製作的素材給 `.ing-go` 入口，點下去把當前配方推進**返回堆疊**（多層，鏈可能 A←B←C）。**堆疊不在切分頁時清空**（玩家常跳去補數值再回來），只有「返回配方列表」或另選配方才算放棄。`craftPlan()` 是純函式（T51）：**往下傳的是「做幾次」不是「要幾個」**——一次產 3 個時要 4 個只需做 2 次，傳錯的話採購量整批偏高而畫面完全正常。
+- **「繼續做」＝反方向的動線**（Owner 2026-08-17）：`app-nextcraft.js` 由 `ingredients.json` 倒建 itemId→配方 索引（**沒有新資料檔**），入口鈕住頂部「目前配方」那一列（不佔配方詳情高度），沒有下一階時整顆收起。**往上走不推返回堆疊**——一路往上做會堆出一長串用不到的返回點；選到的正好是堆疊最上層時等同「← 回」並彈掉（T57）。一件成品**只佔一列**（多職業合併，挑法同 `pickRecipeForItem`）、做得起的排前面。**清單最多 234 筆**（實測綠金錠）故走彈出視窗、不就地展開。
+- **遮罩關閉必須「按下」也在遮罩上**：只看 `click` 的話，開窗那一發滑鼠在按鈕上按下、放開時遮罩已蓋在游標底下 ⇒ 該次 click 的 target 變成遮罩、視窗開了又立刻關掉，**玩家看到「按鈕沒反應」而 console 全乾淨**。`.click()` 測不出來（沒有 mousedown），T56 有哨兵。新開 modal 一律照這條寫。
 - **同一件東西常常好幾個職業都能做**（實測 651 件）：`RECIPE_BY_ITEM` 的「取先出現者」**只用於配方表**；深連結、製作鏈、職業切換一律走 `RECIPES_BY_ITEM` ＋ `pickRecipeForItem()`（**優先挑玩家有填數值的職業**，否則他按求解只會被擋在角色數值頁）。畫面一律給切換鈕，不幫他決定死（T52）。
 - **專家之證是「角色狀態」不是求解選項**：住 `gearsets[職業].specialist`，遊戲上限 3 由 `CraftGear.SPEC_MAX` 守（第 4 個回退＋toast，不用 disabled——那會讓鍵盤走不到也讀不到原因）。求解端一律讀 `gear.specialist`，**禁止再從 DOM 讀 `#specialist`**。⚠ 證**不跟著數值的 fallback 走**：某職沒填數值時數值取「預設」，但證仍看該職業自己那格。
 - **求解計時＝軟提示不殺 worker**：計數跑在主執行緒故不凍結；≥60s 升級「可取消」提示但**不殺** worker。`stopSolveClock()` 掛在 onWorkerMsg / cancelSolve / onerror。
@@ -139,7 +142,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 
 - **中性分組容器的幾何走共用 `.codex-tint-panel--neutral`**、底色以 `--panel-bg` 傳參，本地只留 padding 與外距——**不得把 background／border／border-radius 寫回本地**（值一樣所以畫面全正常，但幾何就分岔成兩份事實源）。**巢狀時一律顯式寫 `--panel-bg`**：那是 CSS 自訂屬性、**會繼承**，不指定就吃到父層底色（T36）。
 - **表格一律消費共用 `.codex-table`**（`.rt`／`.wt-table`／`.gear-table`）：欄寬脫鉤用 `--fixed`、表頭釘頂用 `--sticky`。**不要自刻 sticky**——`border-collapse: collapse` 下 th 的 border-bottom 由 table 畫、不跟著 sticky 移動 ⇒ 捲動時列穿到表頭下方沒有分隔線（本站原本就中招）。本地只留視覺特化（T50）。列內可能插徽章的儲存格要預留 `min-height`，否則有徽章的列高一截。
-- **功能性圖示鈕與剪貼簿走 portal 共用元件**：`window.FFXIVIcons.btnHTML(name, label, attrs)`／`window.FFXIVClipboard.copy(text, label)`；缺 CDN 時要有退場版（功能不消失，T34）。**禁自刻 emoji 鈕**（字型相依、拿不到 currentColor、縮小後糊）。⚠ `label` 必填（缺會 throw）。⚠ 鈕不能放進 `<a>` 裡（互動元素不得互套），素材列因此是「容器 div ＋ 內層連結 ＋同層的鈕」，click 要 `preventDefault()`。**帶文字的動作鈕（`📋 加入製造清單`）刻意維持 emoji**，別順手統一（T35 有負向哨兵）。
+- **功能性圖示鈕與剪貼簿走 portal 共用元件**：`window.FFXIVIcons.btnHTML(name, label, attrs)`／`window.FFXIVClipboard.copy(text, label)`；缺 CDN 時要有退場版（功能不消失，T34）。**禁自刻 emoji 鈕**（字型相依、拿不到 currentColor、縮小後糊）。⚠ `label` 必填（缺會 throw）。⚠ 鈕不能放進 `<a>` 裡（互動元素不得互套），素材列因此是「容器 div ＋ 內層連結 ＋同層的鈕」，click 要 `preventDefault()`。**帶文字的動作鈕（`📋 加入清單`）刻意維持 emoji**，別順手統一（T35 有負向哨兵）。
 - **hover 說明一律 `data-help`，禁原生 `title`**：圖示鈕另補 `aria-label`；`window.FFXIVHelp.setup()` 在 init 呼叫一次（冪等）。
 - **`hidden` 設了不等於收得起來**：UA 的 `[hidden]{display:none}` 優先權最低，本地一條 `display:flex` 就蓋掉。**驗收看 `getComputedStyle(el).display`，不要查 `.hidden` 屬性**；新增靠 hidden 收合的區塊要補 `[hidden]` 守衛（T21）。
 - **首屏「等 fetch 才長內容」的區塊一律要預留高度**（CLS）：①內容確定→靜態寫進 index.html（T17）②筆數不定→`.is-loading` 分段 `min-height`（**失敗路徑也要卸**）③佔位塊自撐。**別再留空殼。**

@@ -110,7 +110,7 @@
     if (!list.length) {   // 空狀態＝設計系統 .codex-empty（給下一步 CTA，非只寫「無資料」）
       box.innerHTML = `<div class="codex-empty">
         <div class="codex-empty__icon" aria-hidden="true">📋</div>
-        <div>清單是空的 — 到「<b>配方求解</b>」瀏覽表按每列的「<b>＋</b>」，或選配方後按「<b>📋 加入製造清單</b>」收集配方。</div>
+        <div>清單是空的 — 到「<b>配方求解</b>」瀏覽表按每列的「<b>＋</b>」，或選配方後按「<b>📋 加入清單</b>」收集配方。</div>
         <button class="cl-empty-cta codex-btn codex-btn--ghost" type="button">前往配方瀏覽 →</button>
       </div>`;
       const cta = box.querySelector('.cl-empty-cta');

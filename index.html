@@ -139,6 +139,10 @@
             <p class="crafter-pick-hint codex-small">先選製作職業，再用等級或名稱縮小範圍；點列即進入設定。</p>
           </div>
           <div id="selected-bar" class="selected-bar" hidden></div>
+          <!-- 「繼續做」放這一列而不是配方詳情動作列：這裡本來就有整片空白 ⇒ 不佔任何新高度，
+               詳情動作列也少一顆、窄屏更不容易被擠成兩行。（[hidden] 由 portal header.css 的
+               `.codex-btn[hidden]` 中央守衛處理，不必本地補。） -->
+          <button id="next-craft" class="codex-btn codex-btn--ghost" type="button" hidden></button>
           <button id="change-recipe" class="codex-btn codex-btn--ghost" type="button" hidden>← 換一個配方</button>
         </div>
         <!-- is-loading：資料 fetch 回來前先把 chips／筆數／表格／翻頁器的高度預留起來（CLS）。
@@ -354,10 +358,30 @@
     </p>
   </main>
 
+  <!-- 「繼續做」選取視窗（codex 共用 modal；a11y 契約見 portal _DESIGN-SYSTEM.md §.codex-modal） -->
+  <div class="codex-modal-overlay" id="next-modal" hidden>
+    <div class="codex-modal crafter-next-modal" role="dialog" aria-modal="true" aria-labelledby="next-title">
+      <div class="codex-modal__header">
+        <h3 class="codex-h3" id="next-title">還能做什麼</h3>
+        <span id="next-count" class="codex-small crafter-next-count"></span>
+        <button class="codex-modal__close" id="next-close" type="button" aria-label="關閉">×</button>
+      </div>
+      <div class="codex-modal__body">
+        <div class="crafter-next-filters">
+          <input id="next-search" class="codex-input crafter-next-search" type="search" placeholder="搜尋品名" aria-label="搜尋下一階成品">
+          <select id="next-job" class="codex-select" aria-label="只看某個職業"><option value="">全部職業</option></select>
+          <label class="opt" data-help="只列出你已填角色數值的職業做得出來的東西。若一筆都不剩會自動改回顯示全部。"><input type="checkbox" id="next-only-mine" checked> 只顯示我能做的</label>
+        </div>
+        <div id="next-list" class="crafter-next-list"></div>
+      </div>
+    </div>
+  </div>
+
   <script src="crafting-list.js"></script>
   <script src="app-flow.js"></script>
   <script src="app-gear.js"></script>
   <script src="app-recipe.js"></script>
+  <script src="app-nextcraft.js"></script>
   <script src="app-render.js"></script>
   <script src="app-solve.js"></script>
   <script src="app-browse.js"></script>
