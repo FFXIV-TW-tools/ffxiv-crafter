@@ -2217,13 +2217,14 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   const $r = (id) => sandbox.document.getElementById(id);
   const b64url = (s) => Buffer.from(s, 'utf8').toString('base64url');   // 瀏覽器版用 btoa，vm 沒有 → 測試側等價實作
   let sel = { recipe: { item_id: 42, item_name: '測試成品', is_expert: false, job: '木工' } };
-  R.init({
+  const RDEPS = {
     $: $r, esc: T.esc, iconUrl: (p) => p, b64urlEncode: b64url, copyText() {},
     MACRO_BUILDER_BASE: 'https://macro.example/', PH_HTML: '',
     getSelected: () => sel, getItems: () => ({ 42: { can_be_hq: false } }),
     // 用真的 craft-actions.json：順帶守住「render 取的欄位名」與資料的鍵形狀（nameTc / PascalCase）
     getActions: () => JSON.parse(fs.readFileSync(path.join(ROOT, 'data/craft-actions.json'), 'utf8')),
-  });
+  };
+  R.init(RDEPS);
   const mkResult = (steps, over = {}) => ({
     complete: true, error: null, error_step: 0,
     final_progress: 100, max_progress: 100, final_quality: 500, max_quality: 1000,
@@ -2259,16 +2260,25 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   R.render(mkResult(3, { complete: false }), false);
   check('T39 未完成 → 紅色「✗ 未完成」', /codex-badge--danger[^>]*>✗ 未完成/.test(summary()));
 
-  // (c) 巨集組裝：遊戲的巨集一格上限 15 行，且最後一行永遠是帶音效的 /echo（Owner 2026-08-16）
+  // (c) 巨集組裝：遊戲的巨集一格上限 15 行，開提示音時最後一行留給帶音效的 /echo（Owner 2026-08-16）
   //     ⇒ 單段容量是 14 步。切錯的後果是玩家貼進遊戲少做最後幾步，而站上一切正常。
+  //     例外（Owner 2026-08-16 第二輪）：剩下剛好 15 步的末段整段塞滿、不補 echo——
+  //     為一行提示音多切一段（15 步 → 14+1）等於多一格巨集、多按一次，代價遠大於少一聲。
   const macroLineCounts = () => (macro().match(/（(\d+) 行）/g) || []).map(s => +s.replace(/\D/g, ''));
+  const echoBox = $r('macro-echo');
+  echoBox.checked = true;
   R.render(mkResult(14), false);
   check('T39 14 步 → 單一巨集、不切段', /巨集 1 \/ 1（15 行）/.test(macro()));
   check('T39 巨集行格式＝/ac "技能" <wait.秒>', macro().includes('/ac &quot;製作&quot; &lt;wait.3&gt;'));
   // 單段也要有完成提示音——沒有的話玩家得盯著畫面才知道跑完了（這正是本次需求）
   check('T39 單段結尾＝帶音效的「製作完成」', /\/echo 製作完成 &lt;se\.1&gt;/.test(macro()));
   R.render(mkResult(15), false);
-  check('T39 15 步 → 塞不下（14 步 + echo 已滿）→ 切兩段', /巨集 1 \/ 2/.test(macro()));
+  check('T39 15 步 → 塞得下一格，不得為了 echo 切成兩段', /巨集 1 \/ 1（15 行）/.test(macro()));
+  check('T39 15 步 → 該段沒有 echo（15 行全是步驟）', !/\/echo/.test(macro()));
+  R.render(mkResult(29), false);
+  check('T39 29 步 → 14 + 15：中段有 echo、末段塞滿無 echo',
+    /巨集 1 \/ 2（15 行）/.test(macro()) && /巨集 2 \/ 2（15 行）/.test(macro())
+    && (macro().match(/\/echo/g) || []).length === 1, macroLineCounts().join(','));
   R.render(mkResult(16), false);
   check('T39 16 步 → 切成兩段', /巨集 1 \/ 2/.test(macro()) && /巨集 2 \/ 2/.test(macro()));
   check('T39 切段後每段仍不得超過 15 行（14 步 + 1 行 /echo）', /巨集 1 \/ 2（15 行）/.test(macro()));
@@ -2277,12 +2287,59 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T39 末段一律講「製作完成」而非「第 N 段完成」', /\/echo 製作完成 &lt;se\.2&gt;/.test(macro()));
   check('T39 每一段都要有一行帶音效的 /echo', (macro().match(/\/echo [^<]*&lt;se\.\d+&gt;/g) || []).length === 2);
   // 遊戲上限是硬限制：超過 15 行的巨集貼不進遊戲，而站上完全看不出來
-  for (const n of [1, 13, 14, 15, 16, 28, 29, 40]) {
-    R.render(mkResult(n), false);
-    const counts = macroLineCounts();
-    check(`T39 ${n} 步：每段 ≤15 行`, counts.length > 0 && counts.every(c => c <= 15), counts.join(','));
-    check(`T39 ${n} 步：步數不漏不重（總行數 − 段數 == 步數）`,
-      counts.reduce((a, b) => a + b, 0) - counts.length === n, counts.join(','));
+  const echoCount = () => (macro().match(/\/echo/g) || []).length;
+  // 段數 golden（多切一段＝玩家多存一格巨集、多按一次；少切一段＝貼不進遊戲）。
+  // 開提示音時 14 步一段，唯獨「剩下剛好 15 步」整段塞滿 ⇒ 15/29 各省下一段；關掉時一律 15 步一段。
+  const SEGS = { true: { 1: 1, 13: 1, 14: 1, 15: 1, 16: 2, 28: 2, 29: 2, 40: 3, 45: 4 },
+                 false: { 1: 1, 13: 1, 14: 1, 15: 1, 16: 2, 28: 2, 29: 2, 40: 3, 45: 3 } };
+  for (const on of [true, false]) {
+    echoBox.checked = on;
+    for (const n of [1, 13, 14, 15, 16, 28, 29, 40, 45]) {
+      R.render(mkResult(n), false);
+      const counts = macroLineCounts();
+      check(`T39 ${n} 步（提示音${on ? '開' : '關'}）：每段 ≤15 行`, counts.length > 0 && counts.every(c => c <= 15), counts.join(','));
+      // echo 是逐段可選的（塞滿的末段沒有）⇒ 用實際 echo 行數對帳，不能假設每段一行
+      check(`T39 ${n} 步（提示音${on ? '開' : '關'}）：步數不漏不重（總行數 − echo 行數 == 步數）`,
+        counts.reduce((a, b) => a + b, 0) - echoCount() === n, counts.join(',') + ' echo=' + echoCount());
+      const want = SEGS[on][n];
+      check(`T39 ${n} 步（提示音${on ? '開' : '關'}）：段數＝${want}`, counts.length === want, counts.join(','));
+    }
+  }
+  echoBox.checked = false;
+  R.render(mkResult(15), false);
+  check('T39 關提示音 → 一行 /echo 都不出現', !/\/echo/.test(macro()));
+  R.render(mkResult(30), false);
+  check('T39 關提示音 → 單段容量回到 15 步（30 步＝兩段滿格）',
+    /巨集 1 \/ 2（15 行）/.test(macro()) && /巨集 2 \/ 2（15 行）/.test(macro()) && !/\/echo/.test(macro()));
+  echoBox.checked = true;
+
+  // (d) 提示音開關的接線：偏好要留得住，切換要**當場**重組巨集（它不是求解輸入，不該逼玩家重求解）。
+  //     沒有這幾條的話，開關可以被接歪成「重整就跳回預設」或「按了沒反應」，而 render 的其他斷言全綠。
+  {
+    // 開關本體在 index.html；缺席時 renderMacro 退回「一律加音效」＝功能靜默消失（畫面看不出差別）
+    const HTML39 = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const box = HTML39.match(/<input[^>]*id="macro-echo"[^>]*>/);
+    check('T39 index.html 有提示音開關（#macro-echo）', !!box, '找不到 #macro-echo');
+    check('T39 提示音預設為開（HTML 帶 checked）', !!box && /\schecked\b/.test(box[0]), box ? box[0] : '');
+
+    const el = { checked: true, listeners: {}, addEventListener(t, f) { this.listeners[t] = f; } };
+    const store = {}; let read = null;
+    const realLS = sandbox.localStorage;
+    sandbox.localStorage = { getItem: (k) => (read = k, store[k] ?? null), setItem: (k, v) => { store[k] = v; }, removeItem() {} };
+    store['ffxiv-crafter-macro-echo-v1'] = '0';
+    R.init({ ...RDEPS, $: (id) => (id === 'macro-echo' ? el : $r(id)) });
+    eq('T39 上次關掉提示音 → 重開頁面仍是關的', el.checked, false);
+    eq('T39 偏好讀的是 ffxiv-crafter-macro-echo-v1', read, 'ffxiv-crafter-macro-echo-v1');
+    check('T39 開關有掛 change 事件（否則按了沒反應）', typeof el.listeners.change === 'function');
+    R.render(mkResult(14), false);
+    check('T39 提示音關 → 14 步就是 14 行', /巨集 1 \/ 1（14 行）/.test(macro()));
+    el.checked = true;
+    el.listeners.change();
+    eq('T39 切換提示音 → 立刻存起來', store['ffxiv-crafter-macro-echo-v1'], '1');
+    check('T39 切換提示音 → 當場重組巨集（不必重新求解）',
+      /巨集 1 \/ 1（15 行）/.test(macro()) && /\/echo 製作完成/.test(macro()), macro().slice(0, 120));
+    sandbox.localStorage = realLS;
+    R.init(RDEPS);
   }
 }
 

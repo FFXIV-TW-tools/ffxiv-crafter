@@ -3,6 +3,8 @@
 // 注入 getter（getSelected/getItems/getActions）而非值 —— loadData 會「重新賦值」ITEMS/ACTIONS 綁定，持舊參照看不到新資料，故取 live 值。
 (function () {
   let deps = null; // { $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE, PH_HTML, getSelected, getItems, getActions }
+  const ECHO_KEY = 'ffxiv-crafter-macro-echo-v1';
+  let lastSteps = null;   // 提示音開關切換時要能重組巨集，不必重新求解（它不是求解輸入）
 
   /**
    * 目標品質未達成的警語（純函式，golden 測試面）。
@@ -51,18 +53,32 @@
     return `<button type="button" class="chip" data-step="${i}" data-help="${esc(actionName(s.action))}">` +
       `${actImg(s.action)}<span class="chip-name codex-xs">${esc(actionName(s.action))}</span></button>`;
   }
+  // 提示音開關（玩家偏好，非求解輸入）：checkbox 缺席（舊快取的 HTML／測試 sandbox）→ 當作開。
+  function echoOn() { const el = deps.$('macro-echo'); return el ? !!el.checked : true; }
+
   function renderMacro(steps) {
     const { $, esc, b64urlEncode, copyText, MACRO_BUILDER_BASE, getSelected } = deps;
+    lastSteps = steps;
     const selected = getSelected();
     const lines = steps.map(s => `/ac "${actionName(s.action)}" <wait.${s.time}>`);
-    // 遊戲巨集一格上限 15 行，**最後一行永遠留給帶音效的 /echo**（2026-08-16 Owner 需求）
-    // ⇒ 單段的容量是 14 步不是 15。玩家貼進遊戲後是盯著角色動作跑完的，沒有音效就得一直看著畫面；
-    //    兩段以上時更關鍵——不知道第一段何時結束就不知道該按第二段。所以**每一段都補**，不是只補最後一段。
-    const CHUNK = 14;
+    // 遊戲巨集一格上限 15 行（FULL），開提示音時最後一行留給帶音效的 /echo ⇒ 單段容量 14 步（2026-08-16 Owner 需求）。
+    // 玩家貼進遊戲後是盯著角色動作跑完的，沒有音效就得一直看著畫面；兩段以上時更關鍵——
+    // 不知道第一段何時結束就不知道該按第二段。所以**每一段都補**，不是只補最後一段。
+    // 例外：**剩下剛好 15 步就整段塞滿、不補 echo**。否則為了一行提示音要多切一段
+    // （15 步 → 14+1，玩家得多存一格巨集、多按一次），代價遠大於少一聲。
+    // 只有最後一段可能命中這條（14 的切法讓中段恆為 14）⇒「第 N 段完成」的提示不會被吃掉。
+    const FULL = 15, CHUNK = 14;
+    const echo = echoOn();
     const macros = [];
-    if (lines.length <= CHUNK) macros.push(lines.slice());
-    else for (let i = 0; i < lines.length; i += CHUNK) macros.push(lines.slice(i, i + CHUNK));
-    macros.forEach((m, i) => {
+    for (let i = 0; i < lines.length;) {
+      const left = lines.length - i;
+      const take = (!echo || left === FULL) ? Math.min(FULL, left) : Math.min(CHUNK, left);
+      macros.push(lines.slice(i, i + take));
+      i += take;
+    }
+    if (!macros.length) macros.push([]);
+    if (echo) macros.forEach((m, i) => {
+      if (m.length >= FULL) return;   // 塞滿的那段沒空間（見上：剩 15 步的末段）
       const last = i === macros.length - 1;
       // 中段講「還有下一段」、末段講「整個做完了」——兩者的下一步動作不同，文案不能共用。
       // 音效逐段輪替（se.1..8）：連續貼兩段時聽得出剛才響的是哪一段。
@@ -172,8 +188,23 @@
     }
   }
 
+  // 提示音開關：偏好保存 + 切換即重組巨集（不重新求解）。求解結果不受影響 ⇒ 不進 invalidateResults()。
+  function bindMacroEcho() {
+    const el = deps.$('macro-echo');
+    if (!el) return;
+    try {
+      const raw = localStorage.getItem(ECHO_KEY);
+      if (raw === '0' || raw === '1') el.checked = raw === '1';   // 其他值（含 null）＝沒設過 → 留 HTML 的預設（開）
+    } catch (e) { console.warn('[crafter] 巨集提示音設定讀取失敗，用預設值:', e); }
+    el.addEventListener('change', () => {
+      try { localStorage.setItem(ECHO_KEY, el.checked ? '1' : '0'); }
+      catch (e) { console.warn('[crafter] 巨集提示音設定儲存失敗（可能是無痕模式）:', e); }
+      if (lastSteps) renderMacro(lastSteps);
+    });
+  }
+
   globalThis.CraftRender = {
-    init(d) { deps = d; bindStepLink(); },
+    init(d) { deps = d; bindStepLink(); bindMacroEcho(); },
     render,
     hqPercent, // 純函式，golden 測試面（test-formulas 載本檔取用）
     shortfallHtml, // 同上：目標品質未達成的警語（純函式）

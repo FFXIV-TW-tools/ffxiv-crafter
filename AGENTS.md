@@ -75,12 +75,12 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="478" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="528" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **478**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
+> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **528**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
 > 逐輪沿革＝[`docs/test-baseline-history.md`](docs/test-baseline-history.md)；「為什麼這幾支被併進 canonicalTest」＝[`docs/lessons.md`](docs/lessons.md)。
 
 ```bash
@@ -120,7 +120,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 - **expert（高難度）配方靜態巨集僅供參考**：536 個 expert 配方在遊戲內為隨機製作狀態 → render 用中性「試算完成 ⚠」+ 警語（**勿改回無條件「✓ 可完成」金徽**）。
 - **求解上限單一算式**：顯示與求解共用 `recipeMaxes(recipe, rlv)`，勿內聯重算。
 - **改任一求解輸入 → 舊巨集失效**：`invalidateResults()` 集中失效（opt-* / 目標品質 / solve-mode / HQ 素材 / 食藥 / 角色數值）。程式設值不觸發 input 者須手動呼叫；新增求解輸入時記得掛。
-- **巨集每一段結尾都要有帶音效的 `/echo`**（Owner 2026-08-16）：中段「第 N 段完成」、末段「製作完成」。連帶**單段容量是 14 步不是 15**（遊戲上限 15 行，最後一行永遠留給 echo）。T39 逐一驗每段 ≤15 行且不漏步。
+- **巨集每一段結尾都要有帶音效的 `/echo`**（Owner 2026-08-16）：中段「第 N 段完成」、末段「製作完成」。連帶**開音效時單段容量是 14 步不是 15**（遊戲上限 15 行，最後一行留給 echo）。**兩個例外**：① 剩下**剛好 15 步**的末段整段塞滿、不補 echo——為一行提示音多切一段＝玩家多存一格巨集、多按一次（只有末段會命中，中段的「第 N 段完成」不會被吃掉）；② 玩家可用 `#macro-echo` 關掉音效（偏好存 `ffxiv-crafter-macro-echo-v1`），關掉時單段回到 15 步。切換只重組巨集、**不是求解輸入**（不進 `invalidateResults()`）。T39 驗每段 ≤15 行、不漏步、段數 golden 與開關接線。
 
 ### 前端狀態與流程
 

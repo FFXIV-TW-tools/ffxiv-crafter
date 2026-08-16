@@ -501,6 +501,7 @@ body {
 .wt-act { display: flex; align-items: center; gap: var(--space-1, 4px); }
 .act-ico { width: 20px; height: 20px; }
 
+.macro-opts { margin-bottom: var(--space-2, 8px); }
 .macro { padding-bottom: var(--space-2, 8px); }
 .macro-block { margin-bottom: var(--space-3, 12px); }
 .macro-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-1, 4px); }
