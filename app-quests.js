@@ -95,7 +95,9 @@
       const on = cur && j.job === cur.job;
       const ico = j.iconId ? `<img src="${iconUrl(jobIcon(j.iconId))}" alt="" loading="lazy">` : '';
       const left = j.quests.filter((q) => !doneSet.has(q.id)).length;
-      return `<button type="button" class="codex-btn ${on ? 'codex-btn--primary' : 'codex-btn--ghost'} job-btn" data-job="${esc(j.job)}">` +
+      // 選中態走共用 segmented `.codex-tab--boxed` 的 aria-pressed（2026-08-17 由 --primary/--ghost 遷入，
+      // 同 app-browse.js：--primary 語意是「本檢視唯一主動作」，不是「這顆被選中」）
+      return `<button type="button" class="codex-tab codex-tab--boxed job-btn" aria-pressed="${!!on}" data-job="${esc(j.job)}">` +
         `${ico}${esc(j.job)} <span class="codex-xs">${left ? left + ' 待辦' : '✓ 完成'}</span></button>`;
     }).join('');
     $('quest-jobs').querySelectorAll('.job-btn').forEach((b) => {

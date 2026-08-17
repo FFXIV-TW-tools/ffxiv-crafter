@@ -97,8 +97,13 @@ body {
    本地只留 padding 與外距（共用版的 8/12px 是給資訊盒用的，分組容器要更寬）。 */
 .filter-group { --panel-bg: var(--color-surface-hover); padding: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); }
 .filter-group .job-chips { margin-bottom: var(--space-2, 8px); }
-/* 職業篩選＝共用 .codex-btn 方形分段（選中 --primary 填色 / 未選 --ghost）；此處僅補 icon 尺寸，不覆寫 codex-btn 屬性（gap/padding/radius/box-sizing 走元件本身）*/
+/* 職業篩選＝共用 segmented `.codex-tab--boxed`（選中態走 aria-pressed，2026-08-17 由 --primary/--ghost 遷入）。
+   此處只補兩件共用版沒有的事，其餘（padding/radius/高度/選中填色）走元件本身：
+   ① icon 尺寸 ② 圖示＋文字並排——`.codex-btn` 自帶 `display:flex; gap:8px; align-items:center`，
+   而 `.codex-tab` 是 `display:block`（它預期只有文字）⇒ 遷移後 icon 會貼著字且靠 baseline 對齊。
+   實測驗到（改前 92px / 改後 84px，差的就是那 8px gap）。選擇器用 (0,2,0) 蓋過共用版的 (0,1,0)。 */
 .job-chips { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
+.job-chips .job-btn { display: inline-flex; align-items: center; gap: var(--space-2, 8px); }
 .job-chips .job-btn img { width: 18px; height: 18px; }   /* 求解分頁與職業任務分頁共用（原本只綁 #job-chips，新分頁的 icon 會變原尺寸大圖）*/
 .filter-row { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); align-items: center; }
 .filter-row .codex-input, .filter-row .codex-select { width: auto; }
@@ -258,7 +263,10 @@ body {
 .ri-jobs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1, 4px);
   margin-top: var(--space-2, 8px); }
 .ri-jobs__label { color: var(--color-text-muted); margin-right: var(--space-1, 4px); }
-.ri-job-btn { height: 28px; padding: 0 var(--space-2, 8px); }
+/* 同上 `.job-chips .job-btn`：共用 `.codex-tab` 沒有 flex/gap（它預期只有文字），本地補回並發選擇器
+   提高到 (0,2,0) 蓋過共用版 (0,1,0)；height/padding 沿用原本的密集尺寸。 */
+.ri-jobs .ri-job-btn { height: 28px; padding: 0 var(--space-2, 8px);
+  display: inline-flex; align-items: center; gap: var(--space-1, 4px); }
 .ri-job-btn__no { opacity: .7; }
 /* 製作鏈：可製作的素材給「先做這個」入口，做完由 ri-actions 的「← 回…」回上一層 */
 .ing-go { height: 26px; padding: 0 var(--space-2, 8px); white-space: nowrap; }

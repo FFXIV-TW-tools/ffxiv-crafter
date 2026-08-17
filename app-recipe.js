@@ -224,14 +224,16 @@
         alts.map((r) => {
           const on = r.id === recipe.id, ok = deps.gearOkFor(r.job);
           const jic = deps.JOB_ICON[r.job] ? `<img class="ri-jico" src="${deps.iconUrl(deps.JOB_ICON[r.job])}" alt="">` : '';
-          return `<button type="button" class="codex-btn ${on ? 'codex-btn--primary' : 'codex-btn--ghost'} ri-job-btn"` +
+          // 已是 role="group" 的分段選擇 → 選中態走共用 `.codex-tab--boxed` 的 aria-pressed
+          // （2026-08-17 由 --primary/--ghost 遷入，同 app-browse.js）
+          return `<button type="button" class="codex-tab codex-tab--boxed ri-job-btn" aria-pressed="${on}"` +
             ` data-rid="${r.id}"${on ? ' aria-current="true"' : ''}` +
             ` data-help="${on ? '目前用這個職業的配方' : '改用「' + deps.esc(r.job) + '」的配方求解'}${ok ? '' : '｜這個職業還沒填角色數值'}">` +
             `${jic}${deps.esc(r.job)}${ok ? '' : ' <span class="codex-xs ri-job-btn__no">未填</span>'}</button>`;
         }).join('') + `</div>`
       : '';
     const backChain = chain.length
-      ? `<button id="back-in-chain" class="codex-btn codex-btn--primary" type="button" data-help="回到這條製作鏈的上一層（中間材做完了就回去做成品）">← 回「${deps.esc(chain[chain.length - 1].name)}」</button>`
+      ? `<button id="back-in-chain" class="codex-btn codex-btn--ghost" type="button" data-help="回到這條製作鏈的上一層（中間材做完了就回去做成品）">← 回「${deps.esc(chain[chain.length - 1].name)}」</button>`
       : '';
     const backToList = deps.getOpenedFromList()
       ? `<button id="back-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="回到製造清單分頁">← 回製造清單</button>`

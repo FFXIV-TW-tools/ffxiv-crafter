@@ -18,12 +18,14 @@
   function renderChips() {
     if (!deps) return;   // 未 init 即被呼叫（app.js 已保證順序）→ 防 destructure null 崩潰（對抗審 grok F2）
     const { $, esc, iconUrl, DOH, JOB_ICON } = deps;
-    // 職業篩選＝共用 .codex-btn 方形分段（Owner 拍板：不用 pill 橢圓）：選中＝--primary 填色 / 未選＝--ghost，aria-pressed 同步 a11y。
-    // 沿用真實職業 icon（JOB_ICON→xivapi），勿換 emoji。picker 與求解 work 互斥顯示 → 選中職業的 --primary 不會與 solve-btn 主 CTA 同框。
+    // 職業篩選＝方形分段（Owner 拍板：不用 pill 橢圓）。2026-08-17 由 `.codex-btn --primary/--ghost`
+    // 遷到共用 segmented `.codex-tab--boxed`：選中態走 aria-pressed（設計系統合法填色四處之一），
+    // 而 `--primary` 的語意是「本檢視唯一主動作」——拿它表達「這顆被選中」是借形不借意（§按鈕選型 Step 0 第 3 列）。
+    // 沿用真實職業 icon（JOB_ICON→xivapi），勿換 emoji。
     $('job-chips').innerHTML = ['', ...DOH].map(j => {
       const on = j === jobFilter;
       const ico = j && JOB_ICON[j] ? `<img src="${iconUrl(JOB_ICON[j])}" alt="" loading="lazy">` : '';
-      return `<button type="button" class="codex-btn ${on ? 'codex-btn--primary' : 'codex-btn--ghost'} job-btn" aria-pressed="${on}" data-job="${esc(j)}">${ico}${j || '全部'}</button>`;
+      return `<button type="button" class="codex-tab codex-tab--boxed job-btn" aria-pressed="${on}" data-job="${esc(j)}">${ico}${j || '全部'}</button>`;
     }).join('');
     $('job-chips').querySelectorAll('.job-btn').forEach(b => b.onclick = () => {
       jobFilter = b.dataset.job; renderChips(); renderTable();

@@ -150,7 +150,7 @@
         <div id="picker" class="is-loading">
           <!-- 篩選子面板：職業 + 搜尋/等級 組成獨立卡，與下方結果列表硬分兩區（Owner：界線更硬）-->
           <div class="codex-tint-panel codex-tint-panel--neutral filter-group">
-          <div class="job-chips" id="job-chips"></div>
+          <div class="job-chips" id="job-chips" role="group" aria-label="依製作職業篩選配方"></div>
           <div class="filter-row">
             <input id="recipe-search" class="codex-input grow" type="text" placeholder="搜尋配方名稱…" aria-label="搜尋配方名稱" autocomplete="off">
             <select id="level-filter" class="codex-select" aria-label="等級">
@@ -327,7 +327,7 @@
         <h2 class="codex-h2">職業任務 — 要交什麼</h2>
         <p class="codex-body hint">11 個製作／採集職業的職業任務與<b>交付物品</b>（台服解包）。勾起完成的任務，下方<b>只彙總還沒完成的</b>素材，並展開到<b>要去買／採的底層素材</b>。進度只存本機。
           交件數量取自社群試算表（<b>只在名稱完全對得上時採用</b>）；對不上的標<b>數量未知</b>並以 1 份估算，彙總區會寫出有幾件是估的。</p>
-        <div class="job-chips" id="quest-jobs"></div>
+        <div class="job-chips" id="quest-jobs" role="group" aria-label="選擇職業任務的職業"></div>
         <div class="crafter-qt-bar">
           <span id="quest-progress" class="crafter-qt-progress"></span>
           <label class="opt"><input type="checkbox" id="quest-hide-done"> 只顯示未完成</label>
