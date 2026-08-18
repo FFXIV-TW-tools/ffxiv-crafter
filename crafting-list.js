@@ -6,7 +6,7 @@
   const QTY_MIN = 1, QTY_MAX = 999;
   const SHOPLIST_MAX_TYPES = 100, SHOPLIST_MAX_QTY = 9999, SHOPLIST_MAX_CSV = 1800;
   const SHOPLIST_TOO_LARGE = 'shoplist-over-limit';
-  let deps = null;      // app.js 注入：{ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, toast }
+  let deps = null;      // app.js 注入：{ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, toast, pickRecipeForItem, vendorHtml }
   let byId = new Map(); // recipe id → recipe
   let list = [];        // [{ id, qty }]（qty＝製作次數）
   let saveWarned = false; // 保存失敗只提醒一次（每次加減都跳 toast 會變成噪音）
@@ -96,6 +96,37 @@
     deps.toast(found ? `✓「${nm}」已在清單 · 數量 +1（共 ${found.qty} 次）` : `✓ 已加入「${nm}」到製造清單`, 'ok');
   }
 
+  // 一次加 n 次製作（素材卡的「⚒ 加進清單」用）。不是 add() 呼叫 n 次——那會噴 n 個 toast。
+  // 撞到單筆上限時**只加到上限並誠實說**（同 add() 的既有取捨：不謊報加了 n 次）。
+  function addRuns(recipeId, runs) {
+    if (!deps || !byId.has(+recipeId)) return;
+    const n = clampQty(runs);
+    const nm = byId.get(+recipeId).item_name || ('#' + recipeId);
+    const found = list.find((e) => e.id === +recipeId);
+    const before = found ? found.qty : 0;
+    if (found) found.qty = clampQty(found.qty + n);
+    else list.push({ id: +recipeId, qty: n });
+    const after = before + n > QTY_MAX ? QTY_MAX : before + n;
+    save(); render(); notify();
+    const short = after - before < n;
+    deps.toast(short
+      ? `「${nm}」已達單筆製作上限（${QTY_MAX} 次），只加到 ${after} 次`
+      : `✓ 已把「${nm}」加進清單 · 製作 ${after} 次`, short ? 'warn' : 'ok');
+  }
+
+  // 取消一次（配方表每列 ＋ 旁邊那顆 −）。Owner 2026-08-19：加錯了不該逼人切到製造清單才收得回來。
+  // 語意與 add() 對稱＝**一次 −1**（不是整筆清掉）：加了 3 次的人按一下只想退一次；歸零才整筆移除。
+  function removeOne(recipeId) {
+    if (!deps) return;
+    const e = list.find((x) => x.id === +recipeId);
+    if (!e) return;                     // 不在清單：無聲早退（＋/− 是同一列的孿生鈕，沒東西可退時 − 本來就收起來）
+    const nm = (byId.get(+recipeId) || {}).item_name || ('#' + recipeId);
+    e.qty -= 1;
+    if (e.qty <= 0) list = list.filter((x) => x.id !== +recipeId);
+    save(); render(); notify();
+    deps.toast(e.qty > 0 ? `「${nm}」數量 −1（剩 ${e.qty} 次）` : `已從製造清單移除「${nm}」`, 'ok');
+  }
+
   const isCrystal = (iid, name) => deps.isCrystal(iid, name);   // 規則單一出口在 app.js（Q-02）
 
   function renderTabCount() {
@@ -137,18 +168,53 @@
         </div>
       </div>`;
     }).join('');
+    // 素材依「玩家接下來要做的事」分三組（原本一坨網格，Owner 2026-08-19：太陽春）：
+    //   ⚒ 可自製 → 它自己也有配方，給「加進清單」入口（要做幾次已經算好）
+    //   🛒 採集／購買 → 商人有賣的直接掛徽章（沿用職業任務分頁那支 vendorHtml，不另寫一份）
+    //   💠 晶體 → 恆殿後，對齊遊戲 BOM 呈現
+    // 分組只影響呈現：純文字複製與市場板交棒仍涵蓋全部素材。
     const mats = aggregateMats(list, deps.INGREDIENTS).map(([iid, total]) => {
       const it = ITEMS[String(iid)] || {};
       const name = it.name || ('#' + iid);
-      return { iid, total, name, icon: it.icon || null, crystal: isCrystal(iid, name) };
+      const crystal = isCrystal(iid, name);
+      // 晶體既做不出來也沒有商人 → 不查配方（免在晶體列冒出「加進清單」的假入口）
+      const child = crystal ? null : deps.pickRecipeForItem(iid);
+      // **往下傳的是「做幾次」不是「要幾個」**：一次產 3 個時要 4 個只需做 2 次（同 craftPlan 鐵則）
+      const times = child ? Math.ceil(total / Math.max(1, Number(child.item_amount) || 1)) : 0;
+      return { iid, total, name, icon: it.icon || null, crystal, child, times };
     });
-    const ordered = [...mats.filter((m) => !m.crystal), ...mats.filter((m) => m.crystal)]; // 晶體殿後，對齊遊戲 BOM 呈現
-    const matRows = ordered.map((m) => {
+    const GROUPS = [
+      { title: '⚒ 可自製中間材', pick: (m) => !m.crystal && !!m.child,
+        hint: '這些素材本身也有配方 — 按「加進清單」會把它排進上面的配方清單，次數已按產量算好' },
+      { title: '🛒 採集／購買', pick: (m) => !m.crystal && !m.child,
+        hint: '做不出來的東西 — NPC 商人有賣的會標出價格，其餘靠採集或市場板' },
+      { title: '💠 晶體', pick: (m) => m.crystal, hint: '以太之光兌換或上市場板買' },
+    ];
+    const matRow = (m) => {
       const ico = m.icon ? `<img class="cl-mat-ico" src="${iconUrl(m.icon)}" alt="" loading="lazy">` : '<span class="cl-mat-ico" aria-hidden="true"></span>';
-      // 素材名 → marketboard #/item（查價/來源）；晶體/水晶/晶簇亦可上市場板交易，故一律連（m.crystal 僅用於排序殿後）
+      // 素材名 → marketboard #/item（查價/來源）；晶體/水晶/晶簇亦可上市場板交易，故一律連（m.crystal 僅用於分組殿後）
       const nameHtml = `<a class="cl-mat-name cl-mat-name--link" href="${deps.mbItem(m.iid)}" target="ffxiv-marketboard" data-help="到市場板查「${esc(m.name)}」的價格與來源。共用同一分頁。">${esc(m.name)}</a>`;
-      return `<div class="cl-mat">${ico}${nameHtml}<span class="cl-mat-amt">×${m.total}</span></div>`;
+      // 商人徽章沿用職業任務分頁的 vendorHtml（不另寫一份）；needHq 不傳＝未知——
+      // 製造清單這一層沒有 HQ 要求的概念（要不要 HQ 素材是在配方詳情逐項指定）
+      const vendor = m.crystal ? '' : deps.vendorHtml(m.iid);
+      // 「加進清單」＝列級重複性動作（設計系統 §按鈕選型 列級豁免）→ ghost，不參賽 primary
+      const go = m.child
+        ? `<button type="button" class="codex-btn codex-btn--ghost cl-mat-go" data-rid="${m.child.id}" data-times="${m.times}"` +
+          ` data-help="把「${esc(m.name)}」的配方加進上面的製造清單（${esc(m.child.job)}，要做 ${m.times} 次）">⚒ 加進清單${m.times > 1 ? ' ×' + m.times : ''}</button>`
+        : '';
+      return `<div class="cl-mat">${ico}${nameHtml}<span class="cl-mat-amt">×${m.total}</span>${vendor}${go}</div>`;
+    };
+    const ordered = GROUPS.flatMap((g) => mats.filter(g.pick));   // 純文字複製與計數沿用同一個分組順序
+    const matRows = GROUPS.map((g) => {
+      const rows = mats.filter(g.pick);
+      if (!rows.length) return '';   // 空組整段不出（不留一個寫著「0 種」的空標題）
+      return `<div class="cl-matgroup">
+        <div class="cl-matgroup__head"><h4 class="codex-h4">${g.title} <span class="cl-matgroup__n codex-small">${rows.length} 種</span></h4>` +
+        `<span class="cl-matgroup__hint codex-small">${g.hint}</span></div>
+        <div class="cl-mats">${rows.map(matRow).join('')}</div>
+      </div>`;
     }).join('');
+    const matTotal = ordered.reduce((n, m) => n + m.total, 0);
     const matText = ordered.map((m) => `${m.name} ×${m.total}`).join('\n');   // 純文字採買清單（每行「名稱 ×數量」，貼遊戲/記事本）
     const copyBtn = ordered.length
       ? `<button class="cl-copy-mats codex-btn codex-btn--ghost" type="button" data-help="複製素材總需求為純文字。每行「名稱 ×數量」，可貼進遊戲或記事本。">📋 複製清單</button>`
@@ -169,12 +235,14 @@
       <section class="codex-tint-panel codex-tint-panel--neutral cl-card">
         <div class="cl-card-head">
           <h3 class="codex-h3">素材總需求</h3>
+          <span class="cl-count codex-small">${ordered.length} 種 · 合計 ${matTotal} 個</span>
           <div class="cl-card-actions">${copyBtn}${shopBtn}</div>
         </div>
-        <div class="cl-mats">${matRows || '<span class="codex-small">（無素材資料）</span>'}</div>
+        ${matRows || '<span class="codex-small">（無素材資料）</span>'}
       </section>`;
     const cm = box.querySelector('.cl-copy-mats');
     if (cm) cm.onclick = () => deps.copyText(matText, '✓ 已複製素材清單', '素材清單');
+    box.querySelectorAll('.cl-mat-go').forEach((b) => { b.onclick = () => addRuns(+b.dataset.rid, +b.dataset.times); });
     const sb = box.querySelector('.cl-shoplist');
     if (sb) sb.onclick = () => {
       const result = buildShoplistCsv(list, byId);
@@ -209,6 +277,8 @@
     add,
     has: (id) => list.some((e) => e.id === +id),                              // 配方表「已加入」標示查詢
     count: (id) => { const e = list.find((x) => x.id === +id); return e ? e.qty : 0; },  // 0＝未加入
+    addRuns,
+    removeOne,
     aggregateMats,
     buildShoplistCsv,
   };
