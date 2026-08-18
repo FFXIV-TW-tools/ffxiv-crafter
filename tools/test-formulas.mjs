@@ -812,6 +812,78 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   }
 }
 
+// ===== T58：素材總需求分三組 + 「加進清單」一次加 N 次（Owner 2026-08-19：這區太陽春）=====
+// 三件事只有資料斷言擋得住（畫面全都「正常」）：
+//   ① 可自製／採買／晶體要分開 —— 混成一坨時玩家看不出哪些其實該自己做
+//   ② 傳下去的是「做幾次」不是「要幾個」（同 craftPlan 鐵則）：一次產 3 個時要 4 個只需做 2 次，
+//      傳錯的話清單次數整批偏高，而畫面完全正常
+//   ③ 撞單筆上限要誠實（沿用 add() 的既有取捨，不謊報加了 N 次）
+{
+  const CL_SRC = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
+  const stubEl = () => ({ innerHTML: '', textContent: '', dataset: {},
+    classList: { toggle() {}, add() {}, remove() {} },
+    querySelector() { return null; }, querySelectorAll() { return []; },
+    appendChild() {}, addEventListener() {}, onclick: null });
+  const cell = stubEl();                       // #craft-list：要保留 innerHTML 才驗得到渲染結果
+  const box = { store: null };
+  const cl = { console,
+    localStorage: { getItem() { return box.store; }, setItem(k, v) { box.store = v; }, removeItem() { box.store = null; } },
+    document: { getElementById() { return stubEl(); }, querySelector() { return null; }, querySelectorAll() { return []; }, createElement() { return stubEl(); }, body: stubEl() } };
+  cl.globalThis = cl;
+  vm.createContext(cl);
+  vm.runInContext(CL_SRC, cl, { filename: 'crafting-list.js' });
+  const CL = cl.CraftList;
+  const MID = { id: 50, item_name: '中間材', item_amount: 3, job: '鍛造', rlv: 1, item_id: 5 };
+  const RECIPES = [{ id: 100, item_name: '成品', item_amount: 1, job: '鍛造', rlv: 1, item_id: 900 }, MID];
+  const toasts = [];
+  const deps = { $: () => cell, esc: (s) => s, iconUrl: () => '', RECIPES,
+    ITEMS: { 5: { name: '中間材' }, 6: { name: '鐵礦' }, 7: { name: '火之晶' } },
+    INGREDIENTS: { 100: [[5, 4], [6, 2], [7, 1]] },
+    selectRecipe() {}, switchTab() {}, showPicker() {}, toast: (m, v) => toasts.push([m, v]),
+    copyText() {}, mbItem: () => '#', mbCraft: () => '#', MARKETBOARD_BASE: '#',
+    isCrystal: (iid) => iid === 7,
+    pickRecipeForItem: (iid) => (iid === 5 ? MID : null),
+    vendorHtml: (iid) => (iid === 6 ? '<span class="codex-badge crafter-qt-tag--shop">🏪 100 G</span>' : ''),
+    onChange() {}, goSolve() {} };
+
+  box.store = JSON.stringify([{ id: 100, qty: 1 }]);
+  CL.init(deps);
+  const html = () => cell.innerHTML;
+  check('T58 三組都出（可自製／採集購買／晶體）',
+    /可自製中間材/.test(html()) && /採集／購買/.test(html()) && /晶體/.test(html()));
+  check('T58 可自製的素材給「加進清單」入口', /cl-mat-go[^>]*data-rid="50"/.test(html()));
+  check('T58 傳的是「做幾次」不是「要幾個」（要 4 個、一次產 3 → 做 2 次）',
+    /data-times="2"/.test(html()) && !/data-times="4"/.test(html()), html());
+  check('T58 買得到的素材掛商人徽章（沿用職業任務那支 vendorHtml）', /crafter-qt-tag--shop/.test(html()));
+  check('T58 晶體不給假入口（做不出來也沒商人）',
+    (html().match(/cl-mat-go/g) || []).length === 1 && (html().match(/crafter-qt-tag--shop/g) || []).length === 1);
+  check('T58 卡頭標出種數與合計件數', /3 種 · 合計 7 個/.test(html()), html().slice(0, 200));
+
+  CL.addRuns(50, 2);
+  eq('T58 addRuns 一次加 2 次製作', CL.count(50), 2);
+  eq('T58 addRuns 只噴一次 toast（不是 add() 呼叫兩次）', toasts.length, 1);
+  toasts.length = 0;
+  CL.addRuns(50, 999);
+  eq('T58 撞上限 → 夾到 999', CL.count(50), 999);
+  const lt = toasts[toasts.length - 1] || ['', ''];
+  check('T58 撞上限 → warn 且說出實際加到幾次（不謊報）', lt[1] === 'warn' && /999/.test(lt[0]), JSON.stringify(lt));
+  eq('T58 未知配方 id → 不入清單', (CL.addRuns(999, 2), CL.count(999)), 0);
+
+  // 就地取消：− 是「退一次」不是「整筆清掉」——加了 3 次的人按一下只想退一次
+  {
+    box.store = JSON.stringify([{ id: 50, qty: 3 }]);
+    CL.init(deps);
+    toasts.length = 0;
+    CL.removeOne(50);
+    eq('T58 removeOne → 一次 −1（不是整筆清掉）', CL.count(50), 2);
+    CL.removeOne(50); CL.removeOne(50);
+    eq('T58 removeOne 減到 0 → 整筆移除', CL.has(50), false);
+    const last = toasts[toasts.length - 1] || [''];
+    check('T58 移除時說得出是哪一筆', /中間材/.test(last[0]), JSON.stringify(last));
+    eq('T58 不在清單時 removeOne 無副作用', (CL.removeOne(50), CL.count(50)), 0);
+  }
+}
+
 // ===== T12：crafting-list 成品採購清單 CSV（送端契約 + 三道收端上限）=====
 {
   const CL_SRC = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
@@ -872,9 +944,9 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T11 init 缺依賴 → 早炸（注入契約不變量）', threwMiss);
 
   let rindex = [
-    { id: 1, name: '青銅錠', nameSc: '青铜锭', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬' },
-    { id: 2, name: '橡木材', nameSc: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材' },
-    { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料' },
+    { id: 1, name: '青銅錠', nameSc: '青铜锭', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬', diff: 1200, qual: 3400 },
+    { id: 2, name: '橡木材', nameSc: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材', diff: 300, qual: 900, expert: true },
+    { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料', diff: null, qual: null },
   ];
   CB.init(DEP);
 
@@ -886,7 +958,59 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   CB.renderTable();
   eq('T11 renderTable 無篩選 → 3 列', rowCount(), 3);
   eq('T11 recipe-count 顯示總數', $('recipe-count').textContent, '3 個配方');
-  eq('T11 種類副行渲染（rt-cat）', /rt-cat[^>]*>金屬</.test($('recipe-table').innerHTML), true);
+  eq('T11 種類獨立欄渲染（rt-cat）', /rt-cat[^>]*>金屬</.test($('recipe-table').innerHTML), true);
+
+  // 2026-08-19（Owner：名稱跟類別擠在一起、空間沒用滿）：種類由名稱副行拉成獨立欄，並補難度／品質。
+  // 欄數是 CSS 那組 `nth-child` 百分比寬的隱性契約 —— 只加 <td> 不改 CSS 的話最後一欄會被擠掉，
+  // 而畫面只是「有點怪」不會報錯 ⇒ 這裡把兩邊一起釘住。
+  {
+    const html = $('recipe-table').innerHTML;
+    eq('T11 表頭 8 欄（名稱/種類/職業/Lv/配方等級/難度/品質/加入）', (html.match(/<th[ >]/g) || []).length, 8);   // [ >] 才不會把 <thead 也算進去
+    const cssCols = (CSS_SRC.match(/\.rt th:nth-child\(\d\)/g) || []).length;
+    eq('T11 CSS 的欄寬宣告數 == 表頭欄數（漏一欄＝版面靜默走鐘）', cssCols, 8);
+    check('T11 難度／品質欄有值（來自 RINDEX 的 recipeMaxes 快照）', /<td>1200<\/td><td>3400<\/td>/.test(html), html.slice(0, 400));
+    check('T11 名稱不再有副行 wrapper（rt-nmwrap 已退場）', !/rt-nmwrap/.test(html) && !/rt-nmwrap/.test(CSS_SRC));
+    // 缺 rlv 列時 app.js 給 null ⇒ 顯「—」而不是假的 0（0 難度會被讀成「這配方超簡單」）
+    check('T11 難度／品質缺值 → 顯「—」不顯 0', /<td>—<\/td><td>—<\/td>/.test(html), html.slice(0, 400));
+    // 加入鈕改內嵌向量（全形「＋」的重量／垂直位置隨系統字型跑）
+    check('T11 加入鈕是向量不是字元', /class="[^"]*rt-add[^"]*"[^>]*>\s*<svg/.test(html) && !/>＋</.test(html));
+    check('T11 加入鈕仍是 ghost 圖示鈕（列級豁免：不參賽 primary）',
+      /rt-add/.test(html) && !/codex-btn--primary[^>]*rt-add|rt-add[^>]*codex-btn--primary/.test(html));
+    check('T11 SVG 有本地尺寸（.codex-btn--icon 不管內嵌 svg 大小）', /\.rt-add > svg[^}]*width:/.test(CSS_SRC));
+    check('T11 index.html 有 #expert-filter（app-browse 直接讀它，缺了 renderTable 當場炸）',
+      /id="expert-filter"/.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')));
+    // 實測踩過：控件加進 index.html、篩選邏輯也寫了，但**沒接 change** ⇒ 畫面上有一顆按了沒反應的下拉，
+    // 且 console 全乾淨（T11 的 renderTable 直呼測試也照樣綠）。接線只有原始碼斷言擋得住。
+    check('T11 #expert-filter 有接 change → renderTable（有控件沒接線＝按了沒反應）',
+      /\$\('expert-filter'\)\.addEventListener\('change'/.test(fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8')));
+  }
+
+  // 高難度（expert）＝**配方屬性**不是名字（Owner 2026-08-19 特別澄清）：遊戲內製作狀態隨機，
+  // 靜態巨集只能當參考 ⇒ 想練的人要找得到、想避的人要濾得掉，而它在列表上原本完全沒有痕跡。
+  {
+    check('T11 高難度配方掛徽章', /rt-expert[^>]*>高難度</.test($('recipe-table').innerHTML));
+    eq('T11 沒掛徽章的列不會被誤標', ($('recipe-table').innerHTML.match(/rt-expert/g) || []).length, 1);
+    $('expert-filter').value = 'only'; CB.renderTable();
+    eq('T11 只看高難度 → 1 列', rowCount(), 1);
+    check('T11 只看高難度 → 留下的是那筆 expert', /橡木材/.test($('recipe-table').innerHTML));
+    $('expert-filter').value = 'hide'; CB.renderTable();
+    eq('T11 排除高難度 → 2 列', rowCount(), 2);
+    check('T11 排除高難度 → 那筆 expert 不在', !/橡木材/.test($('recipe-table').innerHTML));
+    // 只設高難度篩選而 0 命中時要說「無符合配方」，不是一片空白（同 rlvVal 那條的既有教訓）
+    $('expert-filter').value = 'only';
+    rindex = [{ id: 1, name: '青銅錠', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬' }];
+    CB.renderTable();
+    eq('T11 僅高難度篩選 0 命中 → 「無符合配方」', $('recipe-count').textContent, '無符合配方');
+    $('expert-filter').value = '';
+    rindex = [
+      { id: 1, name: '青銅錠', nameSc: '青铜锭', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬', diff: 1200, qual: 3400 },
+      { id: 2, name: '橡木材', nameSc: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材', diff: 300, qual: 900, expert: true },
+      { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料', diff: null, qual: null },
+    ];
+    CB.renderTable();
+    // 篩選指紋漏掉新控件的話：切篩選不回第 1 頁，玩家會停在不存在的頁而看到空表
+    check('T11 高難度篩選有進 filterKey（切換會回第 1 頁）', /expert-filter/.test(AB_SRC.split('function filterKey')[1].slice(0, 300)));
+  }
 
   $('recipe-search').value = '青銅'; CB.renderTable();
   eq('T11 搜尋「青銅」→ 1 列', rowCount(), 1);
@@ -940,6 +1064,45 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   rindex = rindex.slice(0, 10); CB.renderTable();
   eq('T11 只有一頁 → 翻頁器清空', $('recipe-pager').innerHTML, '');
   eq('T11 只有一頁 → recipe-count 不顯示頁碼', $('recipe-count').textContent, '10 個配方');
+
+  // ===== 就地取消（Owner 2026-08-19：「不要一定得到清單才能取消，＋右邊多一個取消不就好了」）=====
+  // markListState 是 in-place 更新（不重建表）⇒ − 鈕必須**先 render 再用 hidden 收合**，
+  // 不能「不在清單就不 render」——那會在每次清單變動時重建 DOM、把焦點吃掉。
+  {
+    rindex = [{ id: 1, name: '青銅錠', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬', diff: 1, qual: 2 }];
+    $('recipe-search').value = ''; $('expert-filter').value = '';
+    // markListState 要能真的抓到列與鈕 → 這裡給一個會回傳假 tr/鈕的表格節點
+    const delBtn = { hidden: false, dataset: { id: '1' } };
+    const badgeLine = { querySelector: () => null, appendChild() {} };
+    const tr = { dataset: { id: '1' }, classList: { toggle() {} },
+      querySelector: (sel) => (sel === '.rt-del' ? delBtn : badgeLine) };
+    const tbl = $('recipe-table');
+    tbl.querySelectorAll = (sel) => (sel === '.rt-row' ? [tr] : []);
+    CB.renderTable();
+    const html = tbl.innerHTML;
+    check('T11 每列都渲染 − 鈕（預設 hidden，不是不 render）', /rt-del[^>]*hidden|hidden[^>]*rt-del/.test(html), html.slice(0, 600));
+    check('T11 − 鈕不是 danger（列級豁免：一表 60 顆紅 ✕＝紅色的狼來了）', !/rt-del[^>]*--danger|--danger[^>]*rt-del/.test(html));
+    ab.CraftList = { count: () => 0, removeOne() {}, add() {} };
+    CB.markListState();
+    eq('T11 不在清單 → − 收起（不留一顆按了沒反應的鈕）', delBtn.hidden, true);
+    ab.CraftList.count = () => 2;
+    CB.markListState();
+    eq('T11 已在清單 → − 出現', delBtn.hidden, false);
+    // Owner 2026-08-19：− 出現／消失都不得推動 ＋。槽位固定＝兩欄定寬 grid（flex 會在 − 收掉時重新置中，
+    // ＋ 往左跳一格 ⇒ 剛按完「加入」的游標正好停在 − 上，下一下就誤點成移除）。
+    check('T11 ＋− 是固定兩格槽位（− 收掉時 ＋ 不位移）',
+      /\.rt-act \.rt-actwrap\s*\{[^}]*inline-grid[^}]*grid-template-columns:\s*repeat\(2,/.test(CSS_SRC), 'CSS 未定義定寬兩欄槽位');
+    // 點 − 要打到 removeOne（不是 add，也不是選配方進詳情）
+    let removed = null, added = null, selected2 = null;
+    ab.CraftList = { count: () => 1, removeOne: (id) => { removed = id; }, add: (id) => { added = id; } };
+    const target = { closest: (sel) => (sel === '.rt-del' ? { dataset: { id: '1' } } : null) };
+    DEP.selectRecipe = (id) => { selected2 = id; };
+    CB.init(DEP); CB.renderTable();
+    tbl.onclick({ target });
+    eq('T11 點 − → removeOne(該配方)', removed, 1);
+    check('T11 點 − 不會順便 add，也不會進配方詳情', added === null && selected2 === null);
+    delete ab.CraftList;
+  }
 
   // markListState 無 CraftList → 守衛不拋錯（grok F4/F2）
   let threwMLS = false;

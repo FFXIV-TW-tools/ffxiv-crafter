@@ -109,7 +109,17 @@ async function loadData() {
     nameSc: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].name_sc) || '',
     level: (RLV[String(r.rlv)] && RLV[String(r.rlv)].class_job_level) || 0,
     icon: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].icon) || null,
-    category: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].category) || '', // 道具種類（繁中）→ 配方名副行說明
+    category: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].category) || '', // 道具種類（繁中）→ 配方表獨立一欄
+    expert: !!r.is_expert,   // 高難度（expert）＝遊戲內隨機製作狀態的配方（536 筆）；配方表標徽章＋可篩選
+    // 難度／品質上限：**一律走 recipeMaxes**（顯示與求解共用同一算式的鐵則，CQ-01）——
+    // 這裡多一份 `rlv.difficulty * factor / 100` 就是第二份公式，改版時只會有一邊被改到。
+    // 缺 rlv 列（資料半套）→ 給 null，渲染端顯「—」而不是假的 0。
+    ...(function () {
+      const row = RLV[String(r.rlv)];
+      if (!row) return { diff: null, qual: null };
+      const m = recipeMaxes(r, row);
+      return { diff: m.max_progress, qual: m.max_quality };
+    })(),
   }));
   // **必須在兩份配方索引建好之後**：職業任務的素材展開要靠它們判斷「這件東西做得出來嗎」，
   // 早一步呼叫的話整份清單會靜默變成「全部非製作」（畫面正常、只是全錯）。
@@ -474,6 +484,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   const debouncedRender = debounce(renderTable, 180); // 搜尋/rlv 逐字輸入不必每鍵重繪 11803 筆
   $('recipe-search').addEventListener('input', debouncedRender);
   $('level-filter').addEventListener('change', renderTable);
+  $('expert-filter').addEventListener('change', renderTable);   // 高難度篩選（漏掉這行＝控件在畫面上但按了沒反應）
   $('rlv-filter').addEventListener('input', debouncedRender);
   $('solve-btn').addEventListener('click', () => globalThis.CraftSolve.doSolve());
   $('cancel-btn').addEventListener('click', () => globalThis.CraftSolve.cancelSolve());
@@ -491,6 +502,10 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   if (!globalThis.CraftList) throw new Error('crafting-list.js 未載入（部署不完整）');
   {
     globalThis.CraftList.init({ $, esc, iconUrl, RECIPES, ITEMS, INGREDIENTS, selectRecipe, switchTab, showPicker, toast, copyText, mbItem, mbCraft, MARKETBOARD_BASE, isCrystal, onChange: markListState,
+      // 素材卡「可自製」分組與商人徽章：一律借既有實作，不在製造清單層另刻一份
+      // （挑配方＝CraftRecipe.pickRecipeForItem 的「優先挑玩家有填數值的職業」；商人＝職業任務分頁的 vendorHtml）
+      pickRecipeForItem: (iid) => globalThis.CraftRecipe?.pickRecipeForItem?.(Number(iid)) || null,
+      vendorHtml: (iid) => globalThis.CraftQuests?.vendorHtml?.(iid) || '',
       goSolve: (id) => { if (selectRecipe(id, true)) switchTab('solve', true); } }); // 前往求解：selectRecipe 失敗（缺 rlv）就不切頁；成功才切+移焦，詳情顯示「← 回製造清單」
     markListState(); // 初載：清單已 load，回填首屏配方表的「已加入」標示（renderTable 早於 init 執行時清單尚空）
   }

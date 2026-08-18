@@ -147,24 +147,45 @@ body {
    **--sticky 才是重點**：它用 `border-collapse: separate` 解掉 portal 記錄的三個坑，其中第 ③ 個
    （collapse 下 th 的 border-bottom 由 table 畫、不跟著 sticky 移動 ⇒ 捲動時列直接穿到表頭下方、
    沒有分隔線）本站原本就中招——2026-08-15 截圖實證。本地只留字級與各欄的視覺特化。 */
-.rt { font-size: var(--fs-small); }
+/* 8 欄在窄屏擠不下 → 給表格 min-width 保底、由容器 `.recipe-table` 的 overflow-x 橫捲
+   （📊 表格佈局穩定鐵則 場景 1 的指定做法；別硬擠到換行崩版）。 */
+.rt { font-size: var(--fs-small); min-width: 880px; }
 /* 表頭加亮（原 --color-surface 與 panel 同色會融）＋下緣 accent 分隔線 → 明確界定列表頂、與篩選區分開 */
 .rt thead th { background: var(--color-surface-hover); text-align: left;
   padding: var(--space-2, 8px); border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, var(--color-border)); }
-/* 固定列高 + 淡化分隔線：每列都畫實線＝密集網格感，掃視改交給斑馬紋 */
-.rt td { padding: var(--space-1, 4px) var(--space-2, 8px); height: 46px;
+/* 固定列高 + 淡化分隔線：每列都畫實線＝密集網格感，掃視改交給斑馬紋。
+   46→26px（2026-08-19）：種類由「名稱下的副行」改成獨立欄後名稱回到單行，
+   列高不必再容納兩行 ⇒ 同一個視窗高度多看到約 1/3 的配方（Owner：捲動軸太早出現、空間沒用滿）。
+   ⚠ `<td>` 的 `height` 是**內容盒**的下限，padding 與 border 另外加上去（`box-sizing: border-box`
+   對 table-cell 不生效）⇒ 實際列高＝26 + 4×2 + 1 ＝ 35px，不是 26。舊值 46 其實畫出 55px 的列，
+   而「宣告 46、量到 55」看起來像是別處在撐 ⇒ 這行的數字一律以量測為準（實測：`height:auto` 同為 35）。 */
+.rt td { padding: var(--space-1, 4px) var(--space-2, 8px); height: 26px;
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
 .rt th:not(:first-child), .rt td:not(.rt-name) { white-space: nowrap; text-align: center; }
-.rt th:nth-child(1) { width: 44%; }   /* 名稱（含種類副行）*/
-.rt th:nth-child(2) { width: 16%; }   /* 職業（含 icon）*/
-.rt th:nth-child(3) { width: 10%; }   /* Lv */
-.rt th:nth-child(4) { width: 16%; }   /* 配方等級 */
-.rt th:nth-child(5) { width: 14%; }   /* 加入清單操作欄 */
-.rt td:nth-child(3), .rt td:nth-child(4) { font-variant-numeric: tabular-nums; }  /* 位數不同不左右晃 */
+.rt th:nth-child(1) { width: 28%; }   /* 名稱 */
+.rt th:nth-child(2) { width: 13%; }   /* 種類（原本擠在名稱下方的副行，2026-08-19 拉成獨立欄）*/
+.rt th:nth-child(3) { width: 12%; }   /* 職業（含 icon）*/
+.rt th:nth-child(4) { width: 7%; }    /* Lv */
+.rt th:nth-child(5) { width: 11%; }   /* 配方等級 */
+.rt th:nth-child(6) { width: 10%; }   /* 難度（＝作業進展上限）*/
+.rt th:nth-child(7) { width: 10%; }   /* 品質（＝品質上限）*/
+.rt th:nth-child(8) { width: 9%; }    /* 操作欄：＋ 恆在、− 已在清單時才出（兩顆都是 26px）*/
+/* 位數不同不左右晃（Lv／配方等級／難度／品質四個數字欄）*/
+.rt td:nth-child(4), .rt td:nth-child(5), .rt td:nth-child(6), .rt td:nth-child(7) { font-variant-numeric: tabular-nums; }
 .rt-act { text-align: center; white-space: nowrap; }
+/* **固定兩格的槽位**（Owner 2026-08-19：「＋− 位置請固定，不要 − 出現了改變 ＋ 的位置」）：
+   用 inline-grid 定寬兩欄而不是 flex —— flex 下 − 被 `[hidden]` 收掉時（portal 的 `.codex-btn[hidden]`
+   中央守衛）整組會重新置中，於是「加進清單」那一瞬間 ＋ 會往左跳，游標剛好停在原位就會誤點到 −。
+   grid 的空欄不會塌，所以 ＋ 恆在第一欄、− 恆在第二欄。欄寬＝`.codex-btn--icon` 的 38px。 */
+.rt-act .rt-actwrap { display: inline-grid; grid-template-columns: repeat(2, 38px);
+  align-items: center; justify-items: center; gap: var(--space-1, 4px); }
 .rt-actcol { text-align: center; }
-/* 密集列裡 38px 主控件過重 → 收成 28px 方鈕（帶組合子的 contextual override，不動 .codex-btn 根 selector）*/
-.rt-act .codex-btn { height: 28px; min-width: 28px; padding: 0 var(--space-1, 4px); }
+/* 密集列裡 38px 主控件過重 → 收成 26px 方鈕（帶組合子的 contextual override，不動 .codex-btn 根 selector）。
+   28→26px：列高改 34px 後，28px 鈕加上 td 的 4px 上下 padding 會把列頂回 36px（宣告的固定列高就失效了）。*/
+.rt-act .codex-btn { height: 26px; min-width: 26px; padding: 0 var(--space-1, 4px); }
+/* `.codex-btn--icon` 只管尺寸與 padding、**不**替內嵌 SVG 定尺寸（那是 `.codex-icon-btn` 才有的事）
+   ⇒ 消費端自己給，否則 SVG 會吃 viewBox 預設而撐爆按鈕。數值對齊共用版的 15px 維持視覺重量。 */
+.rt-add > svg, .rt-del > svg { display: block; width: 15px; height: 15px; }
 /* 觸控補償（同 .ing-hq-in 既有慣例）：28px 在手機上太小，且整列本身可點＝誤觸會變成「選配方」 */
 @media (pointer: coarse) { .rt-act .codex-btn { height: 40px; min-width: 40px; } }
 /* 斑馬紋＝掃視主力；:not() 讓「已加入綠底」與「選中」兩個語意態一定贏過純裝飾的斑馬 */
@@ -180,16 +201,19 @@ body {
 /* 選中 + 已在清單同時成立時：選中態（暫時焦點）優先於綠底 → accent 淡染 + is-sel 的 accent 外框仍在，確保「目前選到哪列」不被綠底吃掉（對抗審 grok F5）*/
 .rt-row.rt-in.is-sel { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .rt-inlist { flex: none; }  /* 名稱旁「已加入 ×N」綠徽章不被名稱壓縮（間距走 .rt-nmline gap） */
+.rt-expert { flex: none; }  /* 同上：高難度徽章不被名稱壓縮 */
 /* ⚠ 勿對 <td> 設 display:flex — 會使該 cell 失去 table-cell 語意、不與同列等高，border-bottom 與他欄錯開（名稱/職業分隔線不對齊的老 bug）。flex 一律放 td 內層 wrapper。 */
 .rt-name { font-weight: var(--fw-semibold, 600); }
 .rt-cellflex { display: inline-flex; align-items: center; gap: var(--space-1, 4px); min-width: 0; max-width: 100%; vertical-align: middle; }
 .rt-ico { width: 24px; height: 24px; flex: none; }
 /* 名稱兩行：第一行「成品名 + 已加入徽章」、第二行道具種類（繁中）補充說明。flex 放內層 wrapper，不動 td 的 table-cell 語意（名稱/職業分隔線對齊鐵則）*/
-.rt-nmwrap { display: flex; flex-direction: column; min-width: 0; line-height: var(--lh-tight, 1.2); }
 /* min-height 預留徽章高度 → 有/無「已加入」徽章的列**等高**（原本插了徽章那幾列會比其他列高一截）*/
 .rt-nmline { display: flex; align-items: center; gap: var(--space-2, 8px); min-width: 0; min-height: 22px; }
 .rt-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rt-cat { font-weight: var(--fw-regular, 400); }  /* 種類副行：靠字級（codex-small）+ 字重與名稱分層，不降對比（灰字鐵則：不與最小字級疊 muted）*/
+/* 種類獨立欄：字重與名稱分層即可，不降對比（灰字鐵則：不與最小字級疊 muted）。
+   靠左＝與名稱同一個閱讀軸；特異度 (0,2,0) 且寫在 `.rt td:not(.rt-name)` 之後才蓋得掉那條置中。 */
+.rt td.rt-cat { text-align: left; font-weight: var(--fw-regular, 400);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rt-job { white-space: nowrap; }
 .rt-jico { width: 18px; height: 18px; vertical-align: middle; margin-right: 2px; }
 /* 當前位置狀態列（目前配方：X）；返回控件＝右上「← 返回配方列表」鈕。不做「配方瀏覽›」假 nav 麵包屑（死 span 會誤導可點）。*/
@@ -573,14 +597,28 @@ body {
 .cl-qty-in { width: 68px; text-align: center; }
 .cl-del { flex: 0 0 auto; }
 .cl-rows .cl-row:last-child { border-bottom: none; }  /* 卡片內最後一列不留懸邊 */
-.cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+/* 素材依「接下來要做什麼」分三組（可自製 / 採集購買 / 晶體）：每組一個標題 + 一句該怎麼處理 */
+.cl-matgroup { margin-bottom: var(--space-4, 16px); }
+.cl-matgroup:last-child { margin-bottom: 0; }
+.cl-matgroup__head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-1, 4px) var(--space-3, 12px);
+  margin-bottom: var(--space-2, 8px); border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-1, 4px); }
+.cl-matgroup__head > .codex-h4 { margin: 0; }
+.cl-matgroup__n { color: var(--accent); font-variant-numeric: tabular-nums; }
+/* 組說明吃剩餘寬並靠右：長度差很多（三組文案不等長），靠左會讓三個標題右邊參差 */
+.cl-matgroup__hint { flex: 1; min-width: 0; text-align: right; }
+/* 220→320px：列內多了商人徽章與「加進清單」鈕，220px 欄會被擠到換行 */
+.cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-1, 4px) var(--space-4, 16px); }
-.cl-mat { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 32px; }
+.cl-mat { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 34px; }
 .cl-mat-ico { width: 22px; height: 22px; flex: 0 0 auto; }
-.cl-mat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 名稱吃剩餘寬（原本靠 .cl-mat-amt 的 margin-left:auto 推右，加了徽章/按鈕後那招會把數量也一起推到最右）*/
+.cl-mat-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cl-mat-name--link { color: inherit; text-decoration: none; }   /* 素材名連 marketboard 查價/來源；hover 才亮 accent */
 .cl-mat-name--link:hover { color: var(--accent); text-decoration: underline; }
-.cl-mat-amt { margin-left: auto; flex: 0 0 auto; font-weight: var(--fw-semibold, 600); color: var(--accent); }
+.cl-mat-amt { flex: 0 0 auto; font-weight: var(--fw-semibold, 600); color: var(--accent); font-variant-numeric: tabular-nums; }
+/* 密集列裡 38px 主控件過重（同 .rt-act 的既有取捨）→ 收成 26px */
+.cl-mat-go { flex: 0 0 auto; height: 26px; padding: 0 var(--space-2, 8px); font-size: var(--fs-xs, .6875rem); }
+@media (pointer: coarse) { .cl-mat-go { height: 38px; } }   /* 觸控補償（同 .rt-act） */
 
 /* ---- 職業任務分頁（app-quests.js）----
    左：任務清單（勾完成）｜右：未完成任務的素材彙總。兩欄在窄屏堆疊。 */

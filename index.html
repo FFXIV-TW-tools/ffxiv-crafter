@@ -162,6 +162,13 @@
               <option value="81-90">Lv 81–90</option><option value="91-100">Lv 91–100</option>
             </select>
             <input id="rlv-filter" class="codex-input rlv-in" type="number" min="0" inputmode="numeric" placeholder="配方等級" aria-label="配方等級">
+            <!-- 高難度＝配方屬性（is_expert），不是名字裡有那三個字：遊戲內製作狀態隨機，
+                 靜態巨集只能當參考 ⇒ 想練/想避的人都需要一個「只看／排除」的開關。 -->
+            <select id="expert-filter" class="codex-select" aria-label="高難度配方">
+              <option value="">高難度：全部</option>
+              <option value="only">只看高難度</option>
+              <option value="hide">排除高難度</option>
+            </select>
           </div>
           </div><!-- /filter-group -->
           <div id="recipe-count" class="recipe-count codex-small"></div>

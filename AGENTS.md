@@ -76,12 +76,12 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="577" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="617" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **577**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
+> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **617**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
 > 逐輪沿革＝[`docs/test-baseline-history.md`](docs/test-baseline-history.md)；「為什麼這幾支被併進 canonicalTest」＝[`docs/lessons.md`](docs/lessons.md)。
 
 ```bash
@@ -119,7 +119,10 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 - **`build-data.py` 缺上游輸入＝exit 1**（B-030）：缺的那份不覆蓋（前一個好狀態保留），但**不得回報成功**——以前印一行 ⚠ 就照跑到底，等於「以為重建了，其實 data/ 還是舊檔」。新增上游輸入時用 `problem()` 不要用 `print`。
 - **資料檔的 ratchet 只准升不准降**（T31／T32／T54）：交付數量對帳 228/290、商人 NPC 247/256、食藥 icon 全中、quality-stages 992 筆。這些的產生端全是 fail-open（查無寫 null、照樣 ✓），退步時畫面只是「多幾件標未知」⇒ **零訊號，只有資料斷言擋得住**。
 - **expert（高難度）配方靜態巨集僅供參考**：536 個 expert 配方在遊戲內為隨機製作狀態 → render 用中性「試算完成 ⚠」+ 警語（**勿改回無條件「✓ 可完成」金徽**）。
-- **求解上限單一算式**：顯示與求解共用 `recipeMaxes(recipe, rlv)`，勿內聯重算。
+- **求解上限單一算式**：顯示與求解共用 `recipeMaxes(recipe, rlv)`，勿內聯重算——配方表的「難度／品質」欄同樣走它（RINDEX 建索引時算一次），缺 rlv 列顯「—」不顯 0。
+- **高難度是配方屬性 `is_expert`（536 筆）不是名字**：列表掛 `.rt-expert` 徽章＋`#expert-filter` 三態（全部／只看／排除）。**新增任何篩選控件都要同時做三件事**：進 `filterKey()`（否則切篩選不回第 1 頁 → 停在不存在的頁看到空表）、進「無符合配方」判斷、在 `app.js` 掛 `change`（漏了就是「畫面有控件、按了沒反應」而 console 全乾淨）。T11 三條都有守。
+- **配方表可就地增減**：每列 ＋（加一次）／−（退一次，減到 0 整筆移除）。− **恆 render、用 `hidden` 收合**——`markListState` 是 in-place 更新（保留焦點），改成「不在清單就不 render」會每次清單變動重建 DOM。兩顆都**不上 `--danger`**（同質可重加物件的列級增減走設計系統豁免）。**槽位固定＝定寬兩欄 grid**（Owner 2026-08-19）：flex 下 − 收掉時整組會重新置中、＋ 往左跳一格，剛按完加入的游標正好停在 − 上。T11 守。
+- **素材總需求分三組**（可自製／採集購買／晶體）：挑配方走 `CraftRecipe.pickRecipeForItem`、商人徽章走 `CraftQuests.vendorHtml`，**不在製造清單層另刻一份**。「⚒ 加進清單」傳的是**做幾次**不是要幾個（一次產 3 個時要 4 個只需做 2 次）；`removeOne` 是 −1 不是整筆清掉。T58 守。
 - **改任一求解輸入 → 舊巨集失效**：`invalidateResults()` 集中失效（opt-* / 目標品質 / solve-mode / HQ 素材 / 食藥 / 角色數值）。程式設值不觸發 input 者須手動呼叫；新增求解輸入時記得掛。
 - **巨集每一段結尾都要有帶音效的 `/echo`**（Owner 2026-08-16）：中段「第 N 段完成」、末段「製作完成」。連帶**開音效時單段容量是 14 步不是 15**（遊戲上限 15 行，最後一行留給 echo）。**兩個例外**：① 剩下**剛好 15 步**的末段整段塞滿、不補 echo——為一行提示音多切一段＝玩家多存一格巨集、多按一次（只有末段會命中，中段的「第 N 段完成」不會被吃掉）；② 玩家可用 `#macro-echo` 關掉音效（偏好存 `ffxiv-crafter-macro-echo-v1`），關掉時單段回到 15 步。切換只重組巨集、**不是求解輸入**（不進 `invalidateResults()`）。T39 驗每段 ≤15 行、不漏步、段數 golden 與開關接線。
 
@@ -141,6 +144,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 ### UI / 設計系統
 
 - **中性分組容器的幾何走共用 `.codex-tint-panel--neutral`**、底色以 `--panel-bg` 傳參，本地只留 padding 與外距——**不得把 background／border／border-radius 寫回本地**（值一樣所以畫面全正常，但幾何就分岔成兩份事實源）。**巢狀時一律顯式寫 `--panel-bg`**：那是 CSS 自訂屬性、**會繼承**，不指定就吃到父層底色（T36）。
+- **配方表欄數與 CSS 的 `nth-child` 百分比寬是隱性契約**：只加 `<td>` 不改 CSS ⇒ 最後一欄被擠掉而畫面只是「有點怪」（T11 對帳兩邊數量）。⚠ `<td>` 的 `height` 是**內容盒**下限，padding／border 另外加（`box-sizing` 對 table-cell 不生效）⇒ 實際列高＝宣告值 ＋9px；改列高一律以量測為準（舊值宣告 46 實際畫 55）。
 - **表格一律消費共用 `.codex-table`**（`.rt`／`.wt-table`／`.gear-table`）：欄寬脫鉤用 `--fixed`、表頭釘頂用 `--sticky`。**不要自刻 sticky**——`border-collapse: collapse` 下 th 的 border-bottom 由 table 畫、不跟著 sticky 移動 ⇒ 捲動時列穿到表頭下方沒有分隔線（本站原本就中招）。本地只留視覺特化（T50）。列內可能插徽章的儲存格要預留 `min-height`，否則有徽章的列高一截。
 - **功能性圖示鈕與剪貼簿走 portal 共用元件**：`window.FFXIVIcons.btnHTML(name, label, attrs)`／`window.FFXIVClipboard.copy(text, label)`；缺 CDN 時要有退場版（功能不消失，T34）。**禁自刻 emoji 鈕**（字型相依、拿不到 currentColor、縮小後糊）。⚠ `label` 必填（缺會 throw）。⚠ 鈕不能放進 `<a>` 裡（互動元素不得互套），素材列因此是「容器 div ＋ 內層連結 ＋同層的鈕」，click 要 `preventDefault()`。**帶文字的動作鈕（`📋 加入清單`）刻意維持 emoji**，別順手統一（T35 有負向哨兵）。
 - **hover 說明一律 `data-help`，禁原生 `title`**：圖示鈕另補 `aria-label`；`window.FFXIVHelp.setup()` 在 init 呼叫一次（冪等）。

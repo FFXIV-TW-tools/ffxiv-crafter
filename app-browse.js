@@ -12,7 +12,7 @@
 
   function filterKey() {
     const { $ } = deps;
-    return [jobFilter, $('recipe-search').value.trim(), $('level-filter').value, $('rlv-filter').value].join('|');
+    return [jobFilter, $('recipe-search').value.trim(), $('level-filter').value, $('rlv-filter').value, $('expert-filter').value].join('|');
   }
 
   function renderChips() {
@@ -32,6 +32,28 @@
     });
   }
 
+  // 「加入」鈕＝列級重複性動作（設計系統 §按鈕選型 第 0 步列級豁免）→ 恆 ghost 圖示鈕，不參賽 primary。
+  // 圖示用**內嵌向量**而不是全形「＋」：字元版的重量／垂直位置隨系統字型跑（Owner 2026-08-19 回報「有好看一點的按鈕嗎」），
+  // 且拿不到 currentColor。畫法逐項對齊 portal `FFXIVIcons` 的慣例（viewBox 0 0 18 18／stroke currentColor／
+  // stroke-width 1.75／linecap round）⇒ 與同頁的 ✕／📋 圖示視覺重量一致。
+  // ⚠ 沒改用 `FFXIVIcons.btnHTML`：共用圖示組刻意只收「已在 2 個以上 repo 被 emoji 頂替過」的圖示，
+  //   plus 目前只有本站要用（rule of two 未達）⇒ 第二個 repo 需要時再提 Owner 升格，不單邊往共用 API 加東西。
+  const ICON = (d) => '<svg viewBox="0 0 18 18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"'
+    + ' stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="' + d + '"/></svg>';
+  const PLUS_SVG = ICON('M9 4.25v9.5M4.25 9h9.5');
+  const MINUS_SVG = ICON('M4.25 9h9.5');
+  // ＋ 恆在；− 只在該配方已在清單時出現（markListState 切 hidden）。
+  // Owner 2026-08-19：「不要一定得到清單才能取消」——加錯了要能就地退回，而不是切分頁去刪。
+  // − **不是 danger**：同質可重加物件的列級增減走豁免（設計系統 §按鈕選型 第 0 步），一表 60 顆紅✕＝紅色的狼來了。
+  // 兩顆都在同一格且 − 用 hidden 收合（不是不 render）→ markListState 是 in-place 更新、不重建表，焦點不掉。
+  function addBtn(r) {
+    const { esc } = deps;
+    return `<span class="rt-actwrap"><button type="button" class="codex-btn codex-btn--ghost codex-btn--icon rt-add" data-id="${r.id}"`
+      + ` aria-label="將「${esc(r.name)}」加入製造清單" data-help="加入製造清單（不離開目前畫面）">${PLUS_SVG}</button>`
+      + `<button type="button" class="codex-btn codex-btn--ghost codex-btn--icon rt-del" data-id="${r.id}" hidden`
+      + ` aria-label="把「${esc(r.name)}」從製造清單退掉一次" data-help="從製造清單退一次（減到 0 就整筆移除）">${MINUS_SVG}</button></span>`;
+  }
+
   function renderTable() {
     if (!deps) return;   // 同 renderChips：防未 init 崩潰（對抗審 grok F2）
     const { $, esc, iconUrl, JOB_ICON, NAME_COLLATOR, getRINDEX, getSelected, selectRecipe, toast } = deps;
@@ -41,10 +63,12 @@
     const range = $('level-filter').value;
     const [lo, hi] = range ? range.split('-').map(Number) : [0, 999];
     const rlvVal = +$('rlv-filter').value || 0;
+    const expertMode = $('expert-filter').value;   // '' 全部 / only 只看高難度 / hide 排除
     let list = RINDEX.filter(r =>
       (!jobFilter || r.job === jobFilter) &&
       (!range || (r.level >= lo && r.level <= hi)) &&
       (!rlvVal || r.rlv === rlvVal) &&
+      (!expertMode || (expertMode === 'only' ? r.expert : !r.expert)) &&
       (!q || r.name.toLowerCase().includes(q) || (r.nameSc && r.nameSc.includes(q))));
     const total = list.length;
     list.sort((a, b) => b.level - a.level || NAME_COLLATOR.compare(a.name, b.name));
@@ -55,13 +79,13 @@
     const shown = list.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
     $('recipe-count').textContent = total
       ? `${total} 個配方${pageCount > 1 ? `（第 ${page + 1} / ${pageCount} 頁）` : ''}`
-      : (jobFilter || range || rlvVal || q ? '無符合配方' : '');  // rlvVal 納入判斷：僅配方等級篩選且 0 命中也顯「無符合配方」（對抗審 codex/grok，搬移前既有 bug）
+      : (jobFilter || range || rlvVal || q || expertMode ? '無符合配方' : '');   // 篩選條件全都要納入判斷，否則只設某一項而 0 命中時是一片空白  // rlvVal 納入判斷：僅配方等級篩選且 0 命中也顯「無符合配方」（對抗審 codex/grok，搬移前既有 bug）
     renderPager(total, pageCount);
     $('recipe-table').innerHTML = shown.length ? `
       <table class="codex-table codex-table--fixed codex-table--sticky rt">
-        <thead><tr><th>名稱</th><th>職業</th><th>Lv</th><th>配方等級</th><th class="rt-actcol">加入</th></tr></thead>
+        <thead><tr><th>名稱</th><th>種類</th><th>職業</th><th>Lv</th><th>配方等級</th><th>難度</th><th>品質</th><th class="rt-actcol">加入</th></tr></thead>
         <tbody>${shown.map(r =>
-          `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmwrap"><span class="rt-nmline"><span class="rt-nm">${esc(r.name)}</span></span>${r.category ? `<span class="rt-cat codex-small">${esc(r.category)}</span>` : ''}</span></span></td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td class="rt-act"><button type="button" class="codex-btn codex-btn--ghost codex-btn--icon rt-add" data-id="${r.id}" aria-label="將「${esc(r.name)}」加入製造清單" data-help="加入製造清單（不離開目前畫面）">＋</button></td></tr>`).join('')}</tbody>
+          `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmline"><span class="rt-nm">${esc(r.name)}</span>${r.expert ? '<span class="codex-badge codex-badge--warn rt-expert" data-help="高難度（expert）配方：遊戲內的製作狀態是隨機的，本站算出的靜態巨集只能當參考、無法保證成功">高難度</span>' : ''}</span></span></td><td class="rt-cat">${esc(r.category || '—')}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td>${r.diff == null ? '—' : r.diff}</td><td>${r.qual == null ? '—' : r.qual}</td><td class="rt-act">${addBtn(r)}</td></tr>`).join('')}</tbody>
       </table>` : '';
     // 事件委派（單一 handler，取代每列 2N listener → 篩選/搜尋重繪不重綁、行動裝置省 GC）；handler 綁在持久的 #recipe-table 上，innerHTML 換內容不掉線
     const table = $('recipe-table');
@@ -70,6 +94,12 @@
       if (add) {                               // ＋：只加清單、不進詳情
         if (typeof globalThis.CraftList?.add === 'function') globalThis.CraftList.add(+add.dataset.id);
         else toast('製造清單模組未載入，請重新整理頁面', 'error');  // 檢 add 是否為函式（非只檢物件存在）→ 半套/舊版 global 不炸 TypeError（對抗審 codex）
+        return;
+      }
+      const del = e.target.closest('.rt-del');
+      if (del) {                               // −：就地退一次（同上，不進詳情）
+        if (typeof globalThis.CraftList?.removeOne === 'function') globalThis.CraftList.removeOne(+del.dataset.id);
+        else toast('製造清單模組未載入，請重新整理頁面', 'error');
         return;
       }
       const row = e.target.closest('.rt-row');
@@ -117,6 +147,8 @@
       const n = CL.count(+tr.dataset.id);
       const inList = n > 0;
       tr.classList.toggle('rt-in', inList);
+      const del = tr.querySelector('.rt-del');   // 不在清單時沒東西可退 → 收起來（留著會是一顆按了沒反應的鈕）
+      if (del) del.hidden = !inList;
       const line = tr.querySelector('.rt-nmline'); // 徽章插名稱同行（名稱旁）
       if (!line) return;
       let badge = line.querySelector('.rt-inlist');
