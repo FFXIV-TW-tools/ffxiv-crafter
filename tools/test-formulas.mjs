@@ -1104,6 +1104,30 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     delete ab.CraftList;
   }
 
+  // ===== 表格高度＝當前螢幕還剩多少（Owner 2026-08-19：只捲表格、不要連外層一起捲）=====
+  // 實測踩過的坑：拿 `document.scrollHeight` 反推「表格下方佔多高」會**越縮越小**——portal 的 body
+  // 公式是 `min-height:100vh` ＋ `padding-top:64px`，文件高度恆為 100vh+64、與內容無關 ⇒ 每量一次
+  // 就多扣一截（實測 489→419→349）。症狀是「視窗縮放幾次後表格只剩一條縫」，不會有任何錯誤訊息。
+  {
+    check('T11 fitHeight 不得用 document.scrollHeight 反推（body 公式使文件高度與內容無關）',
+      !/scrollHeight/.test(AB_SRC.split('function fitHeight')[1].split('function renderTable')[0]));
+    const rect = { top: 100, height: 400, bottom: 500 };
+    const host = { getBoundingClientRect: () => ({ bottom: 600 }) };
+    const el = $('recipe-table');
+    el.style = {}; el.offsetParent = {}; el.getBoundingClientRect = () => rect;
+    el.closest = (sel) => (sel === 'main' ? host : null);
+    el.querySelector = () => null;
+    ab.window = { innerHeight: 800, addEventListener() {} };
+    CB.fitHeight();
+    eq('T11 表格高度＝視窗高 − 上緣 − 下方佔用 − 呼吸空隙', el.style.maxHeight, '592px');
+    CB.fitHeight(); CB.fitHeight();
+    eq('T11 連呼三次高度不變（冪等，不會越縮越小）', el.style.maxHeight, '592px');
+    ab.window.innerHeight = 400;   // 極矮視窗：算出來會是負的 → 收在下限，不得把表格壓成一條縫
+    CB.fitHeight();
+    eq('T11 極矮視窗 → 收在最小高度（約 6 列）', el.style.maxHeight, '240px');
+    delete el.getBoundingClientRect; delete el.offsetParent; delete el.closest; el.querySelector = () => null;
+  }
+
   // markListState 無 CraftList → 守衛不拋錯（grok F4/F2）
   let threwMLS = false;
   try { CB.markListState(); } catch (e) { threwMLS = true; }

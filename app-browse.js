@@ -54,6 +54,34 @@
       + ` aria-label="把「${esc(r.name)}」從製造清單退掉一次" data-help="從製造清單退一次（減到 0 就整筆移除）">${MINUS_SVG}</button></span>`;
   }
 
+  // 表格高度＝**當前螢幕還剩多少**（Owner 2026-08-19：「一個螢幕能顯示的數量就好，然後表內滾動，
+  // 不要我還要滾動外表格」）。原本寫死 `max-height: 60vh`：60vh 之外還有站頭／流程軸／篩選區／
+  // 翻頁器，加起來一定超過一個螢幕 ⇒ 外層頁面也得捲，等於捲兩層。
+  // **不用魔術常數**（頁面上方的高度會隨窄屏折行而變、翻頁器有時整條收起）：
+  //   可用高度 = 視窗高 − 表格上緣 − 表格下方實際佔用的高度（翻頁器＋頁尾＋panel padding）
+  // 下方佔用量＝`<main>` 底緣 − 表格底緣，量到什麼算什麼、不必列舉下面有哪些東西。
+  // ⚠ **不可拿 `document.scrollHeight` 反推**：portal 的 body 公式是 `min-height:100vh` ＋
+  //   `padding-top:64px`（給固定站頭），所以文件高度**恆為 100vh+64、與內容無關** ⇒ 反推出來的
+  //   「下方佔用」每次都多算一截，連按兩次表格就縮掉 140px（實測 489→419→349）。
+  //   同理：那 64px 造成的外層捲軸是全 13 站共用的 body 公式帶來的，不是本表撐出來的。
+  const MIN_H = 240;   // 至少留得下約 6 列——極矮視窗（或站頭很高）時不要把表格壓成一條縫
+  function fitHeight() {
+    if (!deps) return;
+    const el = deps.$('recipe-table');
+    if (!el || !el.getBoundingClientRect || !el.offsetParent) return;   // 未載入／picker 收合時不量（rect 全 0）
+    const rect = el.getBoundingClientRect();
+    const host = (el.closest && el.closest('main')) || null;            // 頁尾（授權標示）也在 main 裡
+    if (!rect.height || !host) return;
+    const below = Math.max(0, host.getBoundingClientRect().bottom - rect.bottom);
+    const avail = Math.round(window.innerHeight - rect.top - below - 8);   // 8＝底部呼吸空隙
+    if (!Number.isFinite(avail)) return;
+    const h = Math.max(MIN_H, avail);
+    el.style.maxHeight = h + 'px';
+    // 首載佔位（CLS）：資料還沒回來時，讓佔位塊撐到跟載入後一樣高——不然表格長出來時整頁會跳
+    const ph = el.querySelector && el.querySelector('.recipe-loading');
+    if (ph) ph.style.minHeight = h + 'px';
+  }
+
   function renderTable() {
     if (!deps) return;   // 同 renderChips：防未 init 崩潰（對抗審 grok F2）
     const { $, esc, iconUrl, JOB_ICON, NAME_COLLATOR, getRINDEX, getSelected, selectRecipe, toast } = deps;
@@ -109,6 +137,7 @@
       if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('rt-row')) { e.preventDefault(); selectRecipe(+e.target.dataset.id); }
     };
     markListState();  // 標記已在製造清單的列（換底色 + 徽章）
+    fitHeight();      // 內容一換，下方的翻頁器可能出現/收起 → 重新量一次可用高度
   }
 
   // 翻頁器：只有一頁時整條收起（不佔版面也不誤導「還有別頁」）。
@@ -166,9 +195,15 @@
       const miss = REQUIRED.filter(k => d == null || d[k] == null);
       if (miss.length) throw new Error('CraftBrowse.init 缺依賴: ' + miss.join(', '));
       deps = d;
+      fitHeight();   // 資料還沒回來就先量：佔位塊撐到與載入後同高＝零版面位移
+      if (typeof window !== 'undefined' && window.addEventListener) {
+        let t = null;   // 拖曳視窗會連發 resize → 收斂成一次（量測本身會觸發 layout）
+        window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(fitHeight, 120); });
+      }
     },
     renderChips,
     renderTable,
     markListState,
+    fitHeight,
   };
 })();

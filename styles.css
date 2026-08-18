@@ -112,8 +112,10 @@ body {
 .filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
 .recipe-count { margin: var(--space-2, 8px) 0; }
 /* 結果列表與上方搜尋/篩選控件視覺分模塊（Owner：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
+/* max-height 只是 JS 量到之前的 fallback：真值由 app-browse.js 的 fitHeight() 依「當前螢幕還剩多少」設，
+   目標是**整頁不用捲、只捲表格內部**（Owner 2026-08-19）。改這裡不會改變實際高度，改 fitHeight()。 */
 .recipe-table { max-height: 60vh; overflow-y: auto; overflow-x: auto; background: var(--color-bg); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
-/* 首載配方資料佔位：撐到與載入後同高（60vh＝.recipe-table 的 max-height，首頁 60 列必吃滿）＝零版面位移 */
+/* 首載配方資料佔位：撐到與載入後同高（實際值由 fitHeight() 寫進 inline style，這裡的 60vh 同為 fallback）＝零版面位移 */
 .recipe-loading { display: flex; align-items: center; justify-content: center;
   min-height: 60vh; padding: var(--space-6, 32px); text-align: center; color: var(--color-text-muted); }
 /* ---- 首載空間預留（CLS）2026-07-29 ----
