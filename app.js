@@ -111,6 +111,7 @@ async function loadData() {
     icon: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].icon) || null,
     category: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].category) || '', // 道具種類（繁中）→ 配方表獨立一欄
     expert: !!r.is_expert,   // 高難度（expert）＝遊戲內隨機製作狀態的配方（536 筆）；配方表標徽章＋可篩選
+    patch: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].patch) || '',   // 成品的實裝版本（item_lookup.items.patch，13874 筆全有值）→ 版本欄＋版本篩選
     // 難度／品質上限：**一律走 recipeMaxes**（顯示與求解共用同一算式的鐵則，CQ-01）——
     // 這裡多一份 `rlv.difficulty * factor / 100` 就是第二份公式，改版時只會有一邊被改到。
     // 缺 rlv 列（資料半套）→ 給 null，渲染端顯「—」而不是假的 0。
@@ -154,6 +155,19 @@ function recipeMaxes(recipe, rlv) {
     max_durability: Math.floor(rlv.durability * recipe.durability_factor / 100),
   };
 }
+// 配方的最低能力要求（`Recipe.RequiredCraftsmanship` / `RequiredControl`，13874 個裡 3396 個有）：
+// 遊戲內數值不到就**根本不給做**，站上原本完全沒讀這兩欄 ⇒ 使用者拿得到一份進遊戲用不了的巨集。
+// 比較基準＝`effectiveStats`（含食物／藥水／專家之證）——遊戲的判定同樣吃 buff，拿裸裝比會誤擋。
+// 單一出口：顯示（app-recipe 的需求標示與求解鈕狀態）與擋閘（app-solve.doSolve）共用這一份。
+function statShortfall(recipe, gear) {
+  const need = { cms: +(recipe && recipe.required_craftsmanship) || 0, ctrl: +(recipe && recipe.required_control) || 0 };
+  if (!gear || (!need.cms && !need.ctrl)) return { need, cms: 0, ctrl: 0, ok: true };
+  const eff = effectiveStats(gear);
+  const cms = Math.max(0, need.cms - eff.cms);
+  const ctrl = Math.max(0, need.ctrl - eff.ctrl);
+  return { need, cms, ctrl, ok: cms === 0 && ctrl === 0 };
+}
+
 // CraftRecipe.refreshGearNote 內保留 Number(g.level) 等級同步硬化。
 function refreshGearNote() { return globalThis.CraftRecipe.refreshGearNote(); }
 function refreshSelectedGear() { return globalThis.CraftRecipe.refreshSelectedGear(); }
@@ -368,7 +382,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 求解編排（app-solve.js classic script）：注入依賴後預熱 WASM（提前於 loadData，讓 download 與 fetch 並行）
   if (!globalThis.CraftSolve) throw new Error('app-solve.js 未載入（部署不完整）');
   {
-    globalThis.CraftSolve.init({ $, toast, PH_HTML, getSelected: () => selected, gearFor, computeSettings, switchTab });
+    globalThis.CraftSolve.init({ $, toast, PH_HTML, getSelected: () => selected, gearFor, computeSettings, switchTab, statShortfall });
     globalThis.CraftSolve.newWorker();
   }
   // 角色數值層（app-gear.js classic script）：注入依賴後才讀 localStorage/繪表；輸入後回呼維持原 app.js 事件鏈順序
@@ -383,6 +397,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 配方詳情層（app-recipe.js classic script）：狀態仍由 app.js 持有，透過 getter/setter 注入取 live 資料
   if (!globalThis.CraftRecipe) throw new Error('app-recipe.js 未載入（部署不完整）');
   globalThis.CraftRecipe.init({ $, esc, iconUrl, toast, PH_HTML, JOB_ICON, mbItem, mbCraft, recipeMaxes, switchTab, isCrystal,
+    statGate: (recipe) => statShortfall(recipe, gearFor(recipe.job)),
     renderTable, getRecipes: () => RECIPES, getRlvTable: () => RLV, getItems: () => ITEMS, getIngredients: () => INGREDIENTS,
     getSelected: () => selected, setSelected: (v) => { selected = v; },
     getComputedInitial: () => computedInitial, setComputedInitial: (v) => { computedInitial = v; },
@@ -444,6 +459,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   globalThis.CraftBrowse.init({ $, esc, iconUrl, DOH, JOB_ICON, NAME_COLLATOR,
     getRINDEX: () => RINDEX, getSelected: () => selected, selectRecipe, toast });
   renderChips();
+  globalThis.CraftBrowse.renderPatchOptions();   // 版本選項由資料生成（不寫死 68 個版號——資料一變就漂移）
   renderGearsets();
   renderTable();
   $('picker').classList.remove('is-loading');   // 預留高度交還給真實內容（篩選出少量結果時不留空井）
@@ -485,6 +501,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   $('recipe-search').addEventListener('input', debouncedRender);
   $('level-filter').addEventListener('change', renderTable);
   $('expert-filter').addEventListener('change', renderTable);   // 高難度篩選（漏掉這行＝控件在畫面上但按了沒反應）
+  $('patch-filter').addEventListener('change', renderTable);    // 版本篩選（同上）
   $('rlv-filter').addEventListener('input', debouncedRender);
   $('solve-btn').addEventListener('click', () => globalThis.CraftSolve.doSolve());
   $('cancel-btn').addEventListener('click', () => globalThis.CraftSolve.cancelSolve());

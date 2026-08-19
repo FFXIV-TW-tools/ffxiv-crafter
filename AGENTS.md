@@ -76,12 +76,12 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="627" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="653" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **627**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
+> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **653**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
 > 逐輪沿革＝[`docs/test-baseline-history.md`](docs/test-baseline-history.md)；「為什麼這幾支被併進 canonicalTest」＝[`docs/lessons.md`](docs/lessons.md)。
 
 ```bash
@@ -120,6 +120,8 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 - **資料檔的 ratchet 只准升不准降**（T31／T32／T54）：交付數量對帳 228/290、商人 NPC 247/256、食藥 icon 全中、quality-stages 992 筆。這些的產生端全是 fail-open（查無寫 null、照樣 ✓），退步時畫面只是「多幾件標未知」⇒ **零訊號，只有資料斷言擋得住**。
 - **expert（高難度）配方靜態巨集僅供參考**：536 個 expert 配方在遊戲內為隨機製作狀態 → render 用中性「試算完成 ⚠」+ 警語（**勿改回無條件「✓ 可完成」金徽**）。
 - **求解上限單一算式**：顯示與求解共用 `recipeMaxes(recipe, rlv)`，勿內聯重算——配方表的「難度／品質」欄同樣走它（RINDEX 建索引時算一次），缺 rlv 列顯「—」不顯 0。
+- **配方有最低能力要求就得擋**（`Recipe.RequiredCraftsmanship`／`RequiredControl`，3396／13874 個有）：遊戲內不到門檻**根本不給做**，站上原本零引用這兩欄＝使用者拿到一份進遊戲用不了的巨集。單一出口＝`app.js` 的 `statShortfall(recipe, gear)`，顯示（配方詳情「需求 作業/加工」紅字＋⚠）與擋閘（`doSolve` 擋下、寫出差多少、導去角色數值）共用。⚠ 比較基準是 **`effectiveStats`（含食物／藥水／專家之證）**——遊戲判定同樣吃 buff，拿裸裝比會誤擋。求解鈕走 `aria-disabled` 不用真 disabled（同「缺角色數值」的既有取捨）。T60／T61 守。
+- **配方版本＝成品的實裝版本**（`item_lookup.items.patch`，13874 筆全有值）：`#patch-filter` 選項**由資料生成**（繁中服開服即 7.0 ⇒ <7.0 併成「7.0 以前」、之後按實際有配方的版號分，各帶筆數），寫死版號清單＝資料一更新就靜默漏配方。⚠ 版號比較一律 `parseFloat`，**不可拆 (major, minor) 整數比**——7.15 的 minor 是 15、7.5 的是 5，整數比會把 7.15 排到 7.5 後面，而下拉看起來仍「有排序」。T11 守。
 - **高難度是配方屬性 `is_expert`（536 筆）不是名字**：列表掛 `.rt-expert` 徽章＋`#expert-filter` 三態（全部／只看／排除）。**新增任何篩選控件都要同時做三件事**：進 `filterKey()`（否則切篩選不回第 1 頁 → 停在不存在的頁看到空表）、進「無符合配方」判斷、在 `app.js` 掛 `change`（漏了就是「畫面有控件、按了沒反應」而 console 全乾淨）。T11 三條都有守。
 - **配方表可就地增減**：每列 ＋（加一次）／−（退一次，減到 0 整筆移除）。− **恆 render、用 `hidden` 收合**——`markListState` 是 in-place 更新（保留焦點），改成「不在清單就不 render」會每次清單變動重建 DOM。兩顆都**不上 `--danger`**（同質可重加物件的列級增減走設計系統豁免）。**槽位固定＝定寬兩欄 grid**（Owner 2026-08-19）：flex 下 − 收掉時整組會重新置中、＋ 往左跳一格，剛按完加入的游標正好停在 − 上。T11 守。
 - **素材總需求分三組**（可自製／採集購買／晶體）：挑配方走 `CraftRecipe.pickRecipeForItem`、商人徽章走 `CraftQuests.vendorHtml`，**不在製造清單層另刻一份**。「⚒ 加進清單」傳的是**做幾次**不是要幾個（一次產 3 個時要 4 個只需做 2 次）；`removeOne` 是 −1 不是整筆清掉。T58 守。

@@ -12,7 +12,34 @@
 
   function filterKey() {
     const { $ } = deps;
-    return [jobFilter, $('recipe-search').value.trim(), $('level-filter').value, $('rlv-filter').value, $('expert-filter').value].join('|');
+    return [jobFilter, $('recipe-search').value.trim(), $('level-filter').value, $('rlv-filter').value, $('expert-filter').value, $('patch-filter').value].join('|');
+  }
+
+  // 版號比較一律走 parseFloat，**不可拆成 (major, minor) 整數比**：7.15 的 minor 是 15、7.5 的是 5，
+  // 整數比會把 7.15 排到 7.5 後面（實測踩過）。小數比就對：7.05 < 7.1 < 7.15 < 7.2 < 7.21 < 7.3 …
+  const patchNum = (p) => parseFloat(p) || 0;
+  const PRE7 = 'pre7';   // 繁中服開服即 7.0 ⇒ 更早的版本對玩家是同一件事（開服就有），併成一個選項
+
+  // 版本選項＝**由資料生成**：寫死 68 個版號的話，資料一更新就靜默漏配方。
+  // 只列真的有配方的版號（≥7.0），每項帶筆數；<7.0 全部併進「7.0 以前」。
+  function renderPatchOptions() {
+    if (!deps) return;
+    const { $, esc, getRINDEX } = deps;
+    const sel = $('patch-filter');
+    if (!sel) return;
+    const cnt = new Map();
+    let pre = 0;
+    for (const r of getRINDEX()) {
+      if (!r.patch) continue;
+      if (patchNum(r.patch) < 7) pre++;
+      else cnt.set(r.patch, (cnt.get(r.patch) || 0) + 1);
+    }
+    const later = [...cnt.entries()].sort((a, b) => patchNum(b[0]) - patchNum(a[0]));
+    const keep = sel.value;   // 資料重載（loadData）不要把使用者選的版本吃掉
+    sel.innerHTML = '<option value="">版本：全部</option>' +
+      later.map(([p, n]) => `<option value="${esc(p)}">${esc(p)}（${n}）</option>`).join('') +
+      (pre ? `<option value="${PRE7}">7.0 以前（${pre}）</option>` : '');
+    if (keep) sel.value = keep;
   }
 
   function renderChips() {
@@ -92,11 +119,13 @@
     const [lo, hi] = range ? range.split('-').map(Number) : [0, 999];
     const rlvVal = +$('rlv-filter').value || 0;
     const expertMode = $('expert-filter').value;   // '' 全部 / only 只看高難度 / hide 排除
+    const patchMode = $('patch-filter').value;    // '' 全部 / pre7 7.0 以前 / 其餘＝該版號
     let list = RINDEX.filter(r =>
       (!jobFilter || r.job === jobFilter) &&
       (!range || (r.level >= lo && r.level <= hi)) &&
       (!rlvVal || r.rlv === rlvVal) &&
       (!expertMode || (expertMode === 'only' ? r.expert : !r.expert)) &&
+      (!patchMode || (patchMode === PRE7 ? (!!r.patch && patchNum(r.patch) < 7) : r.patch === patchMode)) &&
       (!q || r.name.toLowerCase().includes(q) || (r.nameSc && r.nameSc.includes(q))));
     const total = list.length;
     list.sort((a, b) => b.level - a.level || NAME_COLLATOR.compare(a.name, b.name));
@@ -107,13 +136,13 @@
     const shown = list.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
     $('recipe-count').textContent = total
       ? `${total} 個配方${pageCount > 1 ? `（第 ${page + 1} / ${pageCount} 頁）` : ''}`
-      : (jobFilter || range || rlvVal || q || expertMode ? '無符合配方' : '');   // 篩選條件全都要納入判斷，否則只設某一項而 0 命中時是一片空白  // rlvVal 納入判斷：僅配方等級篩選且 0 命中也顯「無符合配方」（對抗審 codex/grok，搬移前既有 bug）
+      : (jobFilter || range || rlvVal || q || expertMode || patchMode ? '無符合配方' : '');   // 篩選條件全都要納入判斷，否則只設某一項而 0 命中時是一片空白  // rlvVal 納入判斷：僅配方等級篩選且 0 命中也顯「無符合配方」（對抗審 codex/grok，搬移前既有 bug）
     renderPager(total, pageCount);
     $('recipe-table').innerHTML = shown.length ? `
       <table class="codex-table codex-table--fixed codex-table--sticky rt">
-        <thead><tr><th>名稱</th><th>種類</th><th>職業</th><th>Lv</th><th>配方等級</th><th>難度</th><th>品質</th><th class="rt-actcol">加入</th></tr></thead>
+        <thead><tr><th>名稱</th><th>種類</th><th>職業</th><th>Lv</th><th>配方等級</th><th>難度</th><th>品質</th><th>版本</th><th class="rt-actcol">加入</th></tr></thead>
         <tbody>${shown.map(r =>
-          `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmline"><span class="rt-nm">${esc(r.name)}</span>${r.expert ? '<span class="codex-badge codex-badge--warn rt-expert" data-help="高難度（expert）配方：遊戲內的製作狀態是隨機的，本站算出的靜態巨集只能當參考、無法保證成功">高難度</span>' : ''}</span></span></td><td class="rt-cat">${esc(r.category || '—')}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td>${r.diff == null ? '—' : r.diff}</td><td>${r.qual == null ? '—' : r.qual}</td><td class="rt-act">${addBtn(r)}</td></tr>`).join('')}</tbody>
+          `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmline"><span class="rt-nm">${esc(r.name)}</span>${r.expert ? '<span class="codex-badge codex-badge--warn rt-expert" data-help="高難度（expert）配方：遊戲內的製作狀態是隨機的，本站算出的靜態巨集只能當參考、無法保證成功">高難度</span>' : ''}</span></span></td><td class="rt-cat">${esc(r.category || '—')}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td>${r.level}</td><td>${r.rlv}</td><td>${r.diff == null ? '—' : r.diff}</td><td>${r.qual == null ? '—' : r.qual}</td><td class="rt-patch">${esc(r.patch || '—')}</td><td class="rt-act">${addBtn(r)}</td></tr>`).join('')}</tbody>
       </table>` : '';
     // 事件委派（單一 handler，取代每列 2N listener → 篩選/搜尋重繪不重綁、行動裝置省 GC）；handler 綁在持久的 #recipe-table 上，innerHTML 換內容不掉線
     const table = $('recipe-table');
@@ -202,6 +231,7 @@
       }
     },
     renderChips,
+    renderPatchOptions,
     renderTable,
     markListState,
     fitHeight,

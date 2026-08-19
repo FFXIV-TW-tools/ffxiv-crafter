@@ -77,7 +77,7 @@ vm.runInContext(GEAR_SRC, sandbox, { filename: 'app-gear.js' });
 vm.runInContext(RECIPE_SRC, sandbox, { filename: 'app-recipe.js' });
 vm.runInContext(RENDER_SRC, sandbox, { filename: 'app-render.js' }); // 先定義 globalThis.CraftRender（hqPercent 純函式、不需 init）
 vm.runInContext(
-  APP_SRC + '\n;globalThis.__t = { computeSettings, recipeMaxes, effectiveStats, esc, mbItem, mbCraft, selectRecipe, copyText, DOH, JOB_ICON, hqPercent: globalThis.CraftRender.hqPercent };',
+  APP_SRC + '\n;globalThis.__t = { computeSettings, recipeMaxes, effectiveStats, statShortfall, esc, mbItem, mbCraft, selectRecipe, copyText, DOH, JOB_ICON, hqPercent: globalThis.CraftRender.hqPercent };',
   sandbox, { filename: 'crafter-app.js' });
 const T = sandbox.__t;
 
@@ -944,9 +944,9 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T11 init 缺依賴 → 早炸（注入契約不變量）', threwMiss);
 
   let rindex = [
-    { id: 1, name: '青銅錠', nameSc: '青铜锭', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬', diff: 1200, qual: 3400 },
-    { id: 2, name: '橡木材', nameSc: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材', diff: 300, qual: 900, expert: true },
-    { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料', diff: null, qual: null },
+    { id: 1, name: '青銅錠', nameSc: '青铜锭', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬', diff: 1200, qual: 3400, patch: '7.31' },
+    { id: 2, name: '橡木材', nameSc: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材', diff: 300, qual: 900, expert: true, patch: '2.0' },
+    { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料', diff: null, qual: null, patch: '7.05' },
   ];
   CB.init(DEP);
 
@@ -965,9 +965,9 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   // 而畫面只是「有點怪」不會報錯 ⇒ 這裡把兩邊一起釘住。
   {
     const html = $('recipe-table').innerHTML;
-    eq('T11 表頭 8 欄（名稱/種類/職業/Lv/配方等級/難度/品質/加入）', (html.match(/<th[ >]/g) || []).length, 8);   // [ >] 才不會把 <thead 也算進去
+    eq('T11 表頭 9 欄（名稱/種類/職業/Lv/配方等級/難度/品質/版本/加入）', (html.match(/<th[ >]/g) || []).length, 9);   // [ >] 才不會把 <thead 也算進去
     const cssCols = (CSS_SRC.match(/\.rt th:nth-child\(\d\)/g) || []).length;
-    eq('T11 CSS 的欄寬宣告數 == 表頭欄數（漏一欄＝版面靜默走鐘）', cssCols, 8);
+    eq('T11 CSS 的欄寬宣告數 == 表頭欄數（漏一欄＝版面靜默走鐘）', cssCols, 9);
     check('T11 難度／品質欄有值（來自 RINDEX 的 recipeMaxes 快照）', /<td>1200<\/td><td>3400<\/td>/.test(html), html.slice(0, 400));
     check('T11 名稱不再有副行 wrapper（rt-nmwrap 已退場）', !/rt-nmwrap/.test(html) && !/rt-nmwrap/.test(CSS_SRC));
     // 缺 rlv 列時 app.js 給 null ⇒ 顯「—」而不是假的 0（0 難度會被讀成「這配方超簡單」）
@@ -1003,13 +1003,59 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     eq('T11 僅高難度篩選 0 命中 → 「無符合配方」', $('recipe-count').textContent, '無符合配方');
     $('expert-filter').value = '';
     rindex = [
-      { id: 1, name: '青銅錠', nameSc: '青铜锭', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬', diff: 1200, qual: 3400 },
-      { id: 2, name: '橡木材', nameSc: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材', diff: 300, qual: 900, expert: true },
-      { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料', diff: null, qual: null },
+      { id: 1, name: '青銅錠', nameSc: '青铜锭', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬', diff: 1200, qual: 3400, patch: '7.31' },
+      { id: 2, name: '橡木材', nameSc: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材', diff: 300, qual: 900, expert: true, patch: '2.0' },
+      { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料', diff: null, qual: null, patch: '7.05' },
     ];
     CB.renderTable();
     // 篩選指紋漏掉新控件的話：切篩選不回第 1 頁，玩家會停在不存在的頁而看到空表
     check('T11 高難度篩選有進 filterKey（切換會回第 1 頁）', /expert-filter/.test(AB_SRC.split('function filterKey')[1].slice(0, 300)));
+  }
+
+  // ===== 版本篩選（Owner 2026-08-19：繁中服開服即 7.0 ⇒ 7.0 以前併一項、之後按實際版號分）=====
+  // 版號比較是這裡唯一會靜默出錯的地方：拆成 (major, minor) 整數比會把 7.15 排到 7.5 後面
+  // （minor 15 > 5），而下拉看起來仍然「有排序」⇒ 只有逐項對答案才看得出來。
+  {
+    rindex = [
+      { id: 1, name: 'A', job: '鍛造', rlv: 10, level: 5, category: '', patch: '7.5' },
+      { id: 2, name: 'B', job: '鍛造', rlv: 10, level: 5, category: '', patch: '7.15' },
+      { id: 3, name: 'C', job: '鍛造', rlv: 10, level: 5, category: '', patch: '7.51' },
+      { id: 4, name: 'D', job: '鍛造', rlv: 10, level: 5, category: '', patch: '7.0' },
+      { id: 5, name: 'E', job: '鍛造', rlv: 10, level: 5, category: '', patch: '2.0' },
+      { id: 6, name: 'F', job: '鍛造', rlv: 10, level: 5, category: '', patch: '6.55' },
+    ];
+    $('recipe-search').value = ''; $('expert-filter').value = ''; $('patch-filter').value = '';
+    CB.renderPatchOptions();
+    const opts = [...$('patch-filter').innerHTML.matchAll(/value="([^"]*)"[^>]*>([^<]*)</g)].map((m) => [m[1], m[2]]);
+    eq('T11 版本選項＝全部 ＋ 4 個 ≥7.0 版號 ＋ 7.0 以前', opts.length, 6);
+    eq('T11 版號由新到舊（7.51 > 7.5 > 7.15 > 7.0；整數比會把 7.15 排錯）',
+      opts.slice(1, 5).map((o) => o[0]).join(','), '7.51,7.5,7.15,7.0');
+    eq('T11「7.0 以前」殿後並帶筆數（2.0 ＋ 6.55 ＝ 2）', opts[5].join('|'), 'pre7|7.0 以前（2）');
+    check('T11 版本選項帶該版筆數', /7\.51（1）/.test($('patch-filter').innerHTML));
+    $('patch-filter').value = '7.5'; CB.renderTable();
+    eq('T11 選 7.5 → 只有 7.5（不含 7.51）', rowCount(), 1);
+    check('T11 選 7.5 命中的是 A', />A</.test($('recipe-table').innerHTML));
+    $('patch-filter').value = 'pre7'; CB.renderTable();
+    eq('T11 選「7.0 以前」→ 2 列（7.0 本身不算在內）', rowCount(), 2);
+    $('patch-filter').value = '7.99'; CB.renderTable();
+    eq('T11 僅版本篩選 0 命中 → 「無符合配方」', $('recipe-count').textContent, '無符合配方');
+    $('patch-filter').value = ''; CB.renderTable();
+    eq('T11 清掉版本篩選 → 6 列', rowCount(), 6);
+    check('T11 版本欄有渲染', /rt-patch[^>]*>7\.5</.test($('recipe-table').innerHTML));
+    check('T11 版本篩選有進 filterKey（切換會回第 1 頁）',
+      /patch-filter/.test(AB_SRC.split('function filterKey')[1].slice(0, 400)));
+    check('T11 #patch-filter 有接 change（有控件沒接線＝按了沒反應）',
+      /\$\('patch-filter'\)\.addEventListener\('change'/.test(fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8')));
+    // 重繪選項不得把使用者選的版本吃掉（loadData 會重新 render）
+    $('patch-filter').value = '7.0'; CB.renderPatchOptions();
+    eq('T11 重繪版本選項保留當前選擇', $('patch-filter').value, '7.0');
+    $('patch-filter').value = '';
+    rindex = [
+      { id: 1, name: '青銅錠', nameSc: '青铜锭', job: '鍛造', rlv: 10, level: 5, icon: null, category: '金屬', diff: 1200, qual: 3400, patch: '7.31' },
+      { id: 2, name: '橡木材', nameSc: '橡木材', job: '木工', rlv: 20, level: 15, icon: null, category: '木材', diff: 300, qual: 900, expert: true, patch: '2.0' },
+      { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料', diff: null, qual: null, patch: '7.05' },
+    ];
+    CB.renderTable();
   }
 
   $('recipe-search').value = '青銅'; CB.renderTable();
@@ -1164,6 +1210,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   vm.runInContext(SOLVE_SRC, sb, { filename: 'app-solve.js' });
 
   sb.CraftSolve.init({
+    statShortfall: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
     $: sbEl,
     toast: () => {},
     PH_HTML: '',
@@ -1199,6 +1246,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   // 錯誤幀同樣要判世代（舊配方的 NoSolution 不該汙染新配方的 UI）
   let toasted = 0;
   sb.CraftSolve.init({
+    statShortfall: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
     $: sbEl, toast: () => { toasted++; }, PH_HTML: '',
     getSelected: () => ({ recipe: { job: '木工' }, rlv: 700 }),
     gearFor: () => ({}), computeSettings: () => ({ base_progress: 100, base_quality: 100 }),
@@ -1217,6 +1265,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     let toasted2 = 0, focused = 0;
     const btn = sbEl('solve-btn'); btn.focus = () => { focused++; };
     sb.CraftSolve.init({
+    statShortfall: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
       $: sbEl, toast: () => { toasted2++; }, PH_HTML: '',
       getSelected: () => ({ recipe: { job: '木工' }, rlv: 700 }),
       gearFor: () => ({}), computeSettings: () => ({ base_progress: 100, base_quality: 100 }),
@@ -1273,6 +1322,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   vm.createContext(sb);
   vm.runInContext(SOLVE_SRC, sb, { filename: 'app-solve.js' });
   sb.CraftSolve.init({
+    statShortfall: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
     $: sbEl,
     toast: (msg) => toasted.push(msg),
     PH_HTML: '',
@@ -1375,6 +1425,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   vm.createContext(sb);
   vm.runInContext(SOLVE_SRC, sb, { filename: 'app-solve.js' });
   sb.CraftSolve.init({
+    statShortfall: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
     $: sbEl, toast() {}, PH_HTML: '',
     getSelected: () => ({ recipe: { job: '木工' }, rlv: 700 }),
     gearFor: () => ({ craftsmanship: 4000, control: 4000, cp: 600 }),
@@ -2609,6 +2660,63 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     missing.length === 0, `缺守衛：${missing.join(', ')}`);
 }
 
+// ===== T60：配方的最低能力要求（Owner 2026-08-19：「這部分有做管控嗎」→ 當時完全沒有）=====
+// 13874 個配方裡 3396 個有 required_craftsmanship / required_control，而全站對這兩欄零引用 ⇒
+// 數值不夠的人照樣求解、照樣拿到巨集，**進遊戲才發現製作筆記根本不給做**（站上零訊號）。
+// 比較基準必須是 effectiveStats（含食物／藥水／專家之證）——遊戲判定同樣吃 buff，拿裸裝比會誤擋。
+{
+  const R = { required_craftsmanship: 700, required_control: 650 };
+  const NONE = { required_craftsmanship: 0, required_control: 0 };
+  const gear = (cms, ctrl) => ({ cms, ctrl, cp: 500, level: 100 });
+  eq('T60 配方無門檻 → 一律通過', T.statShortfall(NONE, gear(1, 1)).ok, true);
+  eq('T60 沒填角色數值 → 不謊報不足（缺數值那條由既有動線擋）', T.statShortfall(R, null).ok, true);
+  const short = T.statShortfall(R, gear(600, 600));
+  eq('T60 兩項都不足 → 各自算出差額', `${short.cms}/${short.ctrl}/${short.ok}`, '100/50/false');
+  eq('T60 只差一項 → 另一項為 0', JSON.stringify([T.statShortfall(R, gear(700, 600)).cms, T.statShortfall(R, gear(700, 600)).ctrl]), '[0,50]');
+  eq('T60 剛好等於門檻 → 通過（遊戲是 >=）', T.statShortfall(R, gear(700, 650)).ok, true);
+  eq('T60 需求值一併回傳（給畫面寫出「需求 X／Y」）', `${short.need.cms}/${short.need.ctrl}`, '700/650');
+  // 食藥加成算數：base 600 + 食物 20%（上限 100）→ 700／650，剛好達標（沿用 T22 的 fixture 手法）
+  const oldCC = sandbox.CraftConsumable;
+  try {
+    sandbox.CraftConsumable = { get: (kind) => (kind === 'food' ? { cm: 20, cm_max: 100, ct: 20, ct_max: 100 } : null) };
+    eq('T60 食物加成算進門檻判定（遊戲同樣吃 buff，拿裸裝比會誤擋）', T.statShortfall(R, gear(600, 600)).ok, true);
+  } finally { sandbox.CraftConsumable = oldCC; }
+  eq('T60 拿掉食物 → 回到不足', T.statShortfall(R, gear(600, 600)).ok, false);
+}
+
+// ===== T61：門檻不足時 doSolve 必須擋下並說明差多少 =====
+{
+  const SOLVE_SRC = fs.readFileSync(path.join(ROOT, 'app-solve.js'), 'utf8');
+  const sent = [];
+  const toasts = [];
+  const tabs = [];
+  const sb = { console, Worker: function () { this.postMessage = (m) => sent.push(m); this.terminate = () => {}; },
+    document: { getElementById: () => ({ hidden: true, textContent: '', innerHTML: '', classList: { add() {}, remove() {}, toggle() {} },
+      querySelector: () => null, setAttribute() {}, focus() {} }) } };
+  sb.globalThis = sb;
+  vm.createContext(sb);
+  vm.runInContext(SOLVE_SRC, sb, { filename: 'app-solve.js' });
+  const recipe = { id: 1, job: '鍛造', item_name: '硬鋼錠', required_craftsmanship: 5380, required_control: 4650 };
+  sb.CraftSolve.init({
+    $: () => ({ hidden: true, textContent: '', innerHTML: '', value: '', checked: false,
+      classList: { add() {}, remove() {}, toggle() {} }, querySelector: () => null, setAttribute() {}, focus() {} }),
+    toast: (m, kind) => toasts.push([m, kind]), PH_HTML: '',
+    getSelected: () => ({ recipe, rlv: { class_job_level: 100 } }),
+    gearFor: () => ({ cms: 5000, ctrl: 4600, cp: 700, level: 100 }),
+    computeSettings: () => ({ base_progress: 100, base_quality: 100 }),
+    switchTab: (name) => tabs.push(name),
+    statShortfall: () => ({ need: { cms: 5380, ctrl: 4650 }, cms: 380, ctrl: 50, ok: false }),
+  });
+  sb.CraftSolve.doSolve();
+  eq('T61 門檻不足 → 不送求解（不給一份進遊戲用不了的巨集）', sent.length, 0);
+  const t = toasts.at(-1) || ['', ''];
+  check('T61 訊息寫出需求值與還差多少', /5380/.test(t[0]) && /4650/.test(t[0]) && /380/.test(t[0]) && /50/.test(t[0]), JSON.stringify(t));
+  eq('T61 擋下的訊息是 error 級', t[1], 'error');
+  eq('T61 導去角色數值分頁（同「缺角色數值」的補救動線）', tabs.at(-1), 'stats');
+  // 求解鈕不得用真 disabled（鍵盤走不到就讀不到原因）——與缺角色數值同一取捨
+  check('T61 求解鈕走 aria-disabled 而不是 disabled', /solve-btn'\)\.setAttribute\('aria-disabled'/.test(fs.readFileSync(path.join(ROOT, 'app-recipe.js'), 'utf8')));
+}
+
 // ===== T59：三個「內容井」共用同一份幾何（Owner 2026-08-19：看不清主次）=====
 // 配方表本來就是深底＋accent 染框，製造清單那兩張卡卻直接把列鋪在 panel 上 ⇒ 內外不分。
 // 抽成 `.crafter-well` 後最容易回流的錯是「在本地再寫一次 background/border」——
@@ -2881,7 +2989,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   N.init({
     $: $n, esc: T.esc, iconUrl: (p) => p, JOB_ICON: {},
     getItems: () => ({}), getIngredients: () => ING, getRecipesById: () => byId,
-    gearOkFor: (j) => j === '鍊金',
+    gearOkFor: (j) => j === '鍊金', statGate: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
     onPick: (rid) => picked.push(rid),
   });
   eq('T56 countFor＝下一階件數（詳情頁的鈕要不要出、標幾件都靠它）', N.countFor(36080), 30);
@@ -2946,7 +3054,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   N.init({
     $: $n, esc: T.esc, iconUrl: (p) => p, JOB_ICON: {},
     getItems: () => ({}), getIngredients: () => ING, getRecipesById: () => byId,
-    gearOkFor: () => false, onPick: (rid) => picked.push(rid),
+    gearOkFor: () => false, statGate: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }), onPick: (rid) => picked.push(rid),
   });
   N.open(36080, '棕櫚糖', null);
   eq('T56 重開窗要清掉上次的職業篩選（否則這次少列一半而看起來像資料就這麼少）', $n('next-job').value, '');
@@ -2986,7 +3094,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     getIngredients: () => ({}), getSelected: () => sel2, setSelected: (v) => { sel2 = v; },
     getComputedInitial: () => 0, setComputedInitial() {}, getOpenedFromList: () => false, setOpenedFromList() {},
     invalidateResults() {}, updateEff() {}, gearFor: () => null, refreshSpecialistGate() {},
-    getRecipesById: () => ({ 1: RA, 2: RB, 3: RC }), getRecipeByItem: () => ({}), getRecipesByItem: () => ({}), gearOkFor: () => true,
+    getRecipesById: () => ({ 1: RA, 2: RB, 3: RC }), getRecipeByItem: () => ({}), getRecipesByItem: () => ({}), gearOkFor: () => true, statGate: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
   });
   R2.selectRecipe(1);                       // 站在 A
   R2.craftIngredient(2);                    // 「先做這個」→ 鑽到 B，堆疊 [A]

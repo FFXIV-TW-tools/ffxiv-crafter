@@ -164,6 +164,9 @@
             <input id="rlv-filter" class="codex-input rlv-in" type="number" min="0" inputmode="numeric" placeholder="配方等級" aria-label="配方等級">
             <!-- 高難度＝配方屬性（is_expert），不是名字裡有那三個字：遊戲內製作狀態隨機，
                  靜態巨集只能當參考 ⇒ 想練/想避的人都需要一個「只看／排除」的開關。 -->
+            <!-- 版本選項由 app-browse.renderPatchOptions() 依資料生成：繁中服開服即 7.0，
+                 故 <7.0 併成一個選項、7.0 之後按實際有配方的版號分（寫死版號清單＝資料一更新就漂移）。 -->
+            <select id="patch-filter" class="codex-select" aria-label="配方實裝版本"></select>
             <select id="expert-filter" class="codex-select" aria-label="高難度配方">
               <option value="">高難度：全部</option>
               <option value="only">只看高難度</option>

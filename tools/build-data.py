@@ -420,7 +420,7 @@ def main():
     items, miss = {}, 0
     for iid in needed:
         row = icon_con.execute(
-            "SELECT id,name_tc,level_item,can_be_hq,icon,ui_category,name_sc FROM items WHERE id=?", (iid,)).fetchone()
+            "SELECT id,name_tc,level_item,can_be_hq,icon,ui_category,name_sc,patch FROM items WHERE id=?", (iid,)).fetchone()
         if not row:
             miss += 1
             continue
@@ -429,11 +429,16 @@ def main():
                            "category": row[5] or "",  # 道具種類（ItemUICategory 繁中，item_lookup ui_category）→ UI 配方名副行說明
                            # 簡中名只供**搜尋比對**（顯示一律繁中）：不少人記的是陸服名或從
                            # 簡中攻略複製過來，打簡體查不到會以為工具沒有這個配方。
-                           "name_sc": row[6] or ""}
+                           "name_sc": row[6] or "",
+                           # 實裝版本（item_lookup.items.patch）→ 配方表的版本欄與版本篩選。
+                           # **不自建對照表**：繁中服開服即 7.0，故前端把 <7.0 併成一個選項、7.0 以後按實際版號分。
+                           # 查無寫 None（前端顯「—」），不猜——猜出來的版本會讓篩選靜默漏掉配方。
+                           "patch": row[7] or None}
     icon_con.close()
     with open(os.path.join(OUT, "items.json"), "w", encoding="utf-8") as f:
         json.dump(items, f, ensure_ascii=False, separators=(",", ":"))
-    print("✓ items.json：%d items（含 icon，%d 查無）" % (len(items), miss))
+    no_patch = sum(1 for v in items.values() if not v.get("patch"))
+    print("✓ items.json：%d items（含 icon 與實裝版本，%d 查無、%d 無版本）" % (len(items), miss, no_patch))
 
     write_quality_stages(recipes)
     write_level_sync(recipes)

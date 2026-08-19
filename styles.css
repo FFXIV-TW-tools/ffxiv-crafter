@@ -157,7 +157,7 @@ body {
    沒有分隔線）本站原本就中招——2026-08-15 截圖實證。本地只留字級與各欄的視覺特化。 */
 /* 8 欄在窄屏擠不下 → 給表格 min-width 保底、由容器 `.recipe-table` 的 overflow-x 橫捲
    （📊 表格佈局穩定鐵則 場景 1 的指定做法；別硬擠到換行崩版）。 */
-.rt { font-size: var(--fs-small); min-width: 880px; }
+.rt { font-size: var(--fs-small); min-width: 960px; }
 /* 表頭加亮（原 --color-surface 與 panel 同色會融）＋下緣 accent 分隔線 → 明確界定列表頂、與篩選區分開 */
 .rt thead th { background: var(--color-surface-hover); text-align: left;
   padding: var(--space-2, 8px); border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, var(--color-border)); }
@@ -170,16 +170,17 @@ body {
 .rt td { padding: var(--space-1, 4px) var(--space-2, 8px); height: 26px;
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
 .rt th:not(:first-child), .rt td:not(.rt-name) { white-space: nowrap; text-align: center; }
-.rt th:nth-child(1) { width: 28%; }   /* 名稱 */
-.rt th:nth-child(2) { width: 13%; }   /* 種類（原本擠在名稱下方的副行，2026-08-19 拉成獨立欄）*/
-.rt th:nth-child(3) { width: 12%; }   /* 職業（含 icon）*/
-.rt th:nth-child(4) { width: 7%; }    /* Lv */
-.rt th:nth-child(5) { width: 11%; }   /* 配方等級 */
-.rt th:nth-child(6) { width: 10%; }   /* 難度（＝作業進展上限）*/
-.rt th:nth-child(7) { width: 10%; }   /* 品質（＝品質上限）*/
-.rt th:nth-child(8) { width: 9%; }    /* 操作欄：＋ 恆在、− 已在清單時才出（兩顆都是 26px）*/
-/* 位數不同不左右晃（Lv／配方等級／難度／品質四個數字欄）*/
-.rt td:nth-child(4), .rt td:nth-child(5), .rt td:nth-child(6), .rt td:nth-child(7) { font-variant-numeric: tabular-nums; }
+.rt th:nth-child(1) { width: 26%; }   /* 名稱 */
+.rt th:nth-child(2) { width: 12%; }   /* 種類（原本擠在名稱下方的副行，2026-08-19 拉成獨立欄）*/
+.rt th:nth-child(3) { width: 11%; }   /* 職業（含 icon）*/
+.rt th:nth-child(4) { width: 6%; }    /* Lv */
+.rt th:nth-child(5) { width: 10%; }   /* 配方等級 */
+.rt th:nth-child(6) { width: 9%; }    /* 難度（＝作業進展上限）*/
+.rt th:nth-child(7) { width: 9%; }    /* 品質（＝品質上限）*/
+.rt th:nth-child(8) { width: 8%; }    /* 版本（成品實裝版本）*/
+.rt th:nth-child(9) { width: 9%; }    /* 操作欄：＋ 恆在、− 已在清單時才出（兩顆都是 26px）*/
+/* 位數不同不左右晃（Lv／配方等級／難度／品質／版本五個數字欄）*/
+.rt td:nth-child(4), .rt td:nth-child(5), .rt td:nth-child(6), .rt td:nth-child(7), .rt td:nth-child(8) { font-variant-numeric: tabular-nums; }
 .rt-act { text-align: center; white-space: nowrap; }
 /* **固定兩格的槽位**（Owner 2026-08-19：「＋− 位置請固定，不要 − 出現了改變 ＋ 的位置」）：
    用 inline-grid 定寬兩欄而不是 flex —— flex 下 − 被 `[hidden]` 收掉時（portal 的 `.codex-btn[hidden]`
@@ -210,6 +211,11 @@ body {
 .rt-row.rt-in.is-sel { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .rt-inlist { flex: none; }  /* 名稱旁「已加入 ×N」綠徽章不被名稱壓縮（間距走 .rt-nmline gap） */
 .rt-expert { flex: none; }  /* 同上：高難度徽章不被名稱壓縮 */
+/* 配方詳情的「最低能力要求」：符合時與其他 ri-stat 同級（只是資訊），不足才轉危險色＋游標提示可查說明。
+   不用 --danger 徽章：它不是動作、也不是毀滅性的東西，只是一個沒達標的門檻。 */
+.ri-stat--req { cursor: help; }
+.ri-stat--req.is-short { color: var(--color-danger, #e57373); }
+.ri-stat--req.is-short b { color: inherit; }
 /* ⚠ 勿對 <td> 設 display:flex — 會使該 cell 失去 table-cell 語意、不與同列等高，border-bottom 與他欄錯開（名稱/職業分隔線不對齊的老 bug）。flex 一律放 td 內層 wrapper。 */
 .rt-name { font-weight: var(--fw-semibold, 600); }
 .rt-cellflex { display: inline-flex; align-items: center; gap: var(--space-1, 4px); min-width: 0; max-width: 100%; vertical-align: middle; }
