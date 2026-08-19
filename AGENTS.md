@@ -76,12 +76,12 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="621" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="627" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **621**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
+> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **627**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
 > 逐輪沿革＝[`docs/test-baseline-history.md`](docs/test-baseline-history.md)；「為什麼這幾支被併進 canonicalTest」＝[`docs/lessons.md`](docs/lessons.md)。
 
 ```bash
@@ -143,6 +143,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 
 ### UI / 設計系統
 
+- **「內容井」（比 panel 深一階的實底＋accent 染框）只有 `.crafter-well` 一份**：配方表／配方清單／素材總需求三處共用，本地**不得再宣告 background／border／border-radius**（值一樣所以畫面全正常，事實源卻分岔——同下一條 `.codex-tint-panel--neutral` 的教訓）。內外分層是可讀性的主力：Owner 2026-08-19「看不清主次」即製造清單那兩張卡少了這層。T59 守。
 - **中性分組容器的幾何走共用 `.codex-tint-panel--neutral`**、底色以 `--panel-bg` 傳參，本地只留 padding 與外距——**不得把 background／border／border-radius 寫回本地**（值一樣所以畫面全正常，但幾何就分岔成兩份事實源）。**巢狀時一律顯式寫 `--panel-bg`**：那是 CSS 自訂屬性、**會繼承**，不指定就吃到父層底色（T36）。
 - **配方表高度＝當前螢幕還剩多少**（`CraftBrowse.fitHeight()`，Owner 2026-08-19：「只捲表格、不要連外層一起捲」）：可用高度＝視窗高 −表格上緣 −（`<main>` 底緣 − 表格底緣）−8。⚠ **不可拿 `document.scrollHeight` 反推**——body 有 `min-height:100vh`，內容短於一個螢幕時文件高度**恆等於視窗高、不隨內容縮**（2026-08-19 portal 補 `box-sizing` 之前更是恆為 100vh+64） ⇒ 每量一次多扣一截（實測 489→419→349，症狀是「縮放幾次後表格剩一條縫」且零錯誤訊息）。極矮視窗收在 `MIN_H`（約 6 列）＝寧可外層捲，不把表格壓成縫。T11 守冪等性與下限。
 - **配方表欄數與 CSS 的 `nth-child` 百分比寬是隱性契約**：只加 `<td>` 不改 CSS ⇒ 最後一欄被擠掉而畫面只是「有點怪」（T11 對帳兩邊數量）。⚠ `<td>` 的 `height` 是**內容盒**下限，padding／border 另外加（`box-sizing` 對 table-cell 不生效）⇒ 實際列高＝宣告值 ＋9px；改列高一律以量測為準（舊值宣告 46 實際畫 55）。

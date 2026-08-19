@@ -211,7 +211,7 @@
       return `<div class="cl-matgroup">
         <div class="cl-matgroup__head"><h4 class="codex-h4">${g.title} <span class="cl-matgroup__n codex-small">${rows.length} 種</span></h4>` +
         `<span class="cl-matgroup__hint codex-small">${g.hint}</span></div>
-        <div class="cl-mats">${rows.map(matRow).join('')}</div>
+        <div class="cl-mats crafter-well">${rows.map(matRow).join('')}</div>
       </div>`;
     }).join('');
     const matTotal = ordered.reduce((n, m) => n + m.total, 0);
@@ -230,7 +230,7 @@
           <h3 class="codex-h3">配方清單</h3>
           <span class="cl-count codex-small">${list.length} 種 · 製作 ${totalRuns} 次</span>
         </div>
-        <div class="cl-rows">${rows}</div>
+        <div class="cl-rows crafter-well">${rows}</div>
       </section>
       <section class="codex-tint-panel codex-tint-panel--neutral cl-card">
         <div class="cl-card-head">

@@ -2609,6 +2609,29 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     missing.length === 0, `缺守衛：${missing.join(', ')}`);
 }
 
+// ===== T59：三個「內容井」共用同一份幾何（Owner 2026-08-19：看不清主次）=====
+// 配方表本來就是深底＋accent 染框，製造清單那兩張卡卻直接把列鋪在 panel 上 ⇒ 內外不分。
+// 抽成 `.crafter-well` 後最容易回流的錯是「在本地再寫一次 background/border」——
+// 值一樣時**畫面完全看不出差別**，但事實源就分岔了（同 .codex-tint-panel--neutral 的既有教訓）。
+{
+  const CSS = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
+  const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const CL = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
+  const well = (CSS.match(/\.crafter-well \{[^}]*\}/) || [''])[0];
+  check('T59 .crafter-well 定義了深底＋染框＋圓角', /background:[^;]*--color-bg/.test(well)
+    && /border:[^;]*--accent/.test(well) && /border-radius/.test(well), well);
+  check('T59 配方表消費共用井（index.html）', /id="recipe-table"[^>]*crafter-well/.test(HTML));
+  check('T59 配方清單與素材格都消費共用井（crafting-list.js）',
+    /cl-rows crafter-well/.test(CL) && /cl-mats crafter-well/.test(CL));
+  // 本地不得再宣告同樣三個屬性（padding／grid 屬於版面特化，允許）
+  const ruleOf = (sel) => { const k = CSS.indexOf(sel + ' {'); return k < 0 ? '' : CSS.slice(k, CSS.indexOf('}', k) + 1); };
+  for (const sel of ['.recipe-table', '.cl-rows', '.cl-mats']) {
+    const rule = ruleOf(sel);
+    check(`T59 ${sel} 不得再本地重寫 background／border／border-radius`,
+      !!rule && !/background:|border:|border-radius:/.test(rule), rule);
+  }
+}
+
 // ===== T50：三張表都消費共用 .codex-table（DS-01）=====
 // 重點不是「少寫幾行 CSS」，是 .rt 原本自刻的 sticky 重現了 portal 已文件化並修掉的坑：
 // `border-collapse: collapse` 下 th 的 border-bottom 由 table 畫、**不跟著 sticky 移動**

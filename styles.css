@@ -112,9 +112,15 @@ body {
 .filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
 .recipe-count { margin: var(--space-2, 8px) 0; }
 /* 結果列表與上方搜尋/篩選控件視覺分模塊（Owner：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
+/* 「內容井」＝比 panel 深一階的實底 ＋ accent 染框：讀作「資料在這裡面」，與外層 panel／表單控件分層。
+   Owner 2026-08-19：製造清單那兩張卡沒有這層，「根本看不清主次」⇒ 抽成一個 class 給三處共用
+   （配方表／配方清單／素材總需求），**不要各寫一份**——值一樣時畫面看不出差別，但事實源就分岔了。 */
+.crafter-well { background: var(--color-bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border));
+  border-radius: var(--radius-sm, 6px); }
 /* max-height 只是 JS 量到之前的 fallback：真值由 app-browse.js 的 fitHeight() 依「當前螢幕還剩多少」設，
    目標是**整頁不用捲、只捲表格內部**（Owner 2026-08-19）。改這裡不會改變實際高度，改 fitHeight()。 */
-.recipe-table { max-height: 60vh; overflow-y: auto; overflow-x: auto; background: var(--color-bg); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
+.recipe-table { max-height: 60vh; overflow-y: auto; overflow-x: auto; }
 /* 首載配方資料佔位：撐到與載入後同高（實際值由 fitHeight() 寫進 inline style，這裡的 60vh 同為 fallback）＝零版面位移 */
 .recipe-loading { display: flex; align-items: center; justify-content: center;
   min-height: 60vh; padding: var(--space-6, 32px); text-align: center; color: var(--color-text-muted); }
@@ -598,6 +604,8 @@ body {
 .cl-qty { display: inline-flex; align-items: center; gap: var(--space-1, 4px); white-space: nowrap; }
 .cl-qty-in { width: 68px; text-align: center; }
 .cl-del { flex: 0 0 auto; }
+/* 配方列與素材格都住在 .crafter-well 裡（與配方表同一種「內容井」）；這裡只補內距 */
+.cl-rows { padding: 0 var(--space-3, 12px); }
 .cl-rows .cl-row:last-child { border-bottom: none; }  /* 卡片內最後一列不留懸邊 */
 /* 素材依「接下來要做什麼」分三組（可自製 / 採集購買 / 晶體）：每組一個標題 + 一句該怎麼處理 */
 .cl-matgroup { margin-bottom: var(--space-4, 16px); }
@@ -610,7 +618,7 @@ body {
 .cl-matgroup__hint { flex: 1; min-width: 0; text-align: right; }
 /* 220→320px：列內多了商人徽章與「加進清單」鈕，220px 欄會被擠到換行 */
 .cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--space-1, 4px) var(--space-4, 16px); }
+  gap: var(--space-1, 4px) var(--space-4, 16px); padding: var(--space-2, 8px) var(--space-3, 12px); }
 .cl-mat { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 34px; }
 .cl-mat-ico { width: 22px; height: 22px; flex: 0 0 auto; }
 /* 名稱吃剩餘寬（原本靠 .cl-mat-amt 的 margin-left:auto 推右，加了徽章/按鈕後那招會把數量也一起推到最右）*/
