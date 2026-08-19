@@ -31,6 +31,15 @@
     // 移焦（第二引數）：這是「被擋下 → 去補資料」的補救路徑，鍵盤使用者不移焦就被丟回頁面開頭。
     // 其餘三個 switchTab 呼叫點（goto-stats-hint／去填角色數值連結／回製造清單）都已經帶了。
     if (!gear) { toast('請先設定「' + selected.recipe.job + '」的角色數值', 'error'); switchTab('stats', true); return; }
+    // 最低能力要求：遊戲內不到門檻**根本不給做** ⇒ 這裡擋下並寫出差多少，不給一份進遊戲用不了的巨集。
+    // 同「缺角色數值」的補救動線（導去角色數值分頁＋移焦）。比較基準含食藥與專家之證（deps.statShortfall）。
+    const gate = deps.statShortfall(selected.recipe, gear);
+    if (!gate.ok) {
+      const lack = [gate.cms ? `作業精度還差 ${gate.cms}` : '', gate.ctrl ? `加工精度還差 ${gate.ctrl}` : ''].filter(Boolean).join('、');
+      toast(`這個配方遊戲內要求 作業 ${gate.need.cms} ／ 加工 ${gate.need.ctrl} — ${lack}（食物／藥水加成算數）`, 'error');
+      switchTab('stats', true);
+      return;
+    }
     const settings = computeSettings(selected.recipe, selected.rlv, gear);
     if (settings.base_progress <= 0 || settings.base_quality <= 0) { toast('作業/加工數值過低', 'error'); return; }
     setSolving(true);

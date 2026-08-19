@@ -195,7 +195,9 @@
     deps.refreshSpecialistGate();
     deps.updateEff();
     // 缺角色數值時不用 disabled，保留可聚焦的補救入口；只更新 gear 實際影響的 aria 狀態。
-    deps.$('solve-btn').setAttribute('aria-disabled', g ? 'false' : 'true');
+    // 最低能力要求不足**同樣**只暗掉不 disabled（按下去由 doSolve 說明差多少並導去角色數值）。
+    const gate = deps.statGate(recipe);
+    deps.$('solve-btn').setAttribute('aria-disabled', (g && gate.ok) ? 'false' : 'true');
   }
 
   function refreshSelectedGear() {
@@ -232,6 +234,15 @@
             `${jic}${deps.esc(r.job)}${ok ? '' : ' <span class="codex-xs ri-job-btn__no">未填</span>'}</button>`;
         }).join('') + `</div>`
       : '';
+    // 最低能力要求（3396 個配方有）：遊戲內數值不到就不給做 ⇒ 要在選配方當下就看得到，
+    // 不足時標紅並寫出還差多少（比較基準含食物／藥水／專家之證，同遊戲判定）。
+    const gate = deps.statGate(recipe);
+    const reqStat = (gate.need.cms || gate.need.ctrl)
+      ? `<span class="ri-stat ri-stat--req${gate.ok ? '' : ' is-short'}"` +
+        ` data-help="這個配方在遊戲內有最低能力要求：作業精度 ${gate.need.cms} ／ 加工精度 ${gate.need.ctrl}。` +
+        `不到就不能製作（食物與藥水的加成算數）。${gate.ok ? '你目前符合。' : `你還差 作業 ${gate.cms} ／ 加工 ${gate.ctrl}。`}">` +
+        `需求 作業<b>${gate.need.cms}</b> 加工<b>${gate.need.ctrl}</b>${gate.ok ? '' : ' ⚠'}</span>`
+      : '';
     const backChain = chain.length
       ? `<button id="back-in-chain" class="codex-btn codex-btn--ghost" type="button" data-help="回到這條製作鏈的上一層（中間材做完了就回去做成品）">← 回「${deps.esc(chain[chain.length - 1].name)}」</button>`
       : '';
@@ -243,7 +254,7 @@
       ${icon ? `<img class="ri-icon" src="${deps.iconUrl(icon)}" alt="">` : ''}
       <div class="ri-main">
         <div class="ri-name">${deps.esc(recipe.item_name)}${recipe.is_expert ? ' <span class="codex-small">高難度</span>' : ''}</div>
-        <div class="ri-stats"><span class="ri-job">${jico}${deps.esc(recipe.job)}</span><span class="ri-stat">難度<b>${maxP}</b></span><span class="ri-stat">品質<b>${maxQ}</b></span><span class="ri-stat">耐久<b>${maxD}</b></span></div>
+        <div class="ri-stats"><span class="ri-job">${jico}${deps.esc(recipe.job)}</span><span class="ri-stat">難度<b>${maxP}</b></span><span class="ri-stat">品質<b>${maxQ}</b></span><span class="ri-stat">耐久<b>${maxD}</b></span>${reqStat}</div>
       </div>
       <div class="ri-actions">
         <button id="add-to-list" class="codex-btn codex-btn--ghost" type="button" data-help="加進「製造清單」分頁，彙總所有成品的素材總需求">📋 加入清單</button>
@@ -349,7 +360,7 @@
     'renderTable', 'getRecipes', 'getRlvTable', 'getItems', 'getIngredients', 'getSelected', 'setSelected',
     'getComputedInitial', 'setComputedInitial', 'getOpenedFromList', 'setOpenedFromList', 'invalidateResults',
     'updateEff', 'gearFor', 'refreshSpecialistGate', 'isCrystal',
-    'getRecipesById', 'getRecipeByItem', 'getRecipesByItem', 'gearOkFor'];
+    'getRecipesById', 'getRecipeByItem', 'getRecipesByItem', 'gearOkFor', 'statGate'];
   globalThis.CraftRecipe = {
     craftPlan, craftIngredient, backInChain, chainDepth, continueWith, recipesForItem, pickRecipeForItem,
     init(d) {
