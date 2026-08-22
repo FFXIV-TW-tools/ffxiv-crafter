@@ -17,6 +17,7 @@ crafting-list.js
 data
 favicon-192.png
 favicon.ico
+first-run-hint.js
 functions
 index.html
 LICENSE

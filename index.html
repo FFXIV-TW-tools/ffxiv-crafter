@@ -119,6 +119,11 @@
         <span>👉 首次使用：先到「<b>角色數值</b>」分頁填各職裝備數值，再回來選配方求解。</span>
         <button id="goto-stats-hint" class="codex-btn codex-btn--ghost" type="button">前往角色數值 →</button>
       </div>
+      <!-- 提示的顯隱只看 localStorage，是同步就能決定的事，但原本要等 app.js（type=module ⇒ defer）
+           才決定 ⇒ 首次繪製之後才長出 80px，把流程軸與整個求解面板往下推（CLS）。這支是
+           **parser-blocking 的外部 classic script**，跑在解析階段、早於首次繪製 —— 刻意不用
+           inline：那會擴大 CSP unsafe-inline 的依賴面（T53 哨兵當場擋下，它是對的）。 -->
+      <script src="first-run-hint.js"></script>
 
       <!-- 流程軸（設計系統 §功能頁引導標準）：三步狀態 + 固定位置的「下一步」。內容由 app-flow.js 依 live 狀態重繪 -->
       <nav class="crafter-flow-wrap" aria-label="製作求解流程">

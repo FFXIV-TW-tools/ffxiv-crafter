@@ -70,6 +70,8 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 
 ## ✅ VERIFY（改動後跑，未過不算完成）
 
+- **CLS：只看 localStorage 就能決定的顯隱，不要留給 `app.js`（module ⇒ defer）決定**（2026-08-23）。`#first-run-hint` 原本要等 `updateHint()` 才決定 ⇒ **首次繪製之後**才長出 80px，把流程軸與整個求解面板往下推；載入期 CLS 1366/900/390＝0.044/0.069/0.094 全來自這一發，而畫面上只是「提示晚一點才出現」。改成 `first-run-hint.js`（**parser-blocking 的外部 classic script**，掛在提示正下方）在解析階段先定案。⚠️ **第一版寫成 inline 被 T53 當場擋下，而它是對的**——inline 會擴大 CSP `unsafe-inline` 的依賴面，而那條的存在理由是「head 那兩段 bootstrap 非留不可」；外部檔走 `script-src 'self'`，時機完全一樣。⚠️ 不能改叫 `CraftGear.anyGear()`（要等 app.js 注入 deps，正是要避開的時機）⇒ key 有**兩份**，漂移哨兵＝`tests/first-run-hint-key.test.mjs`（同時鎖「不得改成 defer／async／module」——那會讓它跑在首次繪製之後，位移原樣回來而測試仍綠）。修後 0.0005/0.0011/0.0105。
+
 **canonicalTest（safe-push 實跑的那一條；claude-skills `process/` 的 `fleet.json` 逐字對照本行）**：
 
 ```bash
@@ -81,7 +83,7 @@ node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-a
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **653**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 2 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
+> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **653**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 3 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
 > 逐輪沿革＝[`docs/test-baseline-history.md`](docs/test-baseline-history.md)；「為什麼這幾支被併進 canonicalTest」＝[`docs/lessons.md`](docs/lessons.md)。
 
 ```bash
