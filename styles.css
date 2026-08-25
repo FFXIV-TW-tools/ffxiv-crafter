@@ -110,6 +110,14 @@ body {
 .filter-row .grow { flex: 1; min-width: 150px; }
 .filter-row .codex-select { flex: 0 0 auto; min-width: 130px; }
 .filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
+/* ⚠️ **版本篩選要給明確寬度，`min-width` 擋不住**（2026-08-25，CLS 密集掃 800px 0.1973）：
+   `#patch-filter` 的 <option> 由 `app-browse.renderPatchOptions()` 依資料生成 ⇒ 首次繪製時它是**空的**，
+   只有 `min-width:130px` 那個地板；填完實測 **130 → 174px**。多出來的 44px 把 `#expert-filter` 擠到
+   第二列，`.filter-row` 1 列變 2 列，`#recipe-table` 整塊下推 46px ⇒ 單筆 layout shift 0.1973
+   （順帶 `.grow` 吃掉多出來的空間，所以等級／配方等級也跟著平移，看起來像整排在跳）。
+   ⚠️ 這個頻帶只有一格寬（840 ✓ / **800 ✗** / 760 ✓），挑常見寬度的取樣一定會漏。
+   ⇒ 盒子固定，與選項內容無關；日後版號變長只會裁字（看得見的降級），不會再靜默把位移放回來。 */
+.filter-row #patch-filter { flex: 0 0 176px; width: 176px; min-width: 0; }
 .recipe-count { margin: var(--space-2, 8px) 0; }
 /* 結果列表與上方搜尋/篩選控件視覺分模塊（Owner：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
 /* 「內容井」＝比 panel 深一階的實底 ＋ accent 染框：讀作「資料在這裡面」，與外層 panel／表單控件分層。
