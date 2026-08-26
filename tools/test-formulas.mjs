@@ -968,10 +968,16 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     eq('T11 表頭 9 欄（名稱/種類/職業/Lv/配方等級/難度/品質/版本/加入）', (html.match(/<th[ >]/g) || []).length, 9);   // [ >] 才不會把 <thead 也算進去
     const cssCols = (CSS_SRC.match(/\.rt th:nth-child\(\d\)/g) || []).length;
     eq('T11 CSS 的欄寬宣告數 == 表頭欄數（漏一欄＝版面靜默走鐘）', cssCols, 9);
-    check('T11 難度／品質欄有值（來自 RINDEX 的 recipeMaxes 快照）', /<td>1200<\/td><td>3400<\/td>/.test(html), html.slice(0, 400));
+    check('T11 難度／品質欄有值（來自 RINDEX 的 recipeMaxes 快照）', /<td data-label="難度">1200<\/td><td data-label="品質">3400<\/td>/.test(html), html.slice(0, 400));
     check('T11 名稱不再有副行 wrapper（rt-nmwrap 已退場）', !/rt-nmwrap/.test(html) && !/rt-nmwrap/.test(CSS_SRC));
     // 缺 rlv 列時 app.js 給 null ⇒ 顯「—」而不是假的 0（0 難度會被讀成「這配方超簡單」）
-    check('T11 難度／品質缺值 → 顯「—」不顯 0', /<td>—<\/td><td>—<\/td>/.test(html), html.slice(0, 400));
+    check('T11 難度／品質缺值 → 顯「—」不顯 0', /<td data-label="難度">—<\/td><td data-label="品質">—<\/td>/.test(html), html.slice(0, 400));
+    // 四個純數字欄的 data-label 是**手機堆疊版的欄名來源**（`.rt td[data-label]::before` 讀它）。
+    // 拿掉它們桌面完全看不出來（桌面有 thead），手機才會退化成「90 / 690 / 5280 / 15200」四個無名數字
+    // ⇒ 兩邊互鎖：markup 有 data-label、CSS 有 attr(data-label)，缺一即紅（2026-08-26 行動適配）。
+    check('T11 數字欄帶 data-label ＋ CSS 有對應的 attr() 消費端（手機堆疊版欄名）',
+      (() => { const n = (html.match(/<td data-label="/g) || []).length;
+               return n > 0 && n % 4 === 0 && /content:\s*attr\(data-label\)/.test(CSS_SRC); })(), html.slice(0, 400));
     // 加入鈕改內嵌向量（全形「＋」的重量／垂直位置隨系統字型跑）
     check('T11 加入鈕是向量不是字元', /class="[^"]*rt-add[^"]*"[^>]*>\s*<svg/.test(html) && !/>＋</.test(html));
     check('T11 加入鈕仍是 ghost 圖示鈕（列級豁免：不參賽 primary）',

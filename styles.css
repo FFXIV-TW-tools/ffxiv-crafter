@@ -205,6 +205,45 @@ body {
 .rt-add > svg, .rt-del > svg { display: block; width: 15px; height: 15px; }
 /* 觸控補償（同 .ing-hq-in 既有慣例）：28px 在手機上太小，且整列本身可點＝誤觸會變成「選配方」 */
 @media (pointer: coarse) { .rt-act .codex-btn { height: 40px; min-width: 40px; } }
+/* ── 手機：配方列表由「9 欄橫捲表」改「逐列堆疊卡」（2026-08-26，行動適配預設化政策）──
+   破口＝393px 實測 `#recipe-table` scrollWidth 960 / clientWidth 357：可視區只剩名稱欄，
+   種類／職業／Lv／配方等級／難度／品質／版本／加入鈕全在畫面外，而捲軸是隱藏的
+   ⇒ 使用者看到的是一張「只有名字」的清單，且不知道右邊還有東西。
+   ⚠️ DOM 只加不減：四個純數字欄在 `app-browse.js` 補了 `data-label`（桌面不顯示、
+   只有本段的 `::before` 會用到）——沒有它，堆疊後 `90 / 690 / 5280 / 15200` 是四個無名數字。
+   ⚠️ `min-width: 960px` 必須歸零，否則 `display:block` 也救不了橫捲。 */
+@media (max-width: 700px) {
+  .recipe-table { overflow-x: visible; max-height: 70vh; }
+  .rt { min-width: 0; display: block; }
+  .rt thead { display: none; }                 /* 堆疊後欄名由 data-label 提供 */
+  .rt tbody { display: block; }
+  /* flex-wrap 而不是 grid：欄位寬度差很多（「錬金原料」vs「Lv 100」），grid 會逼每格
+     各佔一列（第一版實測長成 6 行的鬆散卡）。flex 讓短欄自然併行、長名自己換行。
+     加入鈕改絕對定位釘右上，並用 padding-right 留出它的位子（不留＝長配方名會壓到鈕上）。
+     ⚠️ 92px 不是隨手抓的：`.rt-actwrap` 是**固定兩格**的 inline-grid（＋ 恆在第一欄、− 恆在第二欄，
+     見上方 Owner 2026-08-19 裁示），觸控下每格 40px ⇒ 實寬 84px。第一版寫 52px（照單顆鈕估）
+     結果「難度 4125」被壓在鈕底下——量過才知道那格是 80px 不是 40px。 */
+  .rt-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-3, 12px);
+    row-gap: 2px;
+    position: relative;
+    padding: var(--space-2, 8px) 92px var(--space-2, 8px) var(--space-1, 4px);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+  }
+  .rt td { display: block; height: auto; padding: 0; border-bottom: 0; }
+  .rt td:not(.rt-name) { text-align: left; }   /* 桌面的置中是為了欄對齊，堆疊後改齊左 */
+  .rt-name { flex: 1 1 100%; font-weight: var(--fw-semibold, 600); }
+  .rt-act { position: absolute; top: var(--space-2, 8px); right: var(--space-1, 4px); }
+  .rt-cat, .rt-job, .rt-patch, .rt td[data-label] {
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
+  }
+  .rt td[data-label]::before { content: attr(data-label) " "; opacity: 0.75; }
+}
+
 /* 斑馬紋＝掃視主力；:not() 讓「已加入綠底」與「選中」兩個語意態一定贏過純裝飾的斑馬 */
 .rt tbody tr:nth-child(even):not(.rt-in):not(.is-sel) { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }
 .rt-row { cursor: pointer; }
