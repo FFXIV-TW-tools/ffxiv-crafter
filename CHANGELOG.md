@@ -2,6 +2,21 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-09-02 — 舊網址 `*.pages.dev` 改回 HTTP 301（Google 一個月來把舊網址當本尊）
+
+Owner 搜尋「ff14 成績單」看到的仍是 `pages.dev`、站名顯示「Cloudflare」。GSC 實查：舊 host 今天才被抓、
+擷取成功、允許索引，**「Google 所選的標準網址＝受檢測網址」**——`canonical` 指向新網址被否決。
+根因＝B-061（2026-08-04）為省 Functions 額度把交接改成 inline JS 跳轉後，舊 host 對爬蟲回 **200 ＋ 整頁內容**；
+真人會被 JS 跳走，Googlebot 不會。canonical 是建議、301 才是指令。
+
+- `functions/_middleware.js`：舊 host 的 HTML 導覽請求回 **301** 到新網址同路徑（GET＋Accept text/html＋
+  hostname 全等＋無 `?stay` 四條件不變；`Cache-Control: no-store` 保留可回滾）。`?stay` 資料救援門照舊。
+- `_routes.json`：可導覽 HTML 路徑列回 include（＝manifest `paths`）。代價＝新網域這些路徑每次開頁一次
+  Functions 呼叫；2026-08-28 撞上限的幽靈 `/settings-api` 已修，不是同一個量級。
+- 已知代價：還沒來過新站的舊書籤使用者不再自動帶雲端 UUID（到設定面板貼上即可）；inline 交接腳本保留為退路。
+- `tests/handoff.test.mjs` ③–⑤ 改斷言 301／Location／no body／CRLF。13 站同步；跨 repo 一致性哨兵全綠。
+- 上線後：GSC 對舊 host property 跑「網址變更」，讓 Google 整批搬訊號。
+
 ## 2026-08-26 — 行動適配：配方列表由「9 欄橫捲表」改「逐列堆疊卡」
 
 portal 側把行動適配從「逐工具 opt-in」改成預設要做（`_DESIGN-SYSTEM.md` §📱 行動適配是預設，

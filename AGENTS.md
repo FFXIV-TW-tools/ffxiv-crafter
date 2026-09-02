@@ -94,6 +94,8 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 ```
 
 <!-- B-048-HANDOFF -->
+> 2026-09-02 起 `_middleware.js` 對舊 host 回 **HTTP 301**（GSC 實查：Google 否決 canonical、把 pages.dev 選成標準網址；inline JS 跳轉對爬蟲無效）；可導覽路徑列回 `_routes.json`。
+>
 - **改 `functions/_middleware.js`／`_routes.json`／`tests/route-manifest.json`** → `node tests/handoff.test.mjs`（13 站逐字複製的樣板，**不得為配合本 repo 慣例改寫其介面**，理由見 `docs/lessons.md`）。
 - **改 `wasm/`（改綁定或換 raphael 版本）→ 另跑引擎差分閘**（不進 pre-commit，太慢）：
   ```bash
