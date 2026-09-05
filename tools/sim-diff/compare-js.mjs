@@ -33,7 +33,7 @@ const sandbox = {
 };
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
-for (const f of ['app-gear.js', 'app-recipe.js', 'app-render.js']) vm.runInContext(read(f), sandbox, { filename: f });
+for (const f of ['app-gear.js', 'app-recipe.js', 'app-render.js', 'app-formula.js', 'app-data.js']) vm.runInContext(read(f), sandbox, { filename: f });
 vm.runInContext(read('app.js') + '\n;globalThis.__t={computeSettings,hqPercent:globalThis.CraftRender.hqPercent};', sandbox, { filename: 'app.js' });
 const T = sandbox.__t;
 

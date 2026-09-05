@@ -1,5 +1,5 @@
 // 配方製作求解器 — 分頁式：配方求解（職業+等級瀏覽）/ 角色數值（各職裝備）。
-// 公式（已對抗驗證，spec §4）在此算，WASM worker 只跑引擎。
+// 公式在 app-formula.js（已對抗驗證，spec §4）算，WASM worker 只跑引擎；本檔是控制器：狀態持有／分頁／init 接線。
 const $ = (id) => document.getElementById(id);
 // icon URL — xivapi v2 asset CDN（v1 xivapi.com 圖庫停更，7.5 新 icon 404；權威寫法＝marketboard modules/icon.js，此為 v1 路徑輸入版）
 function iconUrl(p) {
@@ -56,80 +56,22 @@ let openedFromList = false; // 由製造清單「前往求解」進入 → 結�
 let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
 // worker / solveClock 已移入 app-solve.js（該層私有狀態）
 
-// ---------- 資料 ----------
+// ---------- 資料（載入與索引建立已抽到 app-data.js：globalThis.CraftData）----------
+// proxy：狀態綁定住此（各層以 getter 取 live 值），CraftData 只負責把資料與索引算出來回傳。
+// 接到各分層的順序有時序契約 → 留在這裡，逐行註解說明為什麼。
 async function loadData() {
-  // 逾時：網路 stall 時不讓「📦 載入配方資料中…」無限空轉（無逾時＝玩家看不出是慢還是壞掉，只能自己重整）
-  // 舊瀏覽器沒有 AbortSignal.timeout：退回無逾時，別整站死在 fetch 之前（連 fetchOpt 的降級都吃不到；健檢 R5 M8）
-  const fetchJson = async (url) => { const r = await fetch(url, { signal: globalThis.AbortSignal?.timeout ? AbortSignal.timeout(30000) : undefined }); if (!r.ok) throw new Error(`${url} HTTP ${r.status}`); return r.json(); }; // HTTP 錯誤明確降級（非把 404 頁當 JSON 硬 parse）
-  // 選配資料（食物/藥水）非必要 → 失敗只降級該功能、不拖垮整站；回傳 [] 讓 buildConsumables 安全略過
-  const fetchOpt = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return []; } };
-  // 食藥兩份失敗要回 null 不是 []：app-consumable.setData 把「不在清單裡的保存值」當品項下架清掉，
-  // 給它 [] 等於一次網路抖動就把玩家的食藥偏好清空（健檢 R5 M3）。null ＝「這次沒拿到，維持上一份」。
-  const fetchOptOrNull = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，維持上一份:', url, e); return null; } };
-  // 七檔同一輪併發：meals/medicine 原本排第二輪 await，白等一個 RTT 只換 2.5KB（fetchOpt 自己吞錯，不會拖垮必要資料）
-  // 品質階段同為選配：載不到只是少了「一階/二階/三階」快捷，目標品質仍可手打 → 不拖垮整站
-  const fetchOptObj = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return {}; } };
-  // 等級同步**不是普通選配資料**：其他選配載不到只是少一個快捷（品質階段）或少一份加成（食藥），
-  // 這一份載不到會讓宇宙探索配方沿用資料裡的 rlv 690 ＝ Lv100 版本的難度/品質/耐久
-  // —— Lv70 玩家看到的是六倍難度，求解直接回「做不到」，而畫面上一切正常（零回饋訊號，B-016 的原病）。
-  // 故降級要**看得見**：仍不拖垮整站（其餘 99% 配方不受影響），但必須告訴玩家數字可能不對。
-  const fetchLevelSync = async () => {
-    try { return await fetchJson('data/level-sync.json'); }
-    catch (e) {
-      console.warn('[crafter] 等級同步資料載入失敗:', e);
-      toast('等級同步資料載入失敗 — 宇宙探索配方可能顯示 Lv100 的難度與品質，重整可重試', 'warn');
-      return {};
-    }
-  };
-  const [recipes, rlv, actions, items, ingredients, meals, medicine, stages, levelSync, quests, vendors] = await Promise.all([
-    fetchJson('data/recipes.json'),
-    fetchJson('data/recipe_levels.json'),
-    fetchJson('data/craft-actions.json'),
-    fetchJson('data/items.json'),
-    fetchJson('data/ingredients.json'),
-    fetchOptOrNull('data/meals.json'),
-    fetchOptOrNull('data/medicine.json'),
-    fetchOptObj('data/quality-stages.json'),
-    fetchLevelSync(),
-    fetchOpt('data/job-quests.json'),
-    fetchOptObj('data/vendors.json'),
-  ]);
-  RECIPES = recipes; RLV = rlv; ACTIONS = actions; ITEMS = items; INGREDIENTS = ingredients;
-  globalThis.CraftConsumable?.setData?.(meals, medicine);   // 任一為 null 時該種類維持上一份（見 fetchOptOrNull）
-  globalThis.CraftStages?.setData?.(stages);
-  globalThis.CraftSync?.setData?.(levelSync);
+  const d = await globalThis.CraftData.load();
+  RECIPES = d.recipes; RLV = d.rlv; ACTIONS = d.actions; ITEMS = d.items; INGREDIENTS = d.ingredients;
+  RECIPE_BY_ID = d.byId; RECIPE_BY_ITEM = d.byItem; RECIPES_BY_ITEM = d.recipesByItem;
+  RINDEX = d.rindex;
+  globalThis.CraftConsumable?.setData?.(d.meals, d.medicine);   // 任一為 null 時該種類維持上一份（見 app-data.js 的 fetchOptOrNull）
+  globalThis.CraftStages?.setData?.(d.stages);
+  globalThis.CraftSync?.setData?.(d.levelSync);
   globalThis.CraftNext?.setData?.();   // INGREDIENTS 換了新綁定 → 反查索引作廢（下次用到再建）
-  RECIPE_BY_ID = {}; RECIPE_BY_ITEM = {}; RECIPES_BY_ITEM = {};
-  for (const r of RECIPES) {
-    RECIPE_BY_ID[r.id] = r;
-    if (r.item_id != null && RECIPE_BY_ITEM[r.item_id] == null) RECIPE_BY_ITEM[r.item_id] = r.id;  // 同物品多配方取先出現者（與配方表一致）
-    // **同一件東西常常好幾個職業都能做**（實測 651 件；宇宙探索的「統一規格的金屬板」3 職 12 張——同職也會多張）。
-    // 只留「先出現者」等於幫玩家選了一個他可能沒練的職業 → 另存完整清單供職業切換與「先做這個」挑選。
-    if (r.item_id != null) (RECIPES_BY_ITEM[r.item_id] = RECIPES_BY_ITEM[r.item_id] || []).push(r.id);
-  }
-  RINDEX = RECIPES.map(r => ({
-    id: r.id, name: r.item_name || '', job: r.job || '', rlv: r.rlv,
-    // 簡中名只進搜尋、不顯示（顯示一律繁中）：很多人記的是陸服名或直接從簡中攻略貼過來
-    nameSc: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].name_sc) || '',
-    level: (RLV[String(r.rlv)] && RLV[String(r.rlv)].class_job_level) || 0,
-    icon: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].icon) || null,
-    category: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].category) || '', // 道具種類（繁中）→ 配方表獨立一欄
-    expert: !!r.is_expert,   // 高難度（expert）＝遊戲內隨機製作狀態的配方（536 筆）；配方表標徽章＋可篩選
-    patch: (ITEMS[String(r.item_id)] && ITEMS[String(r.item_id)].patch) || '',   // 成品的實裝版本（item_lookup.items.patch，13874 筆全有值）→ 版本欄＋版本篩選
-    // 難度／品質上限：**一律走 recipeMaxes**（顯示與求解共用同一算式的鐵則，CQ-01）——
-    // 這裡多一份 `rlv.difficulty * factor / 100` 就是第二份公式，改版時只會有一邊被改到。
-    // 缺 rlv 列（資料半套）→ 給 null，渲染端顯「—」而不是假的 0。
-    ...(function () {
-      const row = RLV[String(r.rlv)];
-      if (!row) return { diff: null, qual: null };
-      const m = recipeMaxes(r, row);
-      return { diff: m.max_progress, qual: m.max_quality };
-    })(),
-  }));
   // **必須在兩份配方索引建好之後**：職業任務的素材展開要靠它們判斷「這件東西做得出來嗎」，
   // 早一步呼叫的話整份清單會靜默變成「全部非製作」（畫面正常、只是全錯）。
-  globalThis.CraftQuests?.setVendors?.(vendors);   // 先給商人資料，setData 一次繪到位（省一次重繪）
-  globalThis.CraftQuests?.setData?.(quests);
+  globalThis.CraftQuests?.setVendors?.(d.vendors);   // 先給商人資料，setData 一次繪到位（省一次重繪）
+  globalThis.CraftQuests?.setData?.(d.quests);
 }
 
 // ---------- 角色數值（localStorage，已抽到 app-gear.js：globalThis.CraftGear）----------
@@ -151,26 +93,14 @@ function markListState() { return globalThis.CraftBrowse.markListState(); }
 
 function selectRecipe(id, fromList) { return globalThis.CraftRecipe.selectRecipe(id, fromList); }
 function showPicker() { return globalThis.CraftRecipe.showPicker(); }
+// ---------- 公式（FFXIV，已對抗驗證；spec §4。已抽到 app-formula.js：globalThis.CraftFormula）----------
+// proxy：既有呼叫點與注入給各層的引用沿用同名，實體在 CraftFormula（init 注入求解選項 DOM／初始品質 getter）。
+// 只留**真的還有人呼叫**的四支（applyConsumables 的呼叫端都在 app-formula.js 內部，不再轉一手）。
 // 配方三上限（進展/品質/耐久）：顯示（refreshSelectedGear）與求解（computeSettings）共用同一算式，防兩處漂移（CQ-01）
-function recipeMaxes(recipe, rlv) {
-  return {
-    max_progress: Math.floor(rlv.difficulty * recipe.difficulty_factor / 100),
-    max_quality: Math.floor(rlv.quality * recipe.quality_factor / 100),
-    max_durability: Math.floor(rlv.durability * recipe.durability_factor / 100),
-  };
-}
-// 配方的最低能力要求（`Recipe.RequiredCraftsmanship` / `RequiredControl`，13874 個裡 3396 個有）：
-// 遊戲內數值不到就**根本不給做**，站上原本完全沒讀這兩欄 ⇒ 使用者拿得到一份進遊戲用不了的巨集。
-// 比較基準＝`effectiveStats`（含食物／藥水／專家之證）——遊戲的判定同樣吃 buff，拿裸裝比會誤擋。
-// 單一出口：顯示（app-recipe 的需求標示與求解鈕狀態）與擋閘（app-solve.doSolve）共用這一份。
-function statShortfall(recipe, gear) {
-  const need = { cms: +(recipe && recipe.required_craftsmanship) || 0, ctrl: +(recipe && recipe.required_control) || 0 };
-  if (!gear || (!need.cms && !need.ctrl)) return { need, cms: 0, ctrl: 0, ok: true };
-  const eff = effectiveStats(gear);
-  const cms = Math.max(0, need.cms - eff.cms);
-  const ctrl = Math.max(0, need.ctrl - eff.ctrl);
-  return { need, cms, ctrl, ok: cms === 0 && ctrl === 0 };
-}
+function recipeMaxes(recipe, rlv) { return globalThis.CraftFormula.recipeMaxes(recipe, rlv); }
+// 配方的最低能力要求（`Recipe.RequiredCraftsmanship` / `RequiredControl`）：顯示（app-recipe 的需求標示
+// 與求解鈕狀態）與擋閘（app-solve.doSolve）共用這一份，比較基準含食藥與專家之證。
+function statShortfall(recipe, gear) { return globalThis.CraftFormula.statShortfall(recipe, gear); }
 
 // CraftRecipe.refreshGearNote 內保留 Number(g.level) 等級同步硬化。
 function refreshGearNote() { return globalThis.CraftRecipe.refreshGearNote(); }
@@ -178,19 +108,7 @@ function refreshSelectedGear() { return globalThis.CraftRecipe.refreshSelectedGe
 function renderIngredients(recipe, maxQ) { return globalThis.CraftRecipe.renderIngredients(recipe, maxQ); }
 
 // ---------- 食物 / 藥水（選擇 UI + 本地保存已抽到 app-consumable.js：globalThis.CraftConsumable）----------
-// 這裡只留「選中品項 → 數值加成」的公式面；選單渲染/鍵盤/保存屬該層。
-// 選擇性呼叫（?.）：測試 sandbox 未載該層時＝無食藥，公式仍可決定性驗證。
-function applyConsumables(baseCms, baseCtrl, baseCp) {
-  let cms = baseCms, ctrl = baseCtrl, cp = baseCp;
-  const cs = globalThis.CraftConsumable;
-  for (const e of [cs?.get?.('food') || null, cs?.get?.('potion') || null]) {
-    if (!e) continue;
-    if (e.cm) cms += Math.min(e.cm_max || Infinity, Math.floor(baseCms * e.cm / 100));
-    if (e.ct) ctrl += Math.min(e.ct_max || Infinity, Math.floor(baseCtrl * e.ct / 100));
-    if (e.cp) cp += Math.min(e.cp_max || Infinity, Math.floor(baseCp * e.cp / 100));
-  }
-  return { cms, ctrl, cp };
-}
+// 「選中品項 → 數值加成」的公式面在 app-formula.js（applyConsumables / effectiveStats）。
 // 食藥任一變更 → 實際數值、摘要、舊結果失效（三者永遠同步，勿在別處只做其中一項）
 // 專家之證＝「角色數值」分頁裡該職業的狀態（CraftGear），不是這一區的開關 → 閘的來源是選中配方的職業
 function refreshSpecialistGate() {
@@ -214,11 +132,7 @@ function onConsumableChange() {
   if (selected) refreshGearNote();
   invalidateResults();
 }
-function effectiveStats(gear) {
-  const spec = !!gear.specialist;               // 該職業是否持有專家之證（角色數值分頁設定，gearFor 帶進來）
-  const sp = spec ? 20 : 0;                    // 專家之證：作業 +20・加工 +20
-  return applyConsumables(gear.cms + sp, gear.ctrl + sp, gear.cp + (spec ? 15 : 0)); // 專家之證：CP +15（Soul of the Crafter 專家狀態加成）
-}
+function effectiveStats(gear) { return globalThis.CraftFormula.effectiveStats(gear); }
 function updateEff() {
   if (!selected) return;
   const g = gearFor(selected.recipe.job);
@@ -229,34 +143,7 @@ function updateEff() {
 }
 function updateInitial(recipe, maxQ) { return globalThis.CraftRecipe.updateInitial(recipe, maxQ); }
 
-// ---------- 公式（FFXIV，已驗證；spec §4）----------
-function computeSettings(recipe, rlv, gear) {
-  const level = gear.level || 100;
-  const eff = effectiveStats(gear);            // 含食物/藥/專家之證
-  let bp = eff.cms * 10 / rlv.progress_divider + 2;
-  let bq = eff.ctrl * 10 / rlv.quality_divider + 35;
-  if (level <= rlv.class_job_level) {          // 等級懲罰閘 ≤（已驗證）
-    bp = bp * rlv.progress_modifier / 100;
-    bq = bq * rlv.quality_modifier / 100;
-  }
-  bp = Math.trunc(bp); bq = Math.trunc(bq);    // as u16 截斷
-  const { max_progress, max_quality, max_durability } = recipeMaxes(recipe, rlv);
-  return {
-    max_cp: eff.cp, max_durability, max_progress, max_quality,
-    base_progress: bp, base_quality: bq, job_level: level,
-    use_manipulation: $('opt-manip').checked,
-    use_heart_and_soul: $('opt-heart').checked && !!gear.specialist,
-    use_quick_innovation: $('opt-qi').checked && !!gear.specialist,
-    use_trained_eye: !recipe.is_expert && level >= rlv.class_job_level + 10, // 自動（出等級即可）
-    adversarial: $('opt-adversarial').checked && !recipe.is_expert, // 高難度配方引擎不支援，強制關
-
-    backload_progress: $('opt-backload').checked,
-    stellar_steady_hand_charges: 0,
-    target_quality: $('solve-mode').value === 'nq' ? 0
-      : (($('opt-target').value && +$('opt-target').value > 0) ? Math.min(+$('opt-target').value, max_quality) : max_quality),
-    initial_quality: Math.min(Math.max(0, computedInitial || 0), max_quality),
-  };
-}
+function computeSettings(recipe, rlv, gear) { return globalThis.CraftFormula.computeSettings(recipe, rlv, gear); }
 
 // ---------- 求解（已抽到 app-solve.js：globalThis.CraftSolve；worker/solveClock 為該層私有狀態）----------
 // invalidateResults 留此：被 gear/原料/求解輸入等多處外部呼叫，且求解編排層內部不呼叫它。
@@ -396,6 +283,13 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 早報會落到下面的 catch 顯示錯誤橫幅；用 `?.` 軟略過的話玩家看到的是一個少了功能、
   // 按下去才無聲 TypeError 的頁面。各層**內部**的 `globalThis.CraftXxx?.` 選擇性呼叫不在此列
   // （那是給測試 sandbox 只載部分層用的）。新增分層檔時這裡要一起加，T49 機械守。
+  // 公式層（app-formula.js classic script）：**必須最早**——下面每一層注入的 computeSettings／recipeMaxes／
+  // statShortfall 都是本檔轉往 CraftFormula 的 proxy，deps 沒就位的話那些呼叫會在求解當下才炸
+  if (!globalThis.CraftFormula) throw new Error('app-formula.js 未載入（部署不完整）');
+  globalThis.CraftFormula.init({ $, getComputedInitial: () => computedInitial });
+  // 資料載入層（app-data.js classic script）：RINDEX 的難度／品質欄要走同一份 recipeMaxes（CQ-01）
+  if (!globalThis.CraftData) throw new Error('app-data.js 未載入（部署不完整）');
+  globalThis.CraftData.init({ toast, recipeMaxes });
   // 求解編排（app-solve.js classic script）：注入依賴後預熱 WASM（提前於 loadData，讓 download 與 fetch 並行）
   if (!globalThis.CraftSolve) throw new Error('app-solve.js 未載入（部署不完整）');
   {

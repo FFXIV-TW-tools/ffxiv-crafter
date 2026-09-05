@@ -12,6 +12,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..');
 const APP_SRC = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
 const GEAR_SRC = fs.readFileSync(path.join(ROOT, 'app-gear.js'), 'utf8');
+// 公式面（recipeMaxes／statShortfall／effectiveStats／computeSettings）與資料載入面住這兩支；
+// app.js 只剩同名 proxy ⇒ **每個載 APP_SRC 的 sandbox 都要先載這兩份真原始碼**（不是 stub：純函式要真的算）。
+const FORMULA_SRC = fs.readFileSync(path.join(ROOT, 'app-formula.js'), 'utf8');
+const DATA_SRC = fs.readFileSync(path.join(ROOT, 'app-data.js'), 'utf8');
 const RECIPE_SRC = fs.readFileSync(path.join(ROOT, 'app-recipe.js'), 'utf8');
 const RENDER_SRC = fs.readFileSync(path.join(ROOT, 'app-render.js'), 'utf8'); // 結果渲染層（hqPercent 純函式住此）
 const CSS_SRC = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');       // T17 首載空間預留（CLS）規則哨兵
@@ -76,6 +80,8 @@ vm.createContext(sandbox);
 vm.runInContext(GEAR_SRC, sandbox, { filename: 'app-gear.js' });
 vm.runInContext(RECIPE_SRC, sandbox, { filename: 'app-recipe.js' });
 vm.runInContext(RENDER_SRC, sandbox, { filename: 'app-render.js' }); // 先定義 globalThis.CraftRender（hqPercent 純函式、不需 init）
+vm.runInContext(FORMULA_SRC, sandbox, { filename: 'app-formula.js' });
+vm.runInContext(DATA_SRC, sandbox, { filename: 'app-data.js' });
 vm.runInContext(
   APP_SRC + '\n;globalThis.__t = { computeSettings, recipeMaxes, effectiveStats, statShortfall, esc, mbItem, mbCraft, selectRecipe, copyText, DOH, JOB_ICON, hqPercent: globalThis.CraftRender.hqPercent };',
   sandbox, { filename: 'crafter-app.js' });
@@ -232,6 +238,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t23.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t23.js' });
+    vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t23.js' });
+    vm.runInContext(DATA_SRC, ctx, { filename: 'app-data-t23.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t23.js' });
     return ctx;
   };
@@ -277,6 +285,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t24.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t24.js' });
+    vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t24.js' });
+    vm.runInContext(DATA_SRC, ctx, { filename: 'app-data-t24.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t24.js' });
     return ctx;
   };
@@ -392,6 +402,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     // 反過來載的話那一行是 no-op ⇒ 手動指定等級整條路徑在測試裡根本不存在（T37 由來）。
     if (syncMap) vm.runInContext(LS_SRC, ctx, { filename: 'app-level-sync-t25.js' });
     if (stageMap) vm.runInContext(QSTAGE_SRC, ctx, { filename: 'app-quality-stages-t25.js' });
+    vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t25.mjs' });
+    vm.runInContext(DATA_SRC, ctx, { filename: 'app-data-t25.mjs' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t25.mjs' });
     vm.runInContext(`RECIPES = ${JSON.stringify([recipe])}; RLV = ${JSON.stringify(rlvTable)}; ITEMS = {"42":{"name":"測試素材","can_be_hq":true,"level":100}}; INGREDIENTS = {"${recipe.id}":[[42,2]]};`, ctx);
     if (syncMap) ctx.CraftSync.setData(syncMap);
@@ -772,6 +784,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-gear-load.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-gear-load.js' });
+    vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-gear-load.js' });
+    vm.runInContext(DATA_SRC, ctx, { filename: 'app-data-gear-load.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-gear-load.mjs' });
     ctx.loadGear();
     return { ctx, warnings, toasts };
@@ -1862,6 +1876,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t19.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t19.js' });
+    vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t19.js' });
+    vm.runInContext(DATA_SRC, ctx, { filename: 'app-data-t19.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t19.js' });
     return ctx;
   };
@@ -2067,6 +2083,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t30.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t30.js' });
+    vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t30.js' });
+    vm.runInContext(DATA_SRC, ctx, { filename: 'app-data-t30.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t30.js' });
     ctx.loadGear();
     return ctx;
@@ -2507,6 +2525,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     vm.createContext(ctx);
     vm.runInContext(GEAR_SRC2, ctx, { filename: 'app-gear-t41.js' });
     vm.runInContext(RECIPE_SRC2, ctx, { filename: 'app-recipe-t41.js' });
+    vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t41.js' });
+    vm.runInContext(DATA_SRC, ctx, { filename: 'app-data-t41.js' });
     vm.runInContext(APP_SRC, ctx, { filename: 'crafter-app-t41.js' });
     return { ctx, toasts, tabs };
   };
@@ -3183,8 +3203,10 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   const HTML63 = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const ALLOW63 = fs.readFileSync(path.join(ROOT, 'deploy-allow.txt'), 'utf8').split(/\r?\n/).filter(Boolean);
   // M8：AbortSignal.timeout 必伴存在性判斷（舊瀏覽器整站死在 fetch 之前，連 fetchOpt 的降級都吃不到）
-  eq('T63 AbortSignal.timeout 只有一個呼叫點', (APP63.match(/AbortSignal\.timeout\(/g) || []).length, 1);
-  check('T63 AbortSignal.timeout 呼叫前有存在性判斷（禁裸呼叫）', /AbortSignal\?\.timeout \? AbortSignal\.timeout\(/.test(APP63));
+  // fetch 那一段 2026-09-06 隨 loadData 拆到 app-data.js（app.js 只剩薄 proxy）→ 這兩條跟著改讀該檔
+  const DATA63 = fs.readFileSync(path.join(ROOT, 'app-data.js'), 'utf8');
+  eq('T63 AbortSignal.timeout 只有一個呼叫點', (DATA63.match(/AbortSignal\.timeout\(/g) || []).length, 1);
+  check('T63 AbortSignal.timeout 呼叫前有存在性判斷（禁裸呼叫）', /AbortSignal\?\.timeout \? AbortSignal\.timeout\(/.test(DATA63));
   // M14：晶體判定走 items.json 的 category，不再用名稱正則
   check('T63 isCrystal 以 category === 水晶 判定', /category === '水晶'/.test(APP63));
   check('T63 isCrystal 不再用名稱正則（曾誤判 55 筆 id≥20 的物品）', !/晶簇\|水晶\|碎晶/.test(APP63));

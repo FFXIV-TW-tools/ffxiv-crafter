@@ -41,7 +41,9 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 | `first-run-hint.js` | **parser-blocking** 的外部 classic script：解析階段就決定首次提示顯隱（CLS）。硬約束（不得 inline／defer／async／module、key 與 `app-gear.js` 綁定）＝`tests/first-run-hint-key.test.mjs` |
 | `404.html` | 未知路徑回真 404（不落 SPA fallback ⇒ 假路徑不放大成計費請求；monorepo `check-unknown-path-cost` 守） |
 | `tests/` | 跨檔靜態契約（settings-api 代理／first-run-hint／select 寬度預留／**pre-commit 閘真的裝著**／**deploy-prepare 本機先跑一次**）；`run-all.mjs` 自動掃描且有檔數下限 |
-| `app.js` | 前端控制器（唯一 `type=module` 入口）：資料載入／`computeSettings`・`recipeMaxes`／食藥加成／分頁／init 接線 |
+| `app.js` | 前端控制器（唯一 `type=module` 入口）：狀態持有／分頁／公式與資料層的同名 proxy／init 接線 |
+| `app-formula.js` | FFXIV 公式面（spec §4 已對抗驗證）：三上限 `recipeMaxes`／能力門檻 `statShortfall`／食藥與專家之證加成／`computeSettings` |
+| `app-data.js` | 資料載入面：11 支靜態 JSON 的必要／選配分類與各自的降級策略、三份配方索引與配方表快照 `RINDEX` |
 | `app-flow.js` | 流程引導：`flowState()` 純函式＝「現在該做什麼」的唯一真相 |
 | `app-render.js` | 結果渲染：`hqPercent`（純）／手法序列 chips／走查表／巨集組裝 |
 | `app-solve.js` | 求解編排：worker 生命週期／`doSolve`／求解計時／世代守衛／取消 |
@@ -61,7 +63,7 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 | `pkg/` | wasm-pack 輸出 — **必須 commit**（CF Pages 不編 Rust）。`.gitignore` 是 `*` 且改不動，故同步戳記放 `wasm/BUILD-STAMP.json` |
 | `data/` | recipes／items／ingredients／recipe_levels／craft-actions／meals／medicine／quality-stages／level-sync／job-quests／vendors JSON（`tools/build-data.py` 產） |
 | `assets/` | `hq.png`（遊戲內 HQ 圖，**與 marketboard 同一張**，不自畫） |
-| `tools/` | `build-data.py`／`fetch-quest-qty.py`／`check-actions.py`／`build-wasm.ps1`／`build-notices.py`／`serve.py`／`test-formulas.mjs`／`sim-diff/` |
+| `tools/` | `build_lib/`（`build-data.py` 的實作層：一模組一個產出職責，主檔只留旗標編排與缺件收尾）／`build-data.py`／`fetch-quest-qty.py`／`check-actions.py`／`build-wasm.ps1`／`build-notices.py`／`serve.py`／`test-formulas.mjs`／`sim-diff/` |
 | `_headers` | CF Pages 安全標頭（CSP 完整分域）＋快取策略（一律 `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
 | `LICENSE-THIRD-PARTY.txt`／`LICENSE-*.txt` | 散布 `pkg/*.wasm` 的授權義務（Apache-2.0 §4(a) 要交付 License 副本、MIT 要附著作權宣告；頁尾只寫授權名稱不算）。由 `build-notices.py` 自 `wasm/Cargo.lock` 產，**改 wasm 依賴後必須重跑並一起 commit** |
 | `docs/health-reviews/` | 永久健檢檔案庫（豁免 docs 暫存→歸檔規則） |
@@ -127,7 +129,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 - **資料檔的 ratchet 只准升不准降**（T31／T32／T54）：交付數量對帳 228/290、商人 NPC 247/256、食藥 icon 全中、quality-stages 992 筆。這些的產生端全是 fail-open（查無寫 null、照樣 ✓），退步時畫面只是「多幾件標未知」⇒ **零訊號，只有資料斷言擋得住**。
 - **expert（高難度）配方靜態巨集僅供參考**：536 個 expert 配方在遊戲內為隨機製作狀態 → render 用中性「試算完成 ⚠」+ 警語（**勿改回無條件「✓ 可完成」金徽**）。
 - **求解上限單一算式**：顯示與求解共用 `recipeMaxes(recipe, rlv)`，勿內聯重算——配方表的「難度／品質」欄同樣走它（RINDEX 建索引時算一次），缺 rlv 列顯「—」不顯 0。
-- **配方有最低能力要求就得擋**（`Recipe.RequiredCraftsmanship`／`RequiredControl`，3396／13874 個有）：遊戲內不到門檻**根本不給做**，站上原本零引用這兩欄＝使用者拿到一份進遊戲用不了的巨集。單一出口＝`app.js` 的 `statShortfall(recipe, gear)`，顯示（配方詳情「需求 作業/加工」紅字＋⚠）與擋閘（`doSolve` 擋下、寫出差多少、導去角色數值）共用。⚠ 比較基準是 **`effectiveStats`（含食物／藥水／專家之證）**——遊戲判定同樣吃 buff，拿裸裝比會誤擋。求解鈕走 `aria-disabled` 不用真 disabled（同「缺角色數值」的既有取捨）。T60／T61 守。
+- **配方有最低能力要求就得擋**（`Recipe.RequiredCraftsmanship`／`RequiredControl`，3396／13874 個有）：遊戲內不到門檻**根本不給做**，站上原本零引用這兩欄＝使用者拿到一份進遊戲用不了的巨集。單一出口＝`app-formula.js` 的 `statShortfall(recipe, gear)`（`app.js` 為同名 proxy），顯示（配方詳情「需求 作業/加工」紅字＋⚠）與擋閘（`doSolve` 擋下、寫出差多少、導去角色數值）共用。⚠ 比較基準是 **`effectiveStats`（含食物／藥水／專家之證）**——遊戲判定同樣吃 buff，拿裸裝比會誤擋。求解鈕走 `aria-disabled` 不用真 disabled（同「缺角色數值」的既有取捨）。T60／T61 守。
 - **配方版本＝成品的實裝版本**（`item_lookup.items.patch`，13874 筆全有值）：`#patch-filter` 選項**由資料生成**（繁中服開服即 7.0 ⇒ <7.0 併成「7.0 以前」、之後按實際有配方的版號分，各帶筆數），寫死版號清單＝資料一更新就靜默漏配方。⚠ 版號比較一律 `parseFloat`，**不可拆 (major, minor) 整數比**——7.15 的 minor 是 15、7.5 的是 5，整數比會把 7.15 排到 7.5 後面，而下拉看起來仍「有排序」。T11 守。
 - **高難度是配方屬性 `is_expert`（536 筆）不是名字**：列表掛 `.rt-expert` 徽章＋`#expert-filter` 三態（全部／只看／排除）。**新增任何篩選控件都要同時做三件事**：進 `filterKey()`（否則切篩選不回第 1 頁 → 停在不存在的頁看到空表）、進「無符合配方」判斷、在 `app.js` 掛 `change`（漏了就是「畫面有控件、按了沒反應」而 console 全乾淨）。T11 三條都有守。
 - **配方表可就地增減**：每列 ＋（加一次）／−（退一次，減到 0 整筆移除）。− **恆 render、用 `hidden` 收合**——`markListState` 是 in-place 更新（保留焦點），改成「不在清單就不 render」會每次清單變動重建 DOM。兩顆都**不上 `--danger`**（同質可重加物件的列級增減走設計系統豁免）。**槽位固定＝定寬兩欄 grid**（Owner 2026-08-19）：flex 下 − 收掉時整組會重新置中、＋ 往左跳一格，剛按完加入的游標正好停在 − 上。T11 守。
