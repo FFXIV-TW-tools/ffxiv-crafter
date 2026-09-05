@@ -41,6 +41,17 @@ Write-Host "RUSTFLAGS = $env:RUSTFLAGS"
 
 Push-Location $wasmDir
 try {
+  # 工具鏈版本一起進戳記（B-038）：rust-toolchain 釘的是日期，這裡記的是**實際用來編這份 pkg 的**版本——
+  # 兩者不一致（有人本機 override、或 rustup 沒裝那個日期而退回別的）由 check-actions.py 對帳。
+  # 在 wasm/ 目錄下呼叫，rustup 才會讀到 rust-toolchain 的 channel。
+  $rustcV = (& rustc -vV 2>&1 | Out-String)
+  if ($LASTEXITCODE -ne 0) { throw "rustc -vV 失敗（rust-toolchain 指定的 channel 未安裝？rustup toolchain install <channel> --target wasm32-unknown-unknown）" }
+  $rustcRelease = ([regex]::Match($rustcV, 'release:\s*(\S+)')).Groups[1].Value
+  $rustcCommit = ([regex]::Match($rustcV, 'commit-hash:\s*(\S+)')).Groups[1].Value
+  $wasmPackV = ((& wasm-pack -V 2>&1 | Out-String).Trim() -replace '^wasm-pack\s+', '')
+  if ($LASTEXITCODE -ne 0 -or -not $wasmPackV) { throw "wasm-pack -V 失敗（未安裝？cargo install wasm-pack）" }
+  $channel = ([regex]::Match((Get-Content (Join-Path $wasmDir 'rust-toolchain') -Raw), 'channel\s*=\s*"([^"]+)"')).Groups[1].Value
+  Write-Host "toolchain: channel=$channel rustc=$rustcRelease ($rustcCommit) wasm-pack=$wasmPackV"
   wasm-pack build --release --target web --out-dir $out
   if ($LASTEXITCODE -ne 0) { throw "wasm-pack 失敗（exit $LASTEXITCODE）" }
 } finally { Pop-Location }
@@ -59,8 +70,9 @@ $stamp = [ordered]@{
   pkg_wasm = Get-NormalizedSha256 (Join-Path $out 'crafter_wasm_bg.wasm')
   pkg_js = Get-NormalizedSha256 (Join-Path $out 'crafter_wasm.js')
   built_at = [DateTime]::UtcNow.ToString('o', [Globalization.CultureInfo]::InvariantCulture)
+  toolchain = [ordered]@{ channel = $channel; rustc = $rustcRelease; rustc_commit = $rustcCommit; wasm_pack = $wasmPackV }
 }
-$stampJson = $stamp | ConvertTo-Json -Compress
+$stampJson = $stamp | ConvertTo-Json -Compress -Depth 3
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($stampPath, $stampJson + [Environment]::NewLine, $utf8NoBom)
 Write-Host "✓ wasm/BUILD-STAMP.json 已更新（lib.rs / Cargo.lock / pkg 產物 hash）"

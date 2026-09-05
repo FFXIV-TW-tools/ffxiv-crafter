@@ -27,7 +27,7 @@ py -3.11 tools/build-data.py
 ```bash
 powershell -ExecutionPolicy Bypass -File tools/build-wasm.ps1   # 從 repo 根執行；內含 --remap-path-prefix，勿跑裸 wasm-pack
 ```
-需 nightly + wasm-pack + wasm32 target。`pkg/` 要 commit（CF Pages 不編 Rust）。
+需 `wasm/rust-toolchain` 釘的那個日期 nightly（rustup 會自動讀；缺的話 `rustup toolchain install <channel> --target wasm32-unknown-unknown`）+ wasm-pack。`pkg/` 要 commit（CF Pages 不編 Rust）；實際用的 rustc／wasm-pack 版本記在 `wasm/BUILD-STAMP.json`。
 
 ## 本地預覽
 

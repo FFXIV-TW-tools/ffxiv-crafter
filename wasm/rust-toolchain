@@ -1,2 +1,6 @@
 [toolchain]
-channel = "nightly"
+# 釘日期而不是裸 nightly（B-038）：raphael-rs 釘了 v0.26.2，但編譯器不釘的話「某天早上 nightly 變了」
+# 就是一次建置事故，而且回不到當初可編過的那一天。升級＝有意識地改這一行、重跑 tools\build-wasm.ps1、
+# 連 pkg/ 與 BUILD-STAMP.json 一起 commit（戳記會記下實際用的 rustc／wasm-pack 版本，check-actions.py 對帳）。
+channel = "nightly-2026-06-22"
+targets = ["wasm32-unknown-unknown"]

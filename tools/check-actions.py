@@ -101,6 +101,35 @@ def check_build_stamp():
             print("✗ pkg/crafter_wasm_bg.wasm 含建置者路徑片段 %r（裸 wasm-pack 產物？請走 tools\\build-wasm.ps1）" % needle, file=sys.stderr)
             return False
     print("✓ pkg/ 與 wasm/src 同步：BUILD-STAMP.json 的 lib.rs / Cargo.lock / pkg 產物 hash 一致，且產物無建置者路徑")
+    return check_toolchain_pin(stamp)
+
+
+TOOLCHAIN_FILE = os.path.join(ROOT, "wasm", "rust-toolchain")
+PINNED_CHANNEL = re.compile(r"^nightly-\d{4}-\d{2}-\d{2}$")
+
+
+def check_toolchain_pin(stamp):
+    """引擎重現性要釘的不只依賴（B-038）：rust-toolchain 必須是帶日期的 nightly，
+    且 BUILD-STAMP 記的「實際編這份 pkg 的工具鏈」要與它一致——否則某天 nightly 變了就是一次建置事故，
+    而且回不到當初可編過的那一天。裸 `nightly` 即紅。"""
+    try:
+        src = open(TOOLCHAIN_FILE, encoding="utf-8").read()
+    except OSError as exc:
+        print("✗ 讀不到 wasm/rust-toolchain：%s" % exc, file=sys.stderr)
+        return False
+    m = re.search(r'channel\s*=\s*"([^"]+)"', src)
+    channel = m.group(1) if m else ""
+    if not PINNED_CHANNEL.match(channel):
+        print("✗ wasm/rust-toolchain 的 channel 是 %r，必須釘日期（nightly-YYYY-MM-DD）" % channel, file=sys.stderr)
+        return False
+    tc = stamp.get("toolchain")
+    if not isinstance(tc, dict) or not all(tc.get(k) for k in ("channel", "rustc", "rustc_commit", "wasm_pack")):
+        print("✗ BUILD-STAMP.json 缺 toolchain 欄（channel／rustc／rustc_commit／wasm_pack）——請用 tools\\build-wasm.ps1 重建", file=sys.stderr)
+        return False
+    if tc["channel"] != channel:
+        print("✗ pkg/ 是用 %s 編的，而 rust-toolchain 現在釘 %s——改了 channel 就要重建 pkg/" % (tc["channel"], channel), file=sys.stderr)
+        return False
+    print("✓ 工具鏈已釘：%s（rustc %s @%s，wasm-pack %s）" % (channel, tc["rustc"], tc["rustc_commit"][:9], tc["wasm_pack"]))
     return True
 
 

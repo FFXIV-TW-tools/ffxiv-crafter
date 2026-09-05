@@ -106,7 +106,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
   cargo run --release --bin js-golden > golden.json && node compare-js.mjs ../.. golden.json
   ```
   兩顆**零共用程式碼**的引擎隨機走訪對打（raphael-sim vs Tnze `ffxiv-crafting`）＋我方 JS 對 Tnze golden 對帳。**已知差異寫在 `src/main.rs` 的 `ALLOWED` 且每條附理由——清單外一律失敗，加新條目前必須先查遊戲客戶端判誰對，不要為了讓閘變綠而加**；清單裡的條目某輪沒出現也會印警告（多半代表上游修好了 → 該移除我方 workaround）。
-- **改 `wasm/src/lib.rs` 或 `Cargo.lock`** → `cargo test`（host target 可跑）＋ `powershell tools\build-wasm.ps1` 重建 `pkg/` 並更新 `BUILD-STAMP.json`（否則 `check-actions.py` 會紅），`pkg/` 一起 commit。**別跑裸 `wasm-pack`**——產物會帶建置者的 Windows 帳號名而 `pkg/*.wasm` 是公開可下載的（`docs/lessons.md`）。
+- **改 `wasm/src/lib.rs` 或 `Cargo.lock`** → `cargo test`（host target 可跑）＋ `powershell tools\build-wasm.ps1` 重建 `pkg/` 並更新 `BUILD-STAMP.json`（否則 `check-actions.py` 會紅），`pkg/` 一起 commit。**別跑裸 `wasm-pack`**——產物會帶建置者的 Windows 帳號名而 `pkg/*.wasm` 是公開可下載的（`docs/lessons.md`）。**工具鏈釘日期**（`wasm/rust-toolchain` 的 `nightly-YYYY-MM-DD`，B-038）：裸 `nightly` 即紅；升級＝改 channel → 重建 → 連 `pkg/`＋戳記一起 commit（戳記記實際用的 rustc／wasm-pack，`check-actions.py` 對帳 channel）。
 - **改 `wasm/Cargo.toml` 依賴** → `py -3.11 tools/build-notices.py` 重產 `LICENSE-THIRD-PARTY.txt` 一起 commit（授權義務跟著依賴變）。
 - **改 `.js` / `.css`** → **無 cachebust 步驟**（index.html 靜態引用無 `?v=`，`_headers` 的 `must-revalidate` 負責重驗）。
 - **手動 smoke**（改 UI / render / 求解路徑後）：`py -3.11 tools/serve.py`（no-cache dev server :8809；勿用裸 `python -m http.server`）＋ portal svc :8774 提供 codex CDN（`svc start portal`）→ 選配方 → 填數值 → 求解 → 複製巨集。零 console error。
