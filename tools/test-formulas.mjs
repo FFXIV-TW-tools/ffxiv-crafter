@@ -856,7 +856,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 // ===== T58：素材總需求分三組 + 「加進清單」一次加 N 次（Owner 2026-08-19：這區太陽春）=====
 // 三件事只有資料斷言擋得住（畫面全都「正常」）：
 //   ① 可自製／採買／晶體要分開 —— 混成一坨時玩家看不出哪些其實該自己做
-//   ② 傳下去的是「做幾次」不是「要幾個」（同 craftPlan 鐵則）：一次產 3 個時要 4 個只需做 2 次，
+//   ② 傳下去的是「做幾次」不是「要幾個」（同 app-recipe「先做這個」的 times 鐵則）：一次產 3 個時要 4 個只需做 2 次，
 //      傳錯的話清單次數整批偏高，而畫面完全正常
 //   ③ 撞單筆上限要誠實（沿用 add() 的既有取捨，不謊報加了 N 次）
 {
@@ -2845,63 +2845,6 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     !/position:\s*sticky/.test(rtThead), rtThead.slice(0, 90));
 }
 
-// ===== T51：製作鏈（宇宙探索那種「先做中間材、再做交付物」的連續動線）=====
-// 由來（Owner 2026-08-15）：月球任務常常是「先做 1，再用 1 的材料做 2」，
-// 玩家原本得自己重新搜尋每一層。craftPlan 把整條鏈算出來，UI 才給得出「先做這個 → 一鍵回來」。
-{
-  const RECIPES = [
-    { id: 900, item_id: 48329, item_name: '統一規格的合金鉚釘', job: '鍛造', item_amount: 1 },
-    { id: 901, item_id: 48333, item_name: '統一規格的合金', job: '鍛造', item_amount: 1 },
-    { id: 902, item_id: 700, item_name: '雙聯板', job: '鍛造', item_amount: 3 },   // 一次產 3 個
-  ];
-  const byId = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
-  const byItem = Object.fromEntries(RECIPES.map((r) => [r.item_id, r.id]));
-  const ING = {
-    900: [[48333, 2], [50, 1]],   // 合金 ×2 ＋ 一個買得到的素材
-    901: [[48233, 1]],            // 宇宙貨箱（買/採，不是步驟）
-    902: [[51, 1]],
-  };
-  const CTX = { recipesById: byId, recipeByItem: byItem, ingredients: ING };
-  const plan = sandbox.CraftRecipe.craftPlan(RECIPES[0], CTX);
-  eq('T51 步驟由底層排到成品', plan.map((s) => s.name).join(' → '), '統一規格的合金 → 統一規格的合金鉚釘');
-  eq('T51 中間材要做幾次＝需求量 ÷ 一次產幾個（無條件進位）', plan[0].times, 2);
-  eq('T51 最後一步是成品本身', plan[plan.length - 1].final === true, true);
-  check('T51 買得到的素材不進步驟（它們在原料清單裡看得到）', !plan.some((s) => s.itemId === 50 || s.itemId === 48233));
-
-  // 一次產多個：要 4 個雙聯板、配方一次產 3 → 做 2 次（不是 4 次）
-  const plan2 = sandbox.CraftRecipe.craftPlan(
-    { id: 999, item_id: 1, item_name: 'X', job: '鍛造', item_amount: 1 },
-    { ...CTX, ingredients: { ...ING, 999: [[700, 4]] } });
-  eq('T51 一次產多個 → 做的次數用進位而不是照需求量', plan2[0].times, 2);
-  eq('T51 需求量本身照實記', plan2[0].need, 4);
-
-  // 三層鏈：往下傳的必須是「做幾次」而不是「要幾個」——中間那層一次產 3 個時，
-  // 要 4 個只需做 2 次，底層素材就只要 2 份。傳錯的話採購量會整批偏高而畫面完全正常。
-  {
-    const R3 = [
-      { id: 800, item_id: 80, item_name: '成品', job: '鍛造', item_amount: 1 },
-      { id: 801, item_id: 81, item_name: '中間材', job: '鍛造', item_amount: 3 },   // 一次產 3
-      { id: 802, item_id: 82, item_name: '底層材', job: '鍛造', item_amount: 1 },
-    ];
-    const ctx3 = { recipesById: Object.fromEntries(R3.map((r) => [r.id, r])),
-      recipeByItem: Object.fromEntries(R3.map((r) => [r.item_id, r.id])),
-      ingredients: { 800: [[81, 4]], 801: [[82, 1]], 802: [] } };
-    const p3 = sandbox.CraftRecipe.craftPlan(R3[0], ctx3);
-    const mid = p3.find((x) => x.itemId === 81), base = p3.find((x) => x.itemId === 82);
-    eq('T51 三層：中間材要 4 個、一次產 3 → 做 2 次', `${mid.need}/${mid.times}`, '4/2');
-    eq('T51 三層：底層材依「做幾次」算＝2 份（不是照 4 個算）', `${base.need}/${base.times}`, '2/2');
-    eq('T51 三層：順序由最深排到成品', p3.map((x) => x.name).join(' → '), '底層材 → 中間材 → 成品');
-  }
-
-  // 資料出環不得轉死（同 expandMats 的煞車）
-  let threw = false;
-  try {
-    sandbox.CraftRecipe.craftPlan(RECIPES[1],
-      { ...CTX, ingredients: { 901: [[48329, 1]], 900: [[48333, 1]] } });
-  } catch (e) { threw = true; }
-  check('T51 資料出環（A 要 B、B 要 A）不得無限遞迴', !threw);
-}
-
 // ===== T52：多職業可製作時要能換職業（Owner 2026-08-15）=====
 // 實測 651 件物品有多個配方，宇宙探索的「統一規格的金屬板」有 12 個＝全 DoH。
 // 只取「先出現者」等於幫玩家選了一個他可能沒練的職業，他按求解只會被擋在角色數值頁。
@@ -3227,6 +3170,46 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   const mitRef = (fs.readFileSync(path.join(ROOT, 'LICENSE-MIT.txt'), 'utf8').match(/LICENSE-THIRD-PARTY\.txt/) || [])[0];
   check('T63 LICENSE-MIT.txt 指向的著作權人清單檔在 deploy-allow 且存在', !!mitRef && ALLOW63.includes(mitRef) && fs.existsSync(path.join(ROOT, mitRef)));
   check('T63 著作權人清單檔名走 LICENSE*.txt（命中 deploy-prepare.sh 的既有例外，共用腳本零改動）', /^LICENSE.*\.txt$/.test(mitRef || ''));
+}
+
+// ===== T64：分層模組匯出的每個函式都要有生產端呼叫點（B-032）=====
+// 由來：`craftPlan` 在 app-recipe.js 匯出、T51 有 8 條全綠 golden、AGENTS.md 架構表把它列為製作鏈的實作——
+// 但生產路徑上零呼叫（UI 走的是 craftIngredient／返回堆疊），而且它對鑽石依賴會重複計數。
+// **一份看起來被驗證過的假護欄**比沒有更糟：測試越綠，越沒有人去看它有沒有人用。
+// 判準：index.html 實際載入的每支 .js 裡，`globalThis.CraftXxx = { … }` 物件字面量匯出的每個名字，
+// 至少要在**某支載入的 .js 的程式碼**（剝掉註解與字串）裡以呼叫或傳遞的形狀出現在定義行之外。
+// 只被測試呼叫不算「有人用」——測試不是使用者。
+{
+  const HTML64 = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  // 只認 src 是純相對檔名的真標籤；inline bootstrap 用 document.write 拼出來的 CDN 字串（`' + base + 'header.js'`）不是本地檔
+  const loaded = [...HTML64.matchAll(/<script[^>]*\bsrc="([\w.-]+\.js)"/g)].map((m) => m[1]).filter((f) => fs.existsSync(path.join(ROOT, f)));
+  check(`T64 index.html 載入的本地 .js 可列舉（${loaded.length} 支）`, loaded.length >= 13);
+  // 只剝註解、不剝字串：巢狀 template literal（`${a ? `b` : ''}`）用 regex 剝不乾淨，剝錯會整段吞掉真的呼叫點；
+  // 字串裡出現「name(」形狀的機率極低，留著換取判準可靠。`https://` 那種冒號後的雙斜線不是註解。
+  const stripCode = (src) => src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:\\])\/\/[^\n]*/g, '$1');
+  const code = Object.fromEntries(loaded.map((f) => [f, stripCode(fs.readFileSync(path.join(ROOT, f), 'utf8'))]));
+  const dead = [];
+  let exported = 0;
+  for (const f of loaded) {
+    const m = code[f].match(/globalThis\.(Craft\w+)\s*=\s*\{([\s\S]*?)\n\s*\};/);
+    if (!m) continue;
+    // 物件字面量的頂層鍵：巢狀括號內容先剝掉（方法體與參數列不是匯出），剩下的 `name,`／`name:`／`name(` 才是鍵
+    let body = m[2], prev;
+    do { prev = body; body = body.replace(/\([^()]*\)|\{[^{}]*\}/g, ''); } while (body !== prev);
+    // `init` 由 app.js 統一呼叫；`_` 開頭＝明示的測試鉤（純函式給 golden 用，如 CraftStages._toQuality），不在「生產端必有人用」的範圍
+    const names = [...body.matchAll(/(?:^|[,\n])\s*([A-Za-z_$][\w$]*)\s*(?=[,:\n])/g)].map((x) => x[1]).filter((n) => n !== 'init' && !n.startsWith('_'));
+    for (const n of names) {
+      exported++;
+      const used = loaded.some((g) => {
+        const src = code[g].replace(new RegExp(`function\\s+${n}\\s*\\(`, 'g'), '');   // 定義行不算
+        return new RegExp(`(?:^|[^\\w$.])${n}\\s*\\(|\\.${n}\\s*(?:\\?\\.)?\\(|[:,(]\\s*${n}\\s*[,)]`).test(src);
+      });
+      if (!used) dead.push(`${f}:${m[1]}.${n}`);
+    }
+  }
+  check(`T64 匯出的函式都有生產端呼叫點（掃到 ${exported} 個匯出）`, exported >= 40 && dead.length === 0, dead.join(' '));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

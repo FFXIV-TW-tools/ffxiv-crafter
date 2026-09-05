@@ -179,7 +179,7 @@
       const crystal = isCrystal(iid, name);
       // 晶體既做不出來也沒有商人 → 不查配方（免在晶體列冒出「加進清單」的假入口）
       const child = crystal ? null : deps.pickRecipeForItem(iid);
-      // **往下傳的是「做幾次」不是「要幾個」**：一次產 3 個時要 4 個只需做 2 次（同 craftPlan 鐵則）
+      // **往下傳的是「做幾次」不是「要幾個」**：一次產 3 個時要 4 個只需做 2 次（同 app-recipe「先做這個」的 times 鐵則）
       const times = child ? Math.ceil(total / Math.max(1, Number(child.item_amount) || 1)) : 0;
       return { iid, total, name, icon: it.icon || null, crystal, child, times };
     });

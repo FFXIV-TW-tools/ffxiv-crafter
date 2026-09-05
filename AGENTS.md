@@ -47,7 +47,7 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 | `app-solve.js` | 求解編排：worker 生命週期／`doSolve`／求解計時／世代守衛／取消 |
 | `app-browse.js` | 配方瀏覽表：職業篩選 chips／每頁 60 筆分頁／已加入清單標示 |
 | `app-gear.js` | 角色數值：localStorage 讀寫與型別驗證／等級 clamp／專家之證逐職勾選 |
-| `app-recipe.js` | 配方詳情狀態機：選配方／原料與初始品質／**製作鏈**（`craftPlan` 純函式＋返回堆疊）／**多職業切換** |
+| `app-recipe.js` | 配方詳情狀態機：選配方／原料與初始品質／**製作鏈**（返回堆疊）／**多職業切換** |
 | `app-nextcraft.js` | 「用這個成品還能做什麼」：由 `ingredients.json` 倒建反查索引＋下一階配方選取視窗（**無新資料檔**）|
 | `app-quests.js` | 職業任務分頁：11 職任務清單／完成勾選／素材遞迴展開／商人徽章 |
 | `app-consumable.js` | 食物／藥水自繪 listbox（原生 `<option>` 放不了 icon／品級／功效）＋本區本地保存 |
@@ -81,7 +81,7 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="683" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="675" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="3" label="run-all" -->
@@ -141,7 +141,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 - **「現在該做什麼」的唯一真相＝`app-flow.js` 的 `flowState()`**：步驟軸／「下一步」文案／CTA 提示／`pick-panel` 收合／`work.is-idle` 全由它一次算出，**勿在各層自己寫步驟文案或 toggle 這些 class**。新增會改變流程位置的事件 → `globalThis.CraftFlow?.update?.()`。
 - **晶體判定只有 `app.js` 的 `isCrystal(iid, name)` 一份**：各層經 deps 注入取用，**不得自己寫那個正則**（T48 守）。
 - **程式化切頁一律帶移焦**（`switchTab(name, true)`）：那幾條路徑都是「被擋下 → 去補資料」的補救動線。只有 tablist 自己的 click handler 例外（T47 掃描）。
-- **製作鏈：中間材要能「先做這個 → 一鍵回來」**：可製作的素材給 `.ing-go` 入口，點下去把當前配方推進**返回堆疊**（多層，鏈可能 A←B←C）。**堆疊不在切分頁時清空**（玩家常跳去補數值再回來），只有「返回配方列表」或另選配方才算放棄。`craftPlan()` 是純函式（T51）：**往下傳的是「做幾次」不是「要幾個」**——一次產 3 個時要 4 個只需做 2 次，傳錯的話採購量整批偏高而畫面完全正常。
+- **製作鏈：中間材要能「先做這個 → 一鍵回來」**：可製作的素材給 `.ing-go` 入口，點下去把當前配方推進**返回堆疊**（多層，鏈可能 A←B←C）。**堆疊不在切分頁時清空**（玩家常跳去補數值再回來），只有「返回配方列表」或另選配方才算放棄。「先做這個」鈕上的次數＝**「做幾次」不是「要幾個」**（一次產 3 個時要 4 個只需做 2 次；T58 守同一條）。`craftPlan` 整鏈展開已於 2026-09-05 刪除（生產端零呼叫、鑽石依賴會重複計數，B-032）——匯出必有呼叫端由 T64 掃描守。
 - **「繼續做」＝反方向的動線**（Owner 2026-08-17）：`app-nextcraft.js` 由 `ingredients.json` 倒建 itemId→配方 索引（**沒有新資料檔**），入口鈕住頂部「目前配方」那一列（不佔配方詳情高度），沒有下一階時整顆收起。**往上走不推返回堆疊**——一路往上做會堆出一長串用不到的返回點；選到的正好是堆疊最上層時等同「← 回」並彈掉（T57）。一件成品**只佔一列**（多職業合併，挑法同 `pickRecipeForItem`）、做得起的排前面。**清單最多 234 筆**（實測綠金錠）故走彈出視窗、不就地展開。
 - **遮罩關閉必須「按下」也在遮罩上**：只看 `click` 的話，開窗那一發滑鼠在按鈕上按下、放開時遮罩已蓋在游標底下 ⇒ 該次 click 的 target 變成遮罩、視窗開了又立刻關掉，**玩家看到「按鈕沒反應」而 console 全乾淨**。`.click()` 測不出來（沒有 mousedown），T56 有哨兵。新開 modal 一律照這條寫。
 - **同一件東西常常好幾個職業都能做**（實測 651 件）：`RECIPE_BY_ITEM` 的「取先出現者」**只用於配方表**；深連結、製作鏈、職業切換一律走 `RECIPES_BY_ITEM` ＋ `pickRecipeForItem()`（**優先挑玩家有填數值的職業**，否則他按求解只會被擋在角色數值頁）。畫面一律給切換鈕，不幫他決定死（T52）。

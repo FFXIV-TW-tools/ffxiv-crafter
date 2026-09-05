@@ -49,44 +49,6 @@
     if (back && back.focus) back.focus({ preventScroll: true });
   }
 
-  // ---------- 製作鏈（純函式，golden 測試面）----------
-  // 為什麼要這層：宇宙探索那種「階段性」的東西是**一條製作鏈**——先做中間材、再拿它做交付物。
-  // 例：統一規格的合金鉚釘(48329) ← 統一規格的合金(48333) ×2 ← 宇宙貨箱。
-  // 玩家原本得自己搜尋每一層、求解、複製巨集、再回頭搜下一層。這裡把整條鏈算出來，
-  // UI 才給得出「先做這個 → 回來做這個」的連續動線。
-  //
-  // 回傳由**底層到成品**排序的步驟：[{ itemId, name, recipeId, times, need, depth }]
-  //   need  ＝這一層總共要幾個（已乘上層的製作次數）
-  //   times ＝要做幾次（need ÷ 該配方一次產幾個，無條件進位）
-  // 只收「做得出來的」——沒有配方的素材是買/採的，不進步驟（它們在原料清單裡已經看得到）。
-  function craftPlan(recipe, ctx, maxDepth = 8) {
-    const byId = ctx.recipesById || {}, byItem = ctx.recipeByItem || {}, ing = ctx.ingredients || {};
-    const steps = new Map();   // itemId → step（同一個中間材在多處用到時把 need 加總，不重複列）
-    const walk = (rid, runs, depth, path) => {
-      if (depth > maxDepth || path.has(rid)) return;   // 資料出環時停下：寧可少展開一層也不要無限遞迴
-      const next = new Set(path); next.add(rid);
-      for (const [iid, amt] of (ing[String(rid)] || [])) {
-        const childRid = byItem[Number(iid)];
-        const child = childRid != null ? byId[childRid] : null;
-        if (!child) continue;                          // 買/採得到的底層素材不是「步驟」
-        const need = Number(amt) * runs;
-        const per = Math.max(1, Number(child.item_amount) || 1);
-        const cur = steps.get(Number(iid));
-        const total = (cur ? cur.need : 0) + need;
-        steps.set(Number(iid), { itemId: Number(iid), name: child.item_name || ('#' + iid),
-          recipeId: child.id, need: total, times: Math.ceil(total / per), depth: depth + 1 });
-        walk(child.id, Math.ceil(total / per), depth + 1, next);
-      }
-    };
-    walk(recipe.id, 1, 0, new Set());
-    // 深的先做（底層 → 上層），同深度按需求量多的在前，量同則 id 穩定排序
-    const ordered = [...steps.values()].sort((a, b) => b.depth - a.depth || b.need - a.need || a.itemId - b.itemId);
-    const per = Math.max(1, Number(recipe.item_amount) || 1);
-    ordered.push({ itemId: recipe.item_id, name: recipe.item_name, recipeId: recipe.id,
-      need: per, times: 1, depth: 0, final: true });
-    return ordered;
-  }
-
   // 同一件東西常常好幾個職業都能做（實測 651 件；宇宙探索的「統一規格的金屬板」12 個＝全 DoH）。
   // 挑選優先序：玩家**有填數值**的職業 → 否則第一個。畫面上一律給切換鈕，不幫他決定死。
   function recipesForItem(itemId) {
@@ -369,7 +331,7 @@
     'updateEff', 'gearFor', 'refreshSpecialistGate', 'isCrystal',
     'getRecipesById', 'getRecipeByItem', 'getRecipesByItem', 'gearOkFor', 'statGate'];
   globalThis.CraftRecipe = {
-    craftPlan, craftIngredient, backInChain, chainDepth, continueWith, recipesForItem, pickRecipeForItem,
+    craftIngredient, backInChain, chainDepth, continueWith, recipesForItem, pickRecipeForItem,
     init(d) {
       const miss = REQUIRED.filter(k => d == null || d[k] == null);
       if (miss.length) throw new Error('CraftRecipe.init 缺依賴: ' + miss.join(', '));
