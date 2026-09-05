@@ -81,7 +81,7 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="675" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="682" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
 <!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="3" label="run-all" -->
@@ -144,7 +144,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 - **製作鏈：中間材要能「先做這個 → 一鍵回來」**：可製作的素材給 `.ing-go` 入口，點下去把當前配方推進**返回堆疊**（多層，鏈可能 A←B←C）。**堆疊不在切分頁時清空**（玩家常跳去補數值再回來），只有「返回配方列表」或另選配方才算放棄。「先做這個」鈕上的次數＝**「做幾次」不是「要幾個」**（一次產 3 個時要 4 個只需做 2 次；T58 守同一條）。`craftPlan` 整鏈展開已於 2026-09-05 刪除（生產端零呼叫、鑽石依賴會重複計數，B-032）——匯出必有呼叫端由 T64 掃描守。
 - **「繼續做」＝反方向的動線**（Owner 2026-08-17）：`app-nextcraft.js` 由 `ingredients.json` 倒建 itemId→配方 索引（**沒有新資料檔**），入口鈕住頂部「目前配方」那一列（不佔配方詳情高度），沒有下一階時整顆收起。**往上走不推返回堆疊**——一路往上做會堆出一長串用不到的返回點；選到的正好是堆疊最上層時等同「← 回」並彈掉（T57）。一件成品**只佔一列**（多職業合併，挑法同 `pickRecipeForItem`）、做得起的排前面。**清單最多 234 筆**（實測綠金錠）故走彈出視窗、不就地展開。
 - **遮罩關閉必須「按下」也在遮罩上**：只看 `click` 的話，開窗那一發滑鼠在按鈕上按下、放開時遮罩已蓋在游標底下 ⇒ 該次 click 的 target 變成遮罩、視窗開了又立刻關掉，**玩家看到「按鈕沒反應」而 console 全乾淨**。`.click()` 測不出來（沒有 mousedown），T56 有哨兵。新開 modal 一律照這條寫。
-- **同一件東西常常好幾個職業都能做**（實測 651 件）：`RECIPE_BY_ITEM` 的「取先出現者」**只用於配方表**；深連結、製作鏈、職業切換一律走 `RECIPES_BY_ITEM` ＋ `pickRecipeForItem()`（**優先挑玩家有填數值的職業**，否則他按求解只會被擋在角色數值頁）。畫面一律給切換鈕，不幫他決定死（T52）。
+- **同一件東西常常好幾個職業都能做**（實測 651 件）：`RECIPE_BY_ITEM` 的「取先出現者」**只用於配方表**；深連結、製作鏈、職業切換一律走 `RECIPES_BY_ITEM` ＋ `pickRecipeForItem()`（**優先挑玩家有填數值的職業**，否則他按求解只會被擋在角色數值頁）。畫面一律給切換鈕，不幫他決定死。**同職也常多張**（136 組 2〜4 張）：挑選規則＝同職取**難度最低**；數值與原料完全相同的重複列只留一顆鈕；同職多張的鈕面帶「難度／品質／耐久裡第一個有差異的數字」、三個都同就編號並在 data-help 列原料（T52）。
 - **專家之證是「角色狀態」不是求解選項**：住 `gearsets[職業].specialist`，遊戲上限 3 由 `CraftGear.SPEC_MAX` 守（第 4 個回退＋toast，不用 disabled——那會讓鍵盤走不到也讀不到原因）。求解端一律讀 `gear.specialist`，**禁止再從 DOM 讀 `#specialist`**。⚠ 證**不跟著數值的 fallback 走**：某職沒填數值時數值取「預設」，但證仍看該職業自己那格。
 - **求解計時＝軟提示不殺 worker**：計數跑在主執行緒故不凍結；≥60s 升級「可取消」提示但**不殺** worker。`stopSolveClock()` 掛在 onWorkerMsg / cancelSolve / onerror。
 - **三處本地保存的欄位要在 `init` 套回 DOM**：食藥區（`ffxiv-crafter-consumables-v1`，含兩個 HQ 勾與 `<details>` 展開狀態）／等級同步（`ffxiv-crafter-level-sync-v1`，留空＝跟隨角色數值）／角色數值。少一步就會出現「畫面有值但重整就跑掉」的半套狀態。等級輸入框**在使用者聚焦時不得被 `refreshSelectedGear` 覆寫**（會吃掉游標與半打的數字）。

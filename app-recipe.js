@@ -49,15 +49,38 @@
     if (back && back.focus) back.focus({ preventScroll: true });
   }
 
-  // 同一件東西常常好幾個職業都能做（實測 651 件；宇宙探索的「統一規格的金屬板」12 個＝全 DoH）。
-  // 挑選優先序：玩家**有填數值**的職業 → 否則第一個。畫面上一律給切換鈕，不幫他決定死。
+  // 同一件東西常常好幾個職業都能做（實測 651 件；宇宙探索的「統一規格的金屬板」3 職 12 張）。
+  // 而且**同一個職業也常有好幾張**（實測 136 組（成品,職業）有 2〜4 張：宇宙探索同一成品分不同任務階級，
+  // 難度差可達 6 倍；另有 23 組數值與原料完全相同的重複列——遊戲資料本來就這樣，B-036）。
+  // 挑選優先序：玩家**有填數值**的職業 → 同職多張取**難度最低**（平手取先出現者）。
+  // 畫面上一律給切換鈕，不幫他決定死；同職多張時鈕面要帶得出差異，否則兩顆同字的鈕玩家分不出點的是哪張。
   function recipesForItem(itemId) {
     return (deps.getRecipesByItem()[Number(itemId)] || [])
       .map((id) => deps.getRecipesById()[id]).filter(Boolean);
   }
+  // 「同一張配方」的判準＝職業＋rlv＋四個係數＋產量＋原料；數值與原料完全相同的重複列只留一張
+  // （兩顆一模一樣的鈕沒有資訊，只會讓玩家以為要選對哪一顆）
+  function recipeSig(r) {
+    return [r.job, r.rlv, r.difficulty_factor, r.quality_factor, r.durability_factor, r.material_quality_factor, r.item_amount,
+      JSON.stringify(deps.getIngredients()[String(r.id)] || [])].join('|');
+  }
+  function distinctRecipesForItem(itemId) {
+    const seen = new Set();
+    return recipesForItem(itemId).filter((r) => { const k = recipeSig(r); if (seen.has(k)) return false; seen.add(k); return true; });
+  }
+  function maxesOf(r) {
+    const row = deps.getRlvTable()[String(r.rlv)];
+    return row ? deps.recipeMaxes(r, row) : null;
+  }
   function pickRecipeForItem(itemId) {
-    const list = recipesForItem(itemId);
-    return list.find((r) => deps.gearOkFor(r.job)) || list[0] || null;
+    const list = distinctRecipesForItem(itemId);
+    const pool = list.filter((r) => deps.gearOkFor(r.job));
+    const first = pool[0] || list[0];
+    if (!first) return null;
+    // 缺 rlv 列的配方難度算 Infinity → 排最後（選了也求不了解）
+    const diff = (r) => { const m = maxesOf(r); return m ? m.max_progress : Infinity; };
+    return (pool.length ? pool : list).filter((r) => r.job === first.job)
+      .reduce((best, r) => (diff(r) < diff(best) ? r : best), first);
   }
 
   // 製作鏈的返回堆疊（多層）：從成品鑽進中間材時把「原本在哪」推進去，做完一鍵回去。
@@ -193,19 +216,37 @@
       : '';
     // 多職業：給切換鈕。**不是裝飾**——宇宙探索那批中間材動輒 3〜12 個職業可做，
     // 站台若替玩家選了一個他沒練的職業，他按求解只會被擋在「請先設定角色數值」。
-    const alts = recipesForItem(recipe.item_id);
+    // 重複列去掉後，當前這張若正好是被去掉的那份重複（深連結指到它）→ 用它換掉同簽名那張，選中態才對得上
+    const curSig = recipeSig(recipe);
+    const alts = distinctRecipesForItem(recipe.item_id).map((r) => (r.id !== recipe.id && recipeSig(r) === curSig ? recipe : r));
+    const jobCount = {};
+    alts.forEach((r) => { jobCount[r.job] = (jobCount[r.job] || 0) + 1; });
+    // 同職多張：鈕面補上能分辨的那一個數字——難度／品質／耐久裡**第一個在同職內有差異的**；
+    // 三個都相同（只差原料）就編號，並在 data-help 列出原料讓玩家對得起來
+    const variantOf = (r) => {
+      if ((jobCount[r.job] || 0) < 2) return { face: '', help: '' };
+      const group = alts.filter((x) => x.job === r.job);
+      const ings = (deps.getIngredients()[String(r.id)] || [])
+        .map(([iid, n]) => `${(deps.getItems()[String(iid)] || {}).name || ('#' + iid)}×${n}`).join('、');
+      const help = ings ? `｜原料：${deps.esc(ings)}` : '';
+      for (const [key, word] of [['max_progress', '難度'], ['max_quality', '品質'], ['max_durability', '耐久']]) {
+        const vals = group.map((x) => (maxesOf(x) || {})[key]);
+        if (new Set(vals).size > 1) return { face: ` <span class="codex-xs ri-job-btn__var">${word} ${(maxesOf(r) || {})[key] ?? '—'}</span>`, help };
+      }
+      return { face: ` <span class="codex-xs ri-job-btn__var">#${group.indexOf(r) + 1}</span>`, help };
+    };
     const jobSwitch = alts.length > 1
-      ? `<div class="ri-jobs" role="group" aria-label="換一個職業製作">` +
+      ? `<div class="ri-jobs" role="group" aria-label="換一個職業或另一張配方製作">` +
         `<span class="codex-small ri-jobs__label">也能做：</span>` +
         alts.map((r) => {
-          const on = r.id === recipe.id, ok = deps.gearOkFor(r.job);
+          const on = r.id === recipe.id, ok = deps.gearOkFor(r.job), v = variantOf(r);
           const jic = deps.JOB_ICON[r.job] ? `<img class="ri-jico" src="${deps.iconUrl(deps.JOB_ICON[r.job])}" alt="">` : '';
           // 已是 role="group" 的分段選擇 → 選中態走共用 `.codex-tab--boxed` 的 aria-pressed
           // （2026-08-17 由 --primary/--ghost 遷入，同 app-browse.js）
           return `<button type="button" class="codex-tab codex-tab--boxed ri-job-btn" aria-pressed="${on}"` +
             ` data-rid="${r.id}"${on ? ' aria-current="true"' : ''}` +
-            ` data-help="${on ? '目前用這個職業的配方' : '改用「' + deps.esc(r.job) + '」的配方求解'}${ok ? '' : '｜這個職業還沒填角色數值'}">` +
-            `${jic}${deps.esc(r.job)}${ok ? '' : ' <span class="codex-xs ri-job-btn__no">未填</span>'}</button>`;
+            ` data-help="${on ? '目前用這張配方' : '改用「' + deps.esc(r.job) + '」的這張配方求解'}${ok ? '' : '｜這個職業還沒填角色數值'}${v.help}">` +
+            `${jic}${deps.esc(r.job)}${v.face}${ok ? '' : ' <span class="codex-xs ri-job-btn__no">未填</span>'}</button>`;
         }).join('') + `</div>`
       : '';
     // 最低能力要求（3396 個配方有）：遊戲內數值不到就不給做 ⇒ 要在選配方當下就看得到，

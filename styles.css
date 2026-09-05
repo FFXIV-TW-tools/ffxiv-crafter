@@ -353,6 +353,7 @@ body {
 .ri-jobs .ri-job-btn { height: 28px; padding: 0 var(--space-2, 8px);
   display: inline-flex; align-items: center; gap: var(--space-1, 4px); }
 .ri-job-btn__no { opacity: .7; }
+.ri-job-btn__var { color: var(--color-text-muted); }   /* 同職多張時的分辨資訊（難度／品質／耐久／編號）：次於職業名 */
 /* 製作鏈：可製作的素材給「先做這個」入口，做完由 ri-actions 的「← 回…」回上一層 */
 .ing-go { height: 26px; padding: 0 var(--space-2, 8px); white-space: nowrap; }
 

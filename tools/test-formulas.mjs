@@ -490,6 +490,38 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     // 都沒填 → 沿用第一個（不假裝知道，畫面上仍給切換鈕）
     vm.runInContext(`gearsets = {};`, c.ctx);
     eq('T52 都沒填數值 → 沿用第一個', CRr.pickRecipeForItem(777).job, '鍛造');
+
+    // ===== T52 同職多張（B-036，Owner 2026-09-05 拍板 A）=====
+    // 實測 136 組（成品,職業）有 2〜4 張配方（宇宙探索同一成品分任務階級，難度差近 6 倍），另有 23 組數值與原料
+    // 完全相同的重複列。原本職業切換列只印職業名 ⇒ 同職多張時出現多顆同字的鈕，玩家分不出點的是哪張；
+    // pickRecipeForItem 同職多筆取先出現者、規則未明寫。
+    c.ctx.loadGear();   // 木工有數值
+    vm.runInContext(`
+      RECIPES = [
+        { id:20, item_id:778, item_name:'同職多張', job:'木工', rlv:90, item_amount:1, difficulty_factor:100, quality_factor:100, durability_factor:100 },
+        { id:21, item_id:778, item_name:'同職多張', job:'木工', rlv:90, item_amount:1, difficulty_factor:50,  quality_factor:100, durability_factor:100 },
+        { id:22, item_id:778, item_name:'同職多張', job:'木工', rlv:90, item_amount:1, difficulty_factor:50,  quality_factor:100, durability_factor:100 },
+        { id:23, item_id:778, item_name:'同職多張', job:'鍛造', rlv:90, item_amount:1, difficulty_factor:100, quality_factor:100, durability_factor:100 } ];
+      RECIPE_BY_ID = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
+      RECIPES_BY_ITEM = { 778: [20, 21, 22, 23] };
+      INGREDIENTS = { 20: [[42, 2]], 21: [[42, 1]], 22: [[42, 1]], 23: [[42, 2]] };`, c.ctx);
+    eq('T52 同職多張 → 取難度最低那張（不是先出現的）', CRr.pickRecipeForItem(778).id, 21);
+    c.ctx.selectRecipe(20);
+    const infoHtml = () => c.ctx.document.getElementById('recipe-info').innerHTML;
+    const btnTexts = () => [...infoHtml().matchAll(/<button[^>]*class="[^"]*ri-job-btn[^"]*"[^>]*>([\s\S]*?)<\/button>/g)]
+      .map((m) => m[1].replace(/<img[^>]*>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+    eq('T52 數值與原料完全相同的重複列只留一顆鈕（4 張 → 3 顆）', btnTexts().length, 3);
+    check('T52 同職兩張難度不同 → 鈕面文字互異（帶難度）', btnTexts()[0] !== btnTexts()[1] && /難度 1000/.test(btnTexts()[0]) && /難度 500/.test(btnTexts()[1]), btnTexts().join(' | '));
+    check('T52 單張的職業鈕面不帶多餘數字（鍛造只有一張；「未填」是既有的無數值標記）', btnTexts()[2] === '鍛造 未填', btnTexts()[2]);
+    check('T52 同職多張的 data-help 列出原料（三個數字都相同時玩家只能靠這個對）', /原料：測試素材×2/.test(infoHtml()) && /原料：測試素材×1/.test(infoHtml()));
+    // 三個數字都相同、只差原料 → 編號
+    vm.runInContext(`RECIPES[0].difficulty_factor = 50; RECIPES_BY_ITEM = { 778: [20, 21, 23] };`, c.ctx);
+    c.ctx.selectRecipe(20);
+    check('T52 難度／品質／耐久都相同、只差原料 → 鈕面編號 #1 #2', /#1/.test(btnTexts()[0]) && /#2/.test(btnTexts()[1]), btnTexts().join(' | '));
+    // 當前這張若是被去掉的那份重複（深連結指到它）→ 仍有一顆鈕是選中態
+    vm.runInContext(`RECIPES[0].difficulty_factor = 100; RECIPES_BY_ITEM = { 778: [20, 21, 22, 23] };`, c.ctx);
+    c.ctx.selectRecipe(22);
+    check('T52 選中的是重複列時，去重後仍標得出目前這張（aria-current 落在 id 22）', /data-rid="22" aria-current="true"/.test(infoHtml()) && btnTexts().length === 3, infoHtml().match(/data-rid="\d+"[^>]*/g)?.join(' '));
   }
 
   // ===== T45：返回配方列表也要作廢飛行中的求解（CF-04）=====
@@ -2846,7 +2878,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 }
 
 // ===== T52：多職業可製作時要能換職業（Owner 2026-08-15）=====
-// 實測 651 件物品有多個配方，宇宙探索的「統一規格的金屬板」有 12 個＝全 DoH。
+// 實測 651 件物品有多個配方，宇宙探索的「統一規格的金屬板」3 職 12 張（同職多張的規則見上方 T52 接線段）。
 // 只取「先出現者」等於幫玩家選了一個他可能沒練的職業，他按求解只會被擋在角色數值頁。
 {
   const R = [

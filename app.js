@@ -103,7 +103,7 @@ async function loadData() {
   for (const r of RECIPES) {
     RECIPE_BY_ID[r.id] = r;
     if (r.item_id != null && RECIPE_BY_ITEM[r.item_id] == null) RECIPE_BY_ITEM[r.item_id] = r.id;  // 同物品多配方取先出現者（與配方表一致）
-    // **同一件東西常常好幾個職業都能做**（實測 651 件；宇宙探索的「統一規格的金屬板」有 12 個＝全 DoH）。
+    // **同一件東西常常好幾個職業都能做**（實測 651 件；宇宙探索的「統一規格的金屬板」3 職 12 張——同職也會多張）。
     // 只留「先出現者」等於幫玩家選了一個他可能沒練的職業 → 另存完整清單供職業切換與「先做這個」挑選。
     if (r.item_id != null) (RECIPES_BY_ITEM[r.item_id] = RECIPES_BY_ITEM[r.item_id] || []).push(r.id);
   }
