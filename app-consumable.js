@@ -176,10 +176,14 @@
     });
   }
   // 資料就緒後呼叫：建對照表 + 清掉已不存在的保存值（資料改版後不留幽靈選擇）
+  // null ＝「這次沒載到」：維持上一份對照表、**不清**保存值（清掉的是資料改版後真的不存在的品項，不是網路抖動）
   function setData(meals, medicine) {
-    MAP.food = build(meals); MAP.potion = build(medicine);
+    const src = { food: meals, potion: medicine };
     for (const kind of Object.keys(KINDS)) {
-      if (state[kind] && !MAP[kind][state[kind]]) state[kind] = '';
+      if (src[kind] != null) {
+        MAP[kind] = build(src[kind]);
+        if (state[kind] && !MAP[kind][state[kind]]) state[kind] = '';
+      }
       renderButton(kind);
     }
   }

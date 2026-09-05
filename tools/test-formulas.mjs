@@ -549,6 +549,47 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
       JSON.parse(noSpec.store['ffxiv-crafter-solve-opts-v1'])['opt-heart'], true);
   }
 
+  // ===== T62：改食物／藥水後，「最低能力要求」的紅字與求解鈕狀態要跟著刷新 =====
+  // 由來（健檢 2026-09-05 correctness-core A1 ＝ M2）：statShortfall 的基準含食藥，但 onConsumableChange
+  // 原本不呼叫 refreshGearNote ⇒ 吃了藥跨過門檻後畫面仍寫「還差 N」、求解鈕仍 aria-disabled。
+  // 反方向也守：拿掉食物後掉回門檻下，紅字要回來。
+  {
+    const req = { ...baseRecipe, required_craftsmanship: 4100, required_control: 0 };   // gear cms 4048 ⇒ 差 52
+    const t62 = mkT25Ctx({ recipe: req, rlvTable: { 90: baseRlv }, level: 90 });
+    const $62 = (id) => t62.ctx.document.getElementById(id);
+    t62.ctx.loadGear();
+    t62.ctx.selectRecipe(1);
+    eq('T62 未吃藥、差 52 → 求解鈕 aria-disabled', $62('solve-btn').getAttribute('aria-disabled'), 'true');
+    check('T62 未吃藥 → 需求列標紅（is-short）', /is-short/.test($62('recipe-req').innerHTML));
+    // 食物 +3%（上限 90）：4048 → 4138 ≥ 4100
+    t62.ctx.CraftConsumable.get = (kind) => (kind === 'food' ? { cm: 3, cm_max: 90, ct: null, ct_max: null, cp: null, cp_max: null } : null);
+    t62.ctx.onConsumableChange();
+    eq('T62 選了食物跨過門檻 → 求解鈕轉可用（不必換配方才刷新）', $62('solve-btn').getAttribute('aria-disabled'), 'false');
+    check('T62 選了食物跨過門檻 → 需求列紅字消失', !/is-short/.test($62('recipe-req').innerHTML));
+    t62.ctx.CraftConsumable.get = () => null;
+    t62.ctx.onConsumableChange();
+    eq('T62 拿掉食物掉回門檻下 → 紅字與 aria-disabled 回來', $62('solve-btn').getAttribute('aria-disabled'), 'true');
+  }
+
+  // ===== T43 擴充：opt-adversarial 在 expert 配方被強制取消後，存檔與離開 expert 都要還他 =====
+  // 由來（健檢 2026-09-05 correctness-core A2 ＝ M7）：T43 只修了 SPEC_GATED_IDS 兩個 id，第三個會被程式
+  // 強制取消的 opt-adversarial 沒進偏好記錄 ⇒ 選 expert 後改任一其他選項存檔，localStorage 被寫成 false，
+  // 且回到一般配方時勾也不會回來。修法把偏好記錄一般化（optWanted），不逐 id 列舉。
+  {
+    const opts = JSON.stringify({ 'opt-adversarial': true });
+    const ex = mkT25Ctx({ recipe: { ...baseRecipe, is_expert: true }, rlvTable: { 90: baseRlv }, level: 90,
+      extraStore: { 'ffxiv-crafter-solve-opts-v1': opts } });
+    ex.ctx.loadGear();
+    ex.ctx.selectRecipe(1);
+    const adv = ex.ctx.document.getElementById('opt-adversarial');
+    eq('T43 expert 配方 → 防球被強制取消且 disabled', JSON.stringify([adv.checked, adv.disabled]), JSON.stringify([false, true]));
+    ex.ctx.saveSolveOpts();
+    eq('T43 expert 下存檔 → localStorage 仍記得玩家原本勾了防球', JSON.parse(ex.store['ffxiv-crafter-solve-opts-v1'])['opt-adversarial'], true);
+    vm.runInContext('RECIPES[0].is_expert = false;', ex.ctx);
+    ex.ctx.selectRecipe(1);
+    eq('T43 回到一般配方 → 防球勾回來（不用重整）', JSON.stringify([adv.checked, adv.disabled]), JSON.stringify([true, false]));
+  }
+
   // 接線層：refreshGearNote 真的有把「檔次」交給 CraftStages 重推嗎？
   // T38 驗的是 CraftStages 那兩支 API 本身，**不驗有沒有人用它** —— 少了這一條，
   // 把 refreshGearNote 改回「保留絕對數字」照樣全綠（本 repo 已有兩次空殼斷言前科）。
@@ -976,8 +1017,9 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     // 拿掉它們桌面完全看不出來（桌面有 thead），手機才會退化成「90 / 690 / 5280 / 15200」四個無名數字
     // ⇒ 兩邊互鎖：markup 有 data-label、CSS 有 attr(data-label)，缺一即紅（2026-08-26 行動適配）。
     check('T11 數字欄帶 data-label ＋ CSS 有對應的 attr() 消費端（手機堆疊版欄名）',
-      (() => { const n = (html.match(/<td data-label="/g) || []).length;
-               return n > 0 && n % 4 === 0 && /content:\s*attr\(data-label\)/.test(CSS_SRC); })(), html.slice(0, 400));
+      (() => { const n = (html.match(/<td[^>]*data-label="/g) || []).length;   // 屬性順序不限（.rt-patch 是 class 在前）
+               // 五個非自描述欄（Lv／配方等級／難度／品質／版本）都要帶 label：版本欄曾漏掉，堆疊後是裸數字「2.35」（健檢 R5 M20）
+               return n > 0 && n % 5 === 0 && /content:\s*attr\(data-label\)/.test(CSS_SRC); })(), html.slice(0, 400));
     // 加入鈕改內嵌向量（全形「＋」的重量／垂直位置隨系統字型跑）
     check('T11 加入鈕是向量不是字元', /class="[^"]*rt-add[^"]*"[^>]*>\s*<svg/.test(html) && !/>＋</.test(html));
     check('T11 加入鈕仍是 ghost 圖示鈕（列級豁免：不參賽 primary）',
@@ -1631,6 +1673,19 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   CS2.setData([MEALS[2], MEALS[3]], []);
   eq('T15 保存的品項在新資料中消失 → 清除選擇（不留幽靈）',
     JSON.stringify([CS2.label('potion'), CS2.get('potion')]), JSON.stringify(['', null]));
+  // 載入失敗（null）≠ 品項下架（[]）：前者維持上一份、不得清掉保存值（健檢 2026-09-05 resilience A1 ＝ M3）
+  store['ffxiv-crafter-consumables-v1'] = JSON.stringify({ food: '高品級料理', potion: '強化藥' });
+  const cs3 = { console, document: { getElementById: $, addEventListener() {} },
+    localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } } };
+  cs3.globalThis = cs3;
+  vm.createContext(cs3);
+  vm.runInContext(CS_SRC, cs3, { filename: 'app-consumable.js' });
+  const CS3 = cs3.CraftConsumable;
+  CS3.init(DEP);
+  CS3.setData(null, null);
+  eq('T15 兩份都載入失敗（null）→ 保存的選擇原封不動', JSON.stringify([CS3.label('food'), CS3.label('potion')]), JSON.stringify(['高品級料理', '強化藥']));
+  CS3.setData(MEALS, null);
+  eq('T15 只有食物載到 → 食物建表、藥水維持保存值', JSON.stringify([!!CS3.get('food'), CS3.label('potion')]), JSON.stringify([true, '強化藥']));
 }
 
 // ===== T18：app-quality-stages.js 品質階段層 =====
@@ -1893,7 +1948,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   const orphan = ids.filter((id) => !byId.has(id));
   const broken = ids.filter((id) => byId.has(id)
     && LS._minRlvId(RLVT, SYNCMAP[id]) !== byId.get(id).rlv);
-  check(`T20 level-sync.json 有資料（現況 768，實測 ${ids.length}）`, ids.length >= 700);
+  check(`T20 level-sync.json 有資料（現況 768，實測 ${ids.length}）`, ids.length >= 768);   // 門檻＝宣告值，不留 68 筆的靜默縮水空間（健檢 R5 M19）
   eq('T20 同步清單裡沒有本站不存在的配方', orphan.length, 0);
   eq('T20 每個同步配方的原始 rlv == 其最高等級的基準 rlv（identity 全量）', broken.length, 0);
   eq('T20 index.html 有等級同步靜態骨架（不靠 JS 建 DOM，免 CLS 與游標遺失）',
@@ -2185,7 +2240,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check('T32 帶座標的商人排在前面（能直接跑過去的優先）',
     rows.every((e) => !e.npcs || e.npcs.every((n, i, a) => i === 0 || !(n.zone && !a[i - 1].zone))));
   check('T32 「跟誰買」的覆蓋率沒有倒退（現況 247/256；社群資料時代只有 38）',
-    rows.filter((e) => e.npcs && e.npcs.length).length >= 240);
+    rows.filter((e) => e.npcs && e.npcs.length).length >= 247);   // 門檻＝宣告值（健檢 R5 M19）
 }
 
 
@@ -2347,7 +2402,10 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     const m = CSS_SRC.match(new RegExp(`\\${sel}\\s*\\{([^}]*)\\}`));
     return m ? m[1] : null;
   };
-  for (const sel of ['.filter-group', '.cfg-card', '.cl-card', '.result-summary']) {
+  // 消費端清單由 markup 反推（同 T49 的做法），不手維護：手寫清單曾漏掉唯一巢狀的 .consumables（健檢 R5 M20）
+  const NEUTRAL_SELS = [...new Set([...(HTML_SRC + LIST2_SRC).matchAll(new RegExp(`${NEUTRAL} ([a-z-]+)`, 'g'))].map((m) => '.' + m[1]))];
+  check(`T36 掃到的中性面板消費端 ≥5（實測 ${NEUTRAL_SELS.length}：${NEUTRAL_SELS.join(' ')}）`, NEUTRAL_SELS.length >= 5);
+  for (const sel of NEUTRAL_SELS) {
     const body = bodyOf(sel);
     check(`T36 ${sel} 規則存在（padding 與外距仍留本地）`, body !== null);
     check(`T36 ${sel} 不再本地宣告 background（底色走 --panel-bg）`,
@@ -2436,6 +2494,15 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   // 對照組：這幾份載不到是真的「摸摸鼻子」——少一份加成／少一個快捷，數字不會錯
   eq('T41 食藥／品質階段載不到 → 靜靜降級即可，不打擾玩家',
     warned(await run(['data/meals.json', 'data/medicine.json', 'data/quality-stages.json']), /./), 0);
+  // app.js 側：meals 失敗要把 null 交給 setData（給 [] 會被當品項下架而清掉偏好；健檢 R5 M3）
+  {
+    const c = mkLoadCtx(['data/meals.json']);
+    await new Promise((r) => setTimeout(r, 0));
+    let last = null;
+    c.ctx.CraftConsumable.setData = (m, d) => { last = [m, d]; };
+    await c.ctx.loadData();
+    check('T41 meals 載入失敗 → setData 收到 null（不是空陣列）', last && last[0] === null && Array.isArray(last[1]), JSON.stringify(last));
+  }
 
   // ===== T42：資料還在載的時候，分頁按鈕就要能按 =====
   // 由來（健檢 2026-08-15 ux-flows A2）：分頁的事件綁定原本排在 `await loadData()` **之後**，
@@ -2450,6 +2517,11 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
     // 真的能切：點「角色數值」要把該面板顯示出來（首次使用提示指的就是它）
     pending.tabs[1].onclick();
     eq('T42 載入中點「角色數值」→ 面板真的切過去', pending.ctx.document.getElementById('tab-stats').hidden, false);
+    // 首次提示那顆「前往角色數值 →」與它指向的面板同樣要在 await 前就緒（健檢 2026-09-05 ux-flows A1 ＝ M18）
+    check('T42 資料尚未載完 → 「前往角色數值 →」已綁定（不是死鈕）',
+      typeof pending.ctx.document.getElementById('goto-stats-hint').onclick === 'function');
+    check('T42 資料尚未載完 → 角色數值面板已有輸入格（不是全空）',
+      /gear-in/.test(pending.ctx.document.getElementById('gearsets').innerHTML));
   }
 }
 
@@ -2635,8 +2707,8 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 // ===== T48：晶體判定只有一份實作（Q-02）＋ 硬編值不得繞過 token（DS-04/05）=====
 {
   const js = fs.readdirSync(ROOT).filter((f) => f.endsWith('.js'));
-  const owners = js.filter((f) => /晶簇\|水晶\|碎晶/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
-  check('T48 晶體判定規則只在 app.js 定義一次（配方原料排序與清單彙總共用）',
+  const owners = js.filter((f) => /category === '水晶'/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
+  check('T48 晶體判定規則只在 app.js 定義一次（判準＝items.json 的 category，不再用名稱正則；健檢 R5 M14）',
     owners.length === 1 && owners[0] === 'app.js', `實際：${owners.join(', ') || '無'}`);
   for (const f of ['app-recipe.js', 'crafting-list.js']) {
     check(`T48 ${f} 走注入的 deps.isCrystal`, /deps\.isCrystal\(/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
@@ -2990,6 +3062,10 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   const loop = N.consumersOf(7, { index: { 7: [[1, 1], [2, 1]] }, recipesById: { 1: { id: 1, item_id: 7, item_name: '自己', job: '木工' }, 2: { id: 2, item_id: 8, item_name: '別的', job: '木工' } }, items: {}, gearOk: () => false });
   eq('T56 用到自己的配方不列（避免原地踏步）', loop.length, 1);
   eq('T56 自環過濾掉的是自己那筆', loop[0].name, '別的');
+  const sameJob = N.consumersOf(7, { index: { 7: [[1, 1], [2, 1]] }, recipesById: {
+    1: { id: 1, item_id: 8, item_name: '同一件', job: '木工' }, 2: { id: 2, item_id: 8, item_name: '同一件', job: '木工' } },
+    items: {}, gearOk: () => false });
+  eq('T56 同一件成品、同職兩張配方 → jobCount 是 1 不是 2（健檢 R5 correctness-data A3）', sameJob[0].jobCount, 1);
 
   // (c) 視窗：篩選、fail-safe、點列交出配方 id
   N.init({
@@ -3123,6 +3199,33 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   eq('T57 鈕上標出件數', $r2('next-craft').textContent, '⚒ 繼續做（7）');
   R2.showPicker();
   eq('T57 返回配方列表 → 「繼續做」跟著收（沒有「這個成品」可以繼續做了）', $r2('next-craft').hidden, true);
+}
+
+// ===== T63：健檢 2026-09-05 批次 0 的靜態哨兵 =====
+{
+  const APP63 = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+  const HTML63 = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const ALLOW63 = fs.readFileSync(path.join(ROOT, 'deploy-allow.txt'), 'utf8').split(/\r?\n/).filter(Boolean);
+  // M8：AbortSignal.timeout 必伴存在性判斷（舊瀏覽器整站死在 fetch 之前，連 fetchOpt 的降級都吃不到）
+  eq('T63 AbortSignal.timeout 只有一個呼叫點', (APP63.match(/AbortSignal\.timeout\(/g) || []).length, 1);
+  check('T63 AbortSignal.timeout 呼叫前有存在性判斷（禁裸呼叫）', /AbortSignal\?\.timeout \? AbortSignal\.timeout\(/.test(APP63));
+  // M14：晶體判定走 items.json 的 category，不再用名稱正則
+  check('T63 isCrystal 以 category === 水晶 判定', /category === '水晶'/.test(APP63));
+  check('T63 isCrystal 不再用名稱正則（曾誤判 55 筆 id≥20 的物品）', !/晶簇\|水晶\|碎晶/.test(APP63));
+  const ITEMS63 = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/items.json'), 'utf8'));
+  const crystals = Object.values(ITEMS63).filter((it) => it && it.category === '水晶').length;
+  check(`T63 items.json 有 category=水晶 的資料可判（實測 ${crystals}）`, crystals >= 18);
+  // M21：icon 來源 host 要 preconnect，且本站只用 <img> 故不得帶 crossorigin（帶了會開第二條連線池）
+  const iconHost = (APP63.match(/https:\/\/([a-z0-9.-]+)\/api\/asset/) || [])[1];
+  const pcTag = (HTML63.match(/<link rel="preconnect" href="https:\/\/[^"]+"[^>]*>/g) || []).find((t) => t.includes(`https://${iconHost}"`)) || '';
+  check(`T63 icon host（${iconHost}）有 preconnect`, !!iconHost && !!pcTag);
+  check('T63 icon host 的 preconnect 不帶 crossorigin', !!pcTag && !/crossorigin/.test(pcTag));
+  // M4：頁尾與 LICENSE-MIT.txt 指向的授權檔都必須在部署允許清單（曾指向一個線上 404 的檔）
+  const footerLic = [...HTML63.matchAll(/href="(LICENSE[^"]*)"/g)].map((m) => m[1]);
+  check(`T63 頁尾連出的授權檔都在 deploy-allow（${footerLic.join(' ')}）`, footerLic.length >= 3 && footerLic.every((f) => ALLOW63.includes(f)));
+  const mitRef = (fs.readFileSync(path.join(ROOT, 'LICENSE-MIT.txt'), 'utf8').match(/LICENSE-THIRD-PARTY\.txt/) || [])[0];
+  check('T63 LICENSE-MIT.txt 指向的著作權人清單檔在 deploy-allow 且存在', !!mitRef && ALLOW63.includes(mitRef) && fs.existsSync(path.join(ROOT, mitRef)));
+  check('T63 著作權人清單檔名走 LICENSE*.txt（命中 deploy-prepare.sh 的既有例外，共用腳本零改動）', /^LICENSE.*\.txt$/.test(mitRef || ''));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

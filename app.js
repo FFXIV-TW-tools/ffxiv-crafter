@@ -59,9 +59,13 @@ let computedInitial = 0; // 由 HQ 原料勾選算出的初始品質
 // ---------- 資料 ----------
 async function loadData() {
   // 逾時：網路 stall 時不讓「📦 載入配方資料中…」無限空轉（無逾時＝玩家看不出是慢還是壞掉，只能自己重整）
-  const fetchJson = async (url) => { const r = await fetch(url, { signal: AbortSignal.timeout(30000) }); if (!r.ok) throw new Error(`${url} HTTP ${r.status}`); return r.json(); }; // HTTP 錯誤明確降級（非把 404 頁當 JSON 硬 parse）
+  // 舊瀏覽器沒有 AbortSignal.timeout：退回無逾時，別整站死在 fetch 之前（連 fetchOpt 的降級都吃不到；健檢 R5 M8）
+  const fetchJson = async (url) => { const r = await fetch(url, { signal: globalThis.AbortSignal?.timeout ? AbortSignal.timeout(30000) : undefined }); if (!r.ok) throw new Error(`${url} HTTP ${r.status}`); return r.json(); }; // HTTP 錯誤明確降級（非把 404 頁當 JSON 硬 parse）
   // 選配資料（食物/藥水）非必要 → 失敗只降級該功能、不拖垮整站；回傳 [] 讓 buildConsumables 安全略過
   const fetchOpt = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return []; } };
+  // 食藥兩份失敗要回 null 不是 []：app-consumable.setData 把「不在清單裡的保存值」當品項下架清掉，
+  // 給它 [] 等於一次網路抖動就把玩家的食藥偏好清空（健檢 R5 M3）。null ＝「這次沒拿到，維持上一份」。
+  const fetchOptOrNull = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，維持上一份:', url, e); return null; } };
   // 七檔同一輪併發：meals/medicine 原本排第二輪 await，白等一個 RTT 只換 2.5KB（fetchOpt 自己吞錯，不會拖垮必要資料）
   // 品質階段同為選配：載不到只是少了「一階/二階/三階」快捷，目標品質仍可手打 → 不拖垮整站
   const fetchOptObj = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return {}; } };
@@ -83,15 +87,15 @@ async function loadData() {
     fetchJson('data/craft-actions.json'),
     fetchJson('data/items.json'),
     fetchJson('data/ingredients.json'),
-    fetchOpt('data/meals.json'),
-    fetchOpt('data/medicine.json'),
+    fetchOptOrNull('data/meals.json'),
+    fetchOptOrNull('data/medicine.json'),
     fetchOptObj('data/quality-stages.json'),
     fetchLevelSync(),
     fetchOpt('data/job-quests.json'),
     fetchOptObj('data/vendors.json'),
   ]);
   RECIPES = recipes; RLV = rlv; ACTIONS = actions; ITEMS = items; INGREDIENTS = ingredients;
-  globalThis.CraftConsumable?.setData?.(meals, medicine);
+  globalThis.CraftConsumable?.setData?.(meals, medicine);   // 任一為 null 時該種類維持上一份（見 fetchOptOrNull）
   globalThis.CraftStages?.setData?.(stages);
   globalThis.CraftSync?.setData?.(levelSync);
   globalThis.CraftNext?.setData?.();   // INGREDIENTS 換了新綁定 → 反查索引作廢（下次用到再建）
@@ -197,13 +201,19 @@ function refreshSpecialistGate() {
   $('heart-why').hidden = enabled;
   $('qi-why').hidden = enabled;
   if (enabled) {
-    SPEC_GATED_IDS.forEach(id => { $(id).checked = specWanted[id]; });   // 閘打開 → 把玩家原本的選擇還他
+    SPEC_GATED_IDS.forEach(id => { $(id).checked = optWanted[id]; });   // 閘打開 → 把玩家原本的選擇還他
   } else {
     $('opt-heart').checked = false;
     $('opt-qi').checked = false;
   }
 }
-function onConsumableChange() { updateEff(); globalThis.CraftFlow?.updateConsumableSummary?.(); invalidateResults(); }
+function onConsumableChange() {
+  updateEff(); globalThis.CraftFlow?.updateConsumableSummary?.();
+  // 最低能力要求的紅字與求解鈕狀態只在 refreshSelectedGear 內更新，而 statShortfall 的基準含食藥：
+  // 吃了藥跨過門檻後畫面仍寫「還差 380」（健檢 R5 M2）。走 CraftGear.afterInput 同一條路，不另起第二種刷新。
+  if (selected) refreshGearNote();
+  invalidateResults();
+}
 function effectiveStats(gear) {
   const spec = !!gear.specialist;               // 該職業是否持有專家之證（角色數值分頁設定，gearFor 帶進來）
   const sp = spec ? 20 : 0;                    // 專家之證：作業 +20・加工 +20
@@ -318,21 +328,23 @@ const SOLVE_OPT_IDS = ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-
 // 不能把偏好吃掉：換到有證的職業時要能回來。原本沒有人把它套回去 ⇒ 保存的偏好**永遠套不回**
 // （init 時 selected 還是 null，閘一律關 → 勾選被清掉，之後閘打開也只是「可勾」而不會勾回來）。
 const SPEC_GATED_IDS = ['opt-heart', 'opt-qi'];
-const specWanted = { 'opt-heart': false, 'opt-qi': false };
+// 「玩家想不想用」對**每個**會被程式強制取消的選項都要記——不只專家之證兩個：opt-adversarial 在 expert 配方
+// 也會被強制取消，原本沒記 ⇒ 存檔時被寫成 false、離開 expert 也不還原（健檢 R5 M7）。不逐 id 列舉，第四個出現時不再漏。
+const optWanted = Object.fromEntries(SOLVE_OPT_IDS.map(id => [id, false]));
 function loadSolveOpts() {
   try {
     const s = JSON.parse(localStorage.getItem(SOLVE_OPTS_KEY)) || {};
     // 只認布林：localStorage 被竄改成別的型別時退回 HTML 的預設值，不硬套
     SOLVE_OPT_IDS.forEach(id => { if (typeof s[id] === 'boolean') $(id).checked = s[id]; });
   } catch (e) { console.warn('[crafter] 求解選項讀取失敗，使用預設值:', e); }
-  SPEC_GATED_IDS.forEach(id => { specWanted[id] = $(id).checked; });   // 記住偏好本身，閘關了也不會遺失
+  SOLVE_OPT_IDS.forEach(id => { optWanted[id] = $(id).checked; });   // 記住偏好本身，閘關了也不會遺失
 }
 let solveOptsSaveWarned = false;
 function saveSolveOpts() {
   try {
     const s = {};
     // 閘關著時 DOM 是被強制取消的，寫它等於把玩家的偏好洗掉（他只是暫時拔了專家之證）→ 寫回偏好本身
-    SOLVE_OPT_IDS.forEach(id => { s[id] = ($(id).disabled && id in specWanted) ? specWanted[id] : $(id).checked; });
+    SOLVE_OPT_IDS.forEach(id => { s[id] = $(id).disabled ? optWanted[id] : $(id).checked; });
     localStorage.setItem(SOLVE_OPTS_KEY, JSON.stringify(s));
   } catch (e) {                                 // 無痕/配額滿：至少 warn（禁靜默吞）＋一次性提醒
     console.warn('[crafter] 求解選項儲存失敗（可能是無痕模式）:', e);
@@ -343,7 +355,12 @@ function saveSolveOpts() {
 // 晶體判定（水晶/碎晶/晶簇）——**單一出口**：配方原料排序（app-recipe）與製造清單彙總（crafting-list）
 // 各自需要它，兩份平行實作只要有人改了規則就會分岔（Q-02）。規則本身是「低 id 段」＋三個關鍵字：
 // 低 id 是遊戲把水晶類放在最前面的事實，關鍵字是保險（新增的晶體若 id 不在低段仍抓得到）。
-function isCrystal(iid, name) { return iid < 20 || /晶簇|水晶|碎晶/.test(name || ''); }
+// ⚠️ 名稱正則曾把「紫水晶手鐲」「水晶燈」等 55 筆 id≥20 的物品判成晶體（健檢 R5 M14）——
+//   製造清單因此分錯組、「加進清單」入口被吃掉。items.json 每筆本有 category 欄，「水晶」才是判準。
+function isCrystal(iid, name) {
+  const it = ITEMS[String(iid)];
+  return iid < 20 || !!(it && it.category === '水晶');
+}
 
 // ---------- utils ----------
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); } // 含單引號 → 無例外通用轉義（防 attribute 用單引號時破格）
@@ -403,6 +420,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     getComputedInitial: () => computedInitial, setComputedInitial: (v) => { computedInitial = v; },
     getOpenedFromList: () => openedFromList, setOpenedFromList: (v) => { openedFromList = v; },
     invalidateResults, updateEff, gearFor, refreshSpecialistGate,
+    restoreOpt: (id) => { $(id).checked = optWanted[id]; },   // 程式強制取消後的還原（expert 閘用；偏好本體住 optWanted）
     getRecipesById: () => RECIPE_BY_ID, getRecipeByItem: () => RECIPE_BY_ITEM,
     getRecipesByItem: () => RECIPES_BY_ITEM, gearOkFor: (job) => !!gearFor(job) });
   // 「繼續做」反查層（app-nextcraft.js classic script）：索引在資料載完後才建（setData 作廢重建）
@@ -452,6 +470,10 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     t.onkeydown = onTabKey;
     t.tabIndex = t.classList.contains('is-active') ? 0 : -1; // 初始 roving tabindex（tablist a11y）
   });
+  // 首次使用提示在解析階段就顯示（first-run-hint.js），它那顆「前往角色數值 →」與指向的面板也必須在 await 前就緒：
+  // renderGearsets 只吃 DOH／JOB_ICON／localStorage、零資料相依（健檢 R5 M18；前輪 T42 修的是分頁鈕、漏了這顆）。
+  renderGearsets();
+  { const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats', true); }
   await loadData();
   // 配方瀏覽層（app-browse.js classic script）：注入依賴後才能 render（getter 取 live RINDEX/selected——loadData 會重賦值綁定）
   if (!globalThis.CraftBrowse) throw new Error('app-browse.js 未載入（部署不完整）'); // 明確早報 → 落 catch 顯錯誤橫幅，非等 render 才 undefined.X 白屏（對抗審 grok F3）
@@ -460,7 +482,6 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     getRINDEX: () => RINDEX, getSelected: () => selected, selectRecipe, toast });
   renderChips();
   globalThis.CraftBrowse.renderPatchOptions();   // 版本選項由資料生成（不寫死 68 個版號——資料一變就漂移）
-  renderGearsets();
   renderTable();
   $('picker').classList.remove('is-loading');   // 預留高度交還給真實內容（篩選出少量結果時不留空井）
   // 深連結：?recipe=<id> 或 ?item=<id> → 自動選配方（marketboard / 宇宙探索「求解手法」鈕用）
@@ -487,7 +508,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   ['food-hq', 'potion-hq'].forEach(id => $(id).addEventListener('change', onConsumableChange));
   // 任一求解輸入變更 → 舊結果過期（gate：集中失效，涵蓋程式化改值與 gear 傳播）＋保存選擇
   SOLVE_OPT_IDS.forEach(id => $(id).addEventListener('change', () => {
-    if (id in specWanted) specWanted[id] = $(id).checked;   // 玩家自己動的才算偏好（程式化的強制取消不觸發 change）
+    optWanted[id] = $(id).checked;   // 玩家自己動的才算偏好（程式化的強制取消不觸發 change）
     saveSolveOpts(); invalidateResults();
   }));
   $('opt-target').addEventListener('input', () => {
@@ -510,7 +531,6 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     if (e.target.closest('#ph-solve')) globalThis.CraftSolve.doSolve();
   });
   $('change-recipe').addEventListener('click', showPicker);
-  const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats', true);
   // 結果渲染（app-render.js classic script）：注入 getter 取 live 狀態（loadData 會重賦值 ITEMS/ACTIONS 綁定）
   if (!globalThis.CraftRender) throw new Error('app-render.js 未載入（部署不完整）');
   globalThis.CraftRender.init({ $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE,

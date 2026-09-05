@@ -14,4 +14,7 @@ for (const f of files) {
   if (r.status !== 0) { failed++; console.error(`✗ ${f} FAILED (exit ${r.status})`); }
 }
 console.log(`\n${files.length - failed}/${files.length} 測試檔通過`);
+// 檔數下限：0 個檔也印「0/0 通過」並 exit 0 ＝ 刪光測試仍全綠（健檢 R5 M6）。宣告值另由 AGENTS.md 的 TEST-BASELINE 標記對帳。
+const MIN_FILES = 4;
+if (files.length < MIN_FILES) { console.error(`✗ tests/ 只掃到 ${files.length} 個測試檔（基線 ${MIN_FILES}）——有測試檔被刪或改名`); process.exit(1); }
 process.exit(failed ? 1 : 0);

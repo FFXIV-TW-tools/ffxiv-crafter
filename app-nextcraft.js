@@ -56,7 +56,7 @@
         icon: (items[String(iid)] || {}).icon || null,
         recipeId: hit.recipe.id,
         job: hit.recipe.job,
-        jobCount: list.length,
+        jobCount: new Set(list.map((e) => e.recipe.job)).size,   // 同職多張配方只算一職（健檢 R5 correctness-data A3）
         amount: hit.amount,                 // 這個配方做一次要用幾個當前成品
         rlv: Number(hit.recipe.rlv) || 0,
         ok: !!gearOk(hit.recipe.job),

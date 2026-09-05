@@ -17,7 +17,7 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 
 ## 🔒 工具鐵則（違反必阻擋）
 
-- **`hqPercent()` 品質%→HQ% 對照表勿改**（`app.js`）：逐格移植自 ffxiv-crafting 7.4.5 權威遊戲表（Tnze），表的斷點/缺口是遊戲真實值、**不是 bug**。改前先舉具體「品質→HQ%」反例。
+- **`hqPercent()` 品質%→HQ% 對照表勿改**（`app-render.js`）：逐格移植自 ffxiv-crafting 7.4.5 權威遊戲表（Tnze），表的斷點/缺口是遊戲真實值、**不是 bug**。改前先舉具體「品質→HQ%」反例。
 - **製作公式已對抗驗證**（`computeSettings`，spec §4）：改動前先舉具體「錯誤輸入→輸出」反例，勿憑印象報「公式可能錯」。u16 無溢位、serde 對超界值**報錯而非靜默截斷**——勿改成 clamp 吞錯。
 - **DRY — 遊戲資料一律來自 monorepo `game_ref.sqlite`**（`build_game_ref.py` 產）→ `tools/build-data.py` 轉成 `data/*.json`。**禁自建對照表**，三處各有機械守：
   - 技能繁中名／icon：`craft-actions.json` 鍵集合必 == `wasm/src/lib.rs` 的 Action 變體（35=35，`check-actions.py`）
@@ -38,6 +38,9 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 | 檔案 / 目錄 | 一句話職責 |
 |------|------|
 | `index.html` | 靜態骨架＋`document.write` 注入 portal CDN bootstrap＋SEO/JSON-LD＋舊網域交接 inline 腳本 |
+| `first-run-hint.js` | **parser-blocking** 的外部 classic script：解析階段就決定首次提示顯隱（CLS）。硬約束（不得 inline／defer／async／module、key 與 `app-gear.js` 綁定）＝`tests/first-run-hint-key.test.mjs` |
+| `404.html` | 未知路徑回真 404（不落 SPA fallback ⇒ 假路徑不放大成計費請求；monorepo `check-unknown-path-cost` 守） |
+| `tests/` | 跨檔靜態契約（交接頁／settings-api 代理／first-run-hint／select 寬度預留）；`run-all.mjs` 自動掃描且有檔數下限 |
 | `app.js` | 前端控制器（唯一 `type=module` 入口）：資料載入／`computeSettings`・`recipeMaxes`／食藥加成／分頁／init 接線 |
 | `app-flow.js` | 流程引導：`flowState()` 純函式＝「現在該做什麼」的唯一真相 |
 | `app-render.js` | 結果渲染：`hqPercent`（純）／手法序列 chips／走查表／巨集組裝 |
@@ -60,7 +63,7 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 | `assets/` | `hq.png`（遊戲內 HQ 圖，**與 marketboard 同一張**，不自畫） |
 | `tools/` | `build-data.py`／`fetch-quest-qty.py`／`check-actions.py`／`build-wasm.ps1`／`build-notices.py`／`serve.py`／`test-formulas.mjs`／`sim-diff/` |
 | `_headers` | CF Pages 安全標頭（CSP 完整分域）＋快取策略（一律 `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
-| `THIRD-PARTY-NOTICES.md`／`LICENSE-*.txt` | 散布 `pkg/*.wasm` 的授權義務（Apache-2.0 §4(a) 要交付 License 副本、MIT 要附著作權宣告；頁尾只寫授權名稱不算）。由 `build-notices.py` 自 `wasm/Cargo.lock` 產，**改 wasm 依賴後必須重跑並一起 commit** |
+| `LICENSE-THIRD-PARTY.txt`／`LICENSE-*.txt` | 散布 `pkg/*.wasm` 的授權義務（Apache-2.0 §4(a) 要交付 License 副本、MIT 要附著作權宣告；頁尾只寫授權名稱不算）。由 `build-notices.py` 自 `wasm/Cargo.lock` 產，**改 wasm 依賴後必須重跑並一起 commit** |
 | `docs/health-reviews/` | 永久健檢檔案庫（豁免 docs 暫存→歸檔規則） |
 
 **資料流**：選配方 + 填角色數值 → `computeSettings`（FFXIV 公式，含食物/藥水/專家之證）→ postMessage worker → raphael `MacroSolver` → replay 逐步 → render 手法序列 + 巨集。
@@ -78,17 +81,18 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="654" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="683" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
+<!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="4" label="run-all" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **4 項全綠，只准升不准降**：`test-formulas` **653**／`check-actions` 35 個 Action 變體／`cargo test` 5／`run-all` 4 個測試檔。宣告值與實測值由 pre-commit gate 6 對帳。
+> 機械閘基線 **只准升不准降**——**宣告值只寫在上方 `TEST-BASELINE` 標記**（四條：test-formulas／check-actions／cargo／run-all），這裡刻意不複述數字：散文那份曾停在 653 而標記已是 654，gate 6 只讀標記（健檢 R5 M6）。宣告值與實測值由 pre-commit gate 6 對帳。
 > 逐輪沿革＝[`docs/test-baseline-history.md`](docs/test-baseline-history.md)；「為什麼這幾支被併進 canonicalTest」＝[`docs/lessons.md`](docs/lessons.md)。
 
 ```bash
 node --check *.js                       # JS 語法（用萬用字元，不列清單——手維護的清單會漏掉新模組）
-node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T1〜T57，各條用途寫在測試檔內）
+node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T1〜T62，各條用途寫在測試檔內）
 py -3.11 tools/check-actions.py         # 不變量：Action 變體對照 ＋ pkg/ 同步戳記 ＋ sim-diff 與 wasm 同一 raphael tag
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一 + 神速技巧三條
 ```
@@ -104,7 +108,7 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
   ```
   兩顆**零共用程式碼**的引擎隨機走訪對打（raphael-sim vs Tnze `ffxiv-crafting`）＋我方 JS 對 Tnze golden 對帳。**已知差異寫在 `src/main.rs` 的 `ALLOWED` 且每條附理由——清單外一律失敗，加新條目前必須先查遊戲客戶端判誰對，不要為了讓閘變綠而加**；清單裡的條目某輪沒出現也會印警告（多半代表上游修好了 → 該移除我方 workaround）。
 - **改 `wasm/src/lib.rs` 或 `Cargo.lock`** → `cargo test`（host target 可跑）＋ `powershell tools\build-wasm.ps1` 重建 `pkg/` 並更新 `BUILD-STAMP.json`（否則 `check-actions.py` 會紅），`pkg/` 一起 commit。**別跑裸 `wasm-pack`**——產物會帶建置者的 Windows 帳號名而 `pkg/*.wasm` 是公開可下載的（`docs/lessons.md`）。
-- **改 `wasm/Cargo.toml` 依賴** → `py -3.11 tools/build-notices.py` 重產 `THIRD-PARTY-NOTICES.md` 一起 commit（授權義務跟著依賴變）。
+- **改 `wasm/Cargo.toml` 依賴** → `py -3.11 tools/build-notices.py` 重產 `LICENSE-THIRD-PARTY.txt` 一起 commit（授權義務跟著依賴變）。
 - **改 `.js` / `.css`** → **無 cachebust 步驟**（index.html 靜態引用無 `?v=`，`_headers` 的 `must-revalidate` 負責重驗）。
 - **手動 smoke**（改 UI / render / 求解路徑後）：`py -3.11 tools/serve.py`（no-cache dev server :8809；勿用裸 `python -m http.server`）＋ portal svc :8774 提供 codex CDN（`svc start portal`）→ 選配方 → 填數值 → 求解 → 複製巨集。零 console error。
 - **純文件 / 規則檔改動**：pre-commit gate 過 + 目視 diff 即足。

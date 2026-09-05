@@ -44,7 +44,7 @@ const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
 const after = html.slice(html.indexOf('id="first-run-hint"'), html.indexOf('crafter-flow-wrap'));
 const tag = (after.match(/<script[^>]*first-run-hint\.js[^>]*>/) || [''])[0];
 assert.ok(tag, 'index.html 的 #first-run-hint 與流程軸之間找不到 first-run-hint.js 的 <script>');
-assert.ok(!/(defer|async)/.test(tag) && !/type=["']module["']/.test(tag),
+assert.ok(!/\b(defer|async)\b/.test(tag) && !/type=["']module["']/.test(tag),
   `first-run-hint.js 必須是 parser-blocking 的 classic script（不得 defer／async／module）：${tag}`);
 
 console.log(`✓ first-run-hint-key: first-run-hint.js 與 app-gear.js 共用同一個 key（${key}），且為 parser-blocking`);

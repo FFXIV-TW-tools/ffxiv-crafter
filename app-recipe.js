@@ -137,6 +137,17 @@
     nb.onclick = () => globalThis.CraftNext?.open?.(recipe.item_id, recipe.item_name, nb);
   }
 
+  // 最低能力要求（3396 個配方有）：遊戲內數值不到就不給做 ⇒ 要在選配方當下就看得到，
+  // 不足時標紅並寫出還差多少（比較基準含食物／藥水／專家之證，同遊戲判定）。
+  function reqStatHtml(recipe) {
+    const gate = deps.statGate(recipe);
+    if (!(gate.need.cms || gate.need.ctrl)) return '';
+    return `<span class="ri-stat ri-stat--req${gate.ok ? '' : ' is-short'}"` +
+      ` data-help="這個配方在遊戲內有最低能力要求：作業精度 ${gate.need.cms} ／ 加工精度 ${gate.need.ctrl}。` +
+      `不到就不能製作（食物與藥水的加成算數）。${gate.ok ? '你目前符合。' : `你還差 作業 ${gate.cms} ／ 加工 ${gate.ctrl}。`}">` +
+      `需求 作業<b>${gate.need.cms}</b> 加工<b>${gate.need.ctrl}</b>${gate.ok ? '' : ' ⚠'}</span>`;
+  }
+
   function refreshGearNote() {
     const selected = deps.getSelected();
     if (!selected) return;
@@ -198,6 +209,7 @@
     // 最低能力要求不足**同樣**只暗掉不 disabled（按下去由 doSolve 說明差多少並導去角色數值）。
     const gate = deps.statGate(recipe);
     deps.$('solve-btn').setAttribute('aria-disabled', (g && gate.ok) ? 'false' : 'true');
+    deps.$('recipe-req').innerHTML = reqStatHtml(recipe);   // 紅字與鈕同一次更新（健檢 R5 M2：吃了藥仍寫「還差 N」）
   }
 
   function refreshSelectedGear() {
@@ -236,13 +248,7 @@
       : '';
     // 最低能力要求（3396 個配方有）：遊戲內數值不到就不給做 ⇒ 要在選配方當下就看得到，
     // 不足時標紅並寫出還差多少（比較基準含食物／藥水／專家之證，同遊戲判定）。
-    const gate = deps.statGate(recipe);
-    const reqStat = (gate.need.cms || gate.need.ctrl)
-      ? `<span class="ri-stat ri-stat--req${gate.ok ? '' : ' is-short'}"` +
-        ` data-help="這個配方在遊戲內有最低能力要求：作業精度 ${gate.need.cms} ／ 加工精度 ${gate.need.ctrl}。` +
-        `不到就不能製作（食物與藥水的加成算數）。${gate.ok ? '你目前符合。' : `你還差 作業 ${gate.cms} ／ 加工 ${gate.ctrl}。`}">` +
-        `需求 作業<b>${gate.need.cms}</b> 加工<b>${gate.need.ctrl}</b>${gate.ok ? '' : ' ⚠'}</span>`
-      : '';
+    const reqStat = `<span id="recipe-req">${reqStatHtml(recipe)}</span>`;   // 容器獨立：食藥／數值變動時由 refreshGearNote 就地更新，不整段重繪（重繪會清 HQ 素材）
     const backChain = chain.length
       ? `<button id="back-in-chain" class="codex-btn codex-btn--ghost" type="button" data-help="回到這條製作鏈的上一層（中間材做完了就回去做成品）">← 回「${deps.esc(chain[chain.length - 1].name)}」</button>`
       : '';
@@ -284,6 +290,7 @@
     deps.$('opt-adversarial').disabled = recipe.is_expert; // 高難度配方引擎不支援防球
     deps.$('adv-why').hidden = !recipe.is_expert;
     if (recipe.is_expert) deps.$('opt-adversarial').checked = false;
+    else deps.restoreOpt?.('opt-adversarial');   // 離開 expert 要把玩家原本的勾還他，否則同 session 內偏好就丟了（健檢 R5 M7）
   }
 
   // ---------- 配方原料 + HQ → 自動初始品質 ----------
