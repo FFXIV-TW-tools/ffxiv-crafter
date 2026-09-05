@@ -11,7 +11,7 @@ Owner 2026-09-05 逐條「按建議」拍板，本輪逐題各自一個 commit�
 - **B-037** monorepo gate 6 `--staged` 改由 TEST-BASELINE 反推監看路徑（「宣告什麼，監看什麼」）、gate 3 補 `.mjs`；本 repo 加 `tests/hooks-installed.test.mjs`（新 clone 零閘門從靜默變成 safe-push 前明確失敗）與 `tests/deploy-prepare.test.mjs`（部署腳本本機先跑一次）。
 - **B-034** 三檔過 500 行閘門全拆：`app.js` → `app-formula.js`／`app-data.js`；`tools/build-data.py` → `tools/build_lib/`（輸出逐 byte 相同）；`styles.css` → `styles/10-base…50-tabs`（389 條規則集合相等、層疊順序＝檔名序）。**每一支都 <500 行、測試數不降、瀏覽器 smoke 選配方→求解→巨集全過。**
 - **B-033** AGENTS.md 38,974 → 30,895 B：有測試守的條目降成一行＋編號、9 段敘事搬 `docs/lessons.md`；新增 **T65** 位元組哨兵（≤ 豁免當時的 31,248，超過＝搬敘事不是改數字），讓「已豁免」與「超出豁免當時的值」在機械上可分辨。
-- 連帶：gate 3 補 `.mjs` 後 `tools/test-formulas.mjs`（3276 行）開始每次接觸印紅線 ⇒ 新開 **B-039** 拆測試檔。
+- **B-039**（gate 3 補 `.mjs` 後首次對 3290 行的 `tools/test-formulas.mjs` 亮紅線，Owner 同日拍板）：入口檔名不變、改成掃 `tools/tests/` 依檔名序跑；共用底座 `_harness.mjs`＋13 支主題檔（最大 351 行）。斷言集合 diff 為空、零順序依賴。
 
 ## 2026-09-05 — 舊網址交接機制退役（Bulk Redirects 取代 middleware 301）
 

@@ -58,7 +58,7 @@ R7-exempt: 2026-11-16 依據：2026-08-16 Owner 拍板（B-025 第二輪）—�
 | `pkg/` | wasm-pack 輸出，**必須 commit**（CF Pages 不編 Rust）；同步戳記＝`wasm/BUILD-STAMP.json` |
 | `data/` | recipes／items／ingredients／recipe_levels／craft-actions／meals／medicine／quality-stages／level-sync／job-quests／vendors JSON（`tools/build-data.py` 產） |
 | `assets/` | `hq.png`（遊戲內 HQ 圖，**與 marketboard 同一張**，不自畫） |
-| `tools/` | `build_lib/`（`build-data.py` 的實作層：一模組一個產出職責，主檔只留旗標編排與缺件收尾）／`build-data.py`／`fetch-quest-qty.py`／`check-actions.py`／`build-wasm.ps1`／`build-notices.py`／`serve.py`／`test-formulas.mjs`／`sim-diff/` |
+| `tools/` | `build_lib/`（`build-data.py` 的實作層：一模組一個產出職責，主檔只留旗標編排與缺件收尾）／`build-data.py`／`fetch-quest-qty.py`／`check-actions.py`／`build-wasm.ps1`／`build-notices.py`／`serve.py`／`test-formulas.mjs`（入口：掃 `tests/` 依檔名序跑）／`tests/`（主題分檔＋共用 `_harness.mjs`）／`sim-diff/` |
 | `_headers` | CF Pages 安全標頭（CSP 完整分域）＋快取策略（一律 `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
 | `LICENSE-*.txt` | 散布 `pkg/*.wasm` 的授權義務（Apache-2.0 §4(a)／MIT 著作權宣告；頁尾只寫授權名稱不算）。`build-notices.py` 自 `wasm/Cargo.lock` 產，**改 wasm 依賴後必須重跑並一起 commit** |
 | `docs/health-reviews/` | 永久健檢檔案庫（豁免 docs 暫存→歸檔規則） |
@@ -89,7 +89,7 @@ node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-a
 
 ```bash
 node --check *.js                       # JS 語法（用萬用字元，不列清單——手維護的清單會漏掉新模組）
-node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T1〜T65，各條用途寫在測試檔內）
+node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T0〜T65 拆在 tools/tests/，用途寫在各主題檔內）
 py -3.11 tools/check-actions.py         # 不變量：Action 變體對照 ＋ pkg/ 同步戳記 ＋ sim-diff 與 wasm 同一 raphael tag
 cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一 + 神速技巧三條
 ```

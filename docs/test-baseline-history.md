@@ -36,3 +36,5 @@
 2026-09-05 健檢 R5 B-037（Owner 拍板 A）→ run-all **3 → 5 檔**：`tests/hooks-installed.test.mjs`（`core.hooksPath` 有設、底下有 pre-commit、內容是 monorepo 那支共用閘——新 clone 零閘門從「靜默」變成 safe-push 前明確失敗）、`tests/deploy-prepare.test.mjs`（本機先跑一次 `sh deploy-prepare.sh`：exit 0、輸出就緒、`_site/` 不含內部資產、允許清單每項都出貨）。不把 `sh deploy-prepare.sh` 接在 canonicalTest 尾巴：fleet-check 對 canonicalTest 有 `/deploy/` 防呆，包成測試檔才是對的形狀。monorepo 側同輪：gate 6 `--staged` 改由 TEST-BASELINE 的 cmd／cwd 反推監看路徑（只 stage `tools/test-formulas.mjs` 或 `wasm/` 也會觸發，實測）、gate 3 副檔名補 `.mjs`/`.cjs`。
 
 2026-09-06 健檢 R5 B-033（Owner 拍板 A＋C）→ **684 passed**：T65 新增 2 條——AGENTS.md 位元組數 ≤ 豁免當時的 31,248（超過＝搬敘事，不是改數字）、R7-exempt 戳仍在（撤銷豁免時上限改回 20KB）。同輪 AGENTS.md 38,974 → 30,895 B：已固化成測試的條目降成一行＋測試編號、9 段敘事搬 `docs/lessons.md`、豁免理由縮成一句、Git 邊界縮成指標。
+
+2026-09-06 B-039 拆測試檔 → **684 passed**（不變）：`tools/test-formulas.mjs` 3290 行 → 24 行入口（掃 `tools/tests/*.test.mjs` 依檔名序 import、檔數下限 13）；共用底座 `_harness.mjs`（計數器單例）＋ 13 支主題檔（10-formula／11-gear／12-recipe-sync／20-list／21-browse／30-solve／31-render／40-flow-consumable／41-stages-sync／50-quests／51-nextcraft／60-ui-sentinels／61-repo-sentinels，最大 351 行）。斷言名稱集合 before/after diff 為空；負向對照 683/1 exit 1。
