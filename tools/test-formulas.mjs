@@ -2983,22 +2983,23 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 
 // ===== T53：CSP `unsafe-inline` 的依賴面不得無聲擴大（B-031）=====
 // 移除 `unsafe-inline`（改 sha256）已被兩輪判為重報、本輪 verifier 也降 low —— 沒有新的可利用路徑。
-// **唯一有增量價值的是這支哨兵**：`unsafe-inline` 之所以留著，理由是「head 那兩段 bootstrap 非留不可」。
-// 那個理由只在段數不變時成立；哪天有人順手加第 3 段可執行 inline script，`unsafe-inline` 的實際依賴面
-// 就從「兩段查得到出處的 bootstrap」變成「任何人都能往頁面裡塞」，而 **CSP 檔一個字都不用改、零訊號**。
+// **唯一有增量價值的是這支哨兵**：`unsafe-inline` 之所以留著，理由是「head 那段 bootstrap 非留不可」。
+// 那個理由只在段數不變時成立；哪天有人順手加第 2 段可執行 inline script，`unsafe-inline` 的實際依賴面
+// 就從「一段查得到出處的 bootstrap」變成「任何人都能往頁面裡塞」，而 **CSP 檔一個字都不用改、零訊號**。
+// 2026-09-05：舊網域交接那段隨交接機制退役刪除（301 已搬到 CF 帳號層 Bulk Redirects）⇒ 預期值 2 → 1。
 // 加新的 inline script 不是不行，但要在這裡明講它是什麼、為什麼不能改成外部檔。
 {
   const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const opens = HTML.match(/<script\b[^>]*>/g) || [];
   // 有 src 的是外部檔（CSP 走 host 白名單，不吃 unsafe-inline）；ld+json 是資料不是可執行碼。
   const inlineExec = opens.filter(t => !/\bsrc=/.test(t) && !/type=["']application\/ld\+json["']/.test(t));
-  check('T53 index.html 的可執行 inline script 恰為 2 段（舊網域交接 + portal CDN bootstrap）',
-    inlineExec.length === 2,
+  check('T53 index.html 的可執行 inline script 恰為 1 段（portal CDN bootstrap）',
+    inlineExec.length === 1,
     `實測 ${inlineExec.length} 段：${inlineExec.join(' | ')}\n` +
     '→ 新增可執行 inline script 會擴大 CSP unsafe-inline 的依賴面。' +
     '能改成外部 .js 就改（外部檔走 script-src self，不需要 unsafe-inline）；' +
     '真的非 inline 不可（如必須在 CDN bootstrap 之前跑）就更新本條的預期值並在此註明用途。');
-  // `unsafe-inline` 還在＝上面那兩段確實靠它；哪天 CSP 收緊了，這條會提醒回來重估本哨兵
+  // `unsafe-inline` 還在＝上面那段確實靠它；哪天 CSP 收緊了，這條會提醒回來重估本哨兵
   const csp = fs.readFileSync(path.join(ROOT, '_headers'), 'utf8');
   check('T53 script-src 仍帶 unsafe-inline（本哨兵存在的前提）',
     /script-src[^;]*'unsafe-inline'/.test(csp));

@@ -2,6 +2,14 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-09-05 — 舊網址交接機制退役（Bulk Redirects 取代 middleware 301）
+
+舊 `*.pages.dev` host 的 301 改由 Cloudflare **帳號層 Bulk Redirects** 在邊緣執行 ⇒ 本 repo 的
+`functions/_middleware.js`、HTML `<head>` 第一支 inline 交接腳本、`?stay` 資料救援門全部成了永遠跑不到的死碼，
+整套移除（救援期已逾一個月，Owner 裁示結束）。`_routes.json` 的 include 只留 API 代理路徑：**每條 include 都是
+一個計費攔截面**，HTML 路徑改回純靜態就不再吃 Pages Functions（帳號級免費硬牆 100k/日，2026-08-28 撞過）。
+受檢對象沒了的 `tests/handoff.test.mjs` 與 `tests/route-manifest.json` 一併刪除——留著就是「全綠但守著死碼」的閘。
+
 ## 2026-09-05 — 健檢 R5 批次 0：三支說謊的哨兵 ＋ 五條「畫面對玩家說反話」的缺陷（cycle 2026-09-05-R5）
 
 12 維健檢（報告與計畫見 `docs/health-reviews/2026-09-05-R5全維健檢-*.md`）。本筆是 16 項不需拍板的修復；

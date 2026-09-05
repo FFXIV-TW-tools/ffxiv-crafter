@@ -37,10 +37,10 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 
 | 檔案 / 目錄 | 一句話職責 |
 |------|------|
-| `index.html` | 靜態骨架＋`document.write` 注入 portal CDN bootstrap＋SEO/JSON-LD＋舊網域交接 inline 腳本 |
+| `index.html` | 靜態骨架＋`document.write` 注入 portal CDN bootstrap＋SEO/JSON-LD |
 | `first-run-hint.js` | **parser-blocking** 的外部 classic script：解析階段就決定首次提示顯隱（CLS）。硬約束（不得 inline／defer／async／module、key 與 `app-gear.js` 綁定）＝`tests/first-run-hint-key.test.mjs` |
 | `404.html` | 未知路徑回真 404（不落 SPA fallback ⇒ 假路徑不放大成計費請求；monorepo `check-unknown-path-cost` 守） |
-| `tests/` | 跨檔靜態契約（交接頁／settings-api 代理／first-run-hint／select 寬度預留）；`run-all.mjs` 自動掃描且有檔數下限 |
+| `tests/` | 跨檔靜態契約（settings-api 代理／first-run-hint／select 寬度預留）；`run-all.mjs` 自動掃描且有檔數下限 |
 | `app.js` | 前端控制器（唯一 `type=module` 入口）：資料載入／`computeSettings`・`recipeMaxes`／食藥加成／分頁／init 接線 |
 | `app-flow.js` | 流程引導：`flowState()` 純函式＝「現在該做什麼」的唯一真相 |
 | `app-render.js` | 結果渲染：`hqPercent`（純）／手法序列 chips／走查表／巨集組裝 |
@@ -55,7 +55,7 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 | `app-level-sync.js` | 等級同步：解出生效 rlv 並寫回 `selected.rlv`（顯示與求解共用） |
 | `crafting-list.js` | 製造清單：清單狀態(localStorage)／素材彙總 `aggregateMats`（純函式）／採購 CSV |
 | `worker.js` | web worker：載 raphael WASM 跑 `solve` |
-| `functions/` | 本 repo 唯一的伺服器端程式碼（CF Pages Functions）：`settings-api` 設定 API 同源代理（service binding 直呼，**不得改成 `fetch(URL)`**——會讓 per-IP 額度變全站共用；路徑白名單＋Origin 缺席才補）／`_middleware.js` 舊網域交接頁（13 站逐字複製的樣板）。各自有 `tests/*.test.mjs` 守 |
+| `functions/` | 本 repo 唯一的伺服器端程式碼（CF Pages Functions）：`settings-api` 設定 API 同源代理（service binding 直呼，**不得改成 `fetch(URL)`**——會讓 per-IP 額度變全站共用；路徑白名單＋Origin 缺席才補）。有 `tests/*.test.mjs` 守 |
 | `styles.css` | 工具樣式，token 全來自 portal CDN |
 | `wasm/` | 自寫 Rust 薄綁定（raphael-rs v0.26.2，Apache-2.0）；公式在 JS 端算好、WASM 只跑引擎 |
 | `pkg/` | wasm-pack 輸出 — **必須 commit**（CF Pages 不編 Rust）。`.gitignore` 是 `*` 且改不動，故同步戳記放 `wasm/BUILD-STAMP.json` |
@@ -84,7 +84,7 @@ node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-a
 <!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="683" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
-<!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="4" label="run-all" -->
+<!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="3" label="run-all" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
 > 機械閘基線 **只准升不准降**——**宣告值只寫在上方 `TEST-BASELINE` 標記**（四條：test-formulas／check-actions／cargo／run-all），這裡刻意不複述數字：散文那份曾停在 653 而標記已是 654，gate 6 只讀標記（健檢 R5 M6）。宣告值與實測值由 pre-commit gate 6 對帳。
@@ -98,9 +98,8 @@ cd wasm && cargo test                   # 不變量：parse_action ∘ action_na
 ```
 
 <!-- B-048-HANDOFF -->
-> 2026-09-02 起 `_middleware.js` 對舊 host 回 **HTTP 301**（GSC 實查：Google 否決 canonical、把 pages.dev 選成標準網址；inline JS 跳轉對爬蟲無效）；可導覽路徑列回 `_routes.json`。
->
-- **改 `functions/_middleware.js`／`_routes.json`／`tests/route-manifest.json`** → `node tests/handoff.test.mjs`（13 站逐字複製的樣板，**不得為配合本 repo 慣例改寫其介面**，理由見 `docs/lessons.md`）。
+> **舊網址交接機制已於 2026-09-05 退役**：舊 `*.pages.dev` host 的 301 改由 Cloudflare **帳號層 Bulk Redirects** 在邊緣執行，本 repo 不再有 middleware、HTML 也不再有 inline 交接腳本（`?stay` 救援門一併結束）。
+> `_routes.json` 的 include 只留 API 代理路徑（HTML 路徑不進 Pages Functions、不再計費）；交接頁測試與路由清單已隨之刪除（敘事見 `docs/lessons.md`）。
 - **改 `wasm/`（改綁定或換 raphael 版本）→ 另跑引擎差分閘**（不進 pre-commit，太慢）：
   ```bash
   cd tools/sim-diff && cargo run --release          # 約 1 分鐘，~96 萬次施放；清單外的新分歧 → exit 1
