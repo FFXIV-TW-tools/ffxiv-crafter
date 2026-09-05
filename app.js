@@ -381,10 +381,9 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 深連結：?recipe=<id> 或 ?item=<id> → 自動選配方（marketboard / 宇宙探索「求解手法」鈕用）
   const dlp = new URLSearchParams(location.search);
   const dlRecipe = +dlp.get('recipe') || 0, dlItem = +dlp.get('item') || 0;
-  // 多職業可做時優先挑玩家**有填數值**的那個職業（挑一個他沒練的等於一進站就是死路）；
-  // 都沒填就沿用第一個，畫面上的職業切換鈕仍可換。
-  const dlCands = dlItem ? (RECIPES_BY_ITEM[dlItem] || []).map((id) => RECIPE_BY_ID[id]).filter(Boolean) : [];
-  const dlByItem = dlCands.find((r) => gearFor(r.job)) || dlCands[0] || null;
+  // 一物多配方的挑法只有 CraftRecipe.pickRecipeForItem 一份（有填數值的職業 → 同職取難度最低，T52）；
+  // 這裡原本自刻一條「有數值的職業 → 否則第一個」，B-036 加了同職規則後就漂開了（深連結會選到難度最高那張）。
+  const dlByItem = dlItem ? globalThis.CraftRecipe.pickRecipeForItem(dlItem) : null;
   if (dlRecipe && RECIPES.some(r => r.id === dlRecipe)) selectRecipe(dlRecipe);
   else if (dlByItem) selectRecipe(dlByItem.id);
   else if (dlRecipe || dlItem) toast('找不到深連結指定的配方，請用搜尋手動選擇', 'warn'); // 從 marketboard 點過來但該物品無配方 → 給提示不迷路（ux-3）
