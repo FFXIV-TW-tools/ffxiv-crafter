@@ -1,7 +1,7 @@
 MIT License
 
 本檔為 MIT 授權標準條文全文，供本站散布的 pkg/crafter_wasm_bg.wasm 內以 MIT 授權
-（或雙授權中擇 MIT）的第三方套件使用。各套件的著作權人清單見 THIRD-PARTY-NOTICES.md。
+（或雙授權中擇 MIT）的第三方套件使用。各套件的著作權人清單見同目錄的 LICENSE-THIRD-PARTY.txt（隨站部署，/LICENSE-THIRD-PARTY.txt）。
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

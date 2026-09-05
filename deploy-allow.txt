@@ -25,6 +25,7 @@ index.html
 LICENSE
 LICENSE-APACHE-2.0.txt
 LICENSE-MIT.txt
+LICENSE-THIRD-PARTY.txt
 pkg
 robots.txt
 sitemap.xml

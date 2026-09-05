@@ -43,7 +43,7 @@ py -3.11 tools/serve.py            # no-cache dev server（預設 :8809，正確
 **散布的 `pkg/*.wasm` 是二進位衍生作品**——raphael-rs（Apache-2.0）與約 40 個 crate 被編譯進去，網站訪客即為收受者：
 
 - **站上提供**：[`LICENSE-APACHE-2.0.txt`](LICENSE-APACHE-2.0.txt) 隨站部署（頁尾直連 `/LICENSE-APACHE-2.0.txt`），滿足 Apache-2.0 §4(a)「交付 License 副本」。
-- **僅存 repo**（本 repo 目前未公開，故不從頁面連出去以免 404）：[`LICENSE-MIT.txt`](LICENSE-MIT.txt)、[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)（41 套件版本／授權／著作權人，由 `py -3.11 tools/build-notices.py` 自 `wasm/Cargo.lock` 產生，**改 wasm 依賴後重跑並一起 commit**）。**repo 轉公開時**把頁尾補上 notices 連結。
+- **站上一併提供**：[`LICENSE-MIT.txt`](LICENSE-MIT.txt) 與 [`LICENSE-THIRD-PARTY.txt`](LICENSE-THIRD-PARTY.txt)（41 套件版本／授權／著作權人清單，由 `tools/build-notices.py` 自 `wasm/Cargo.lock` 產）都在 `deploy-allow.txt`、頁尾直連。⚠️ 2026-09-05 前這兩份被關在 deny 清單裡，而 `LICENSE-MIT.txt` 內文正指向一個線上 404 的檔——當時的理由「本 repo 未公開」早已不成立（repo 是 public）；判準改成離線可驗的「是否在 allow 清單」，不再掛條件式的口頭票（健檢 R5 M4）。
 
 raphael-rs v0.26.2 以未修改原始碼編譯（故 Apache §4(b) 的「修改標示」不適用），頁尾署名 KonaeAkira。
 FFXIV 遊戲資料／圖示版權屬 SQUARE ENIX。

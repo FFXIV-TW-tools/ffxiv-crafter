@@ -1,4 +1,4 @@
-# build-wasm.ps1 — 重建 pkg/（WASM 求解引擎產物）。需 nightly + wasm32-unknown-unknown + wasm-pack。
+﻿# build-wasm.ps1 — 重建 pkg/（WASM 求解引擎產物）。需 nightly + wasm32-unknown-unknown + wasm-pack。
 #
 # 為什麼要包一層腳本而不是直接跑 wasm-pack：Rust 會把每個 panic 的原始碼路徑編進二進位，
 # 而 crate 原始碼住在 %USERPROFILE%\.cargo\... → 產物裡會出現建置者的 Windows 帳號名，
@@ -55,9 +55,12 @@ Write-Host "✓ pkg/ 重建完成，無建置者路徑外洩（$($bytes.Length) 
 $stamp = [ordered]@{
   lib_rs = Get-NormalizedSha256 (Join-Path $wasmDir 'src\lib.rs')
   cargo_lock = Get-NormalizedSha256 (Join-Path $wasmDir 'Cargo.lock')
+  # 產物也要進戳記：只雜湊來源證明不了「這份 pkg 由這份 lib.rs 產出」——改了引擎、重建了、忘了一起 commit pkg/ 會全綠（健檢 R5 M16）
+  pkg_wasm = Get-NormalizedSha256 (Join-Path $out 'crafter_wasm_bg.wasm')
+  pkg_js = Get-NormalizedSha256 (Join-Path $out 'crafter_wasm.js')
   built_at = [DateTime]::UtcNow.ToString('o', [Globalization.CultureInfo]::InvariantCulture)
 }
 $stampJson = $stamp | ConvertTo-Json -Compress
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($stampPath, $stampJson + [Environment]::NewLine, $utf8NoBom)
-Write-Host "✓ wasm/BUILD-STAMP.json 已更新（lib.rs / Cargo.lock hash）"
+Write-Host "✓ wasm/BUILD-STAMP.json 已更新（lib.rs / Cargo.lock / pkg 產物 hash）"

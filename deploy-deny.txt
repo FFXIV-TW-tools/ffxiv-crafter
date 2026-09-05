@@ -9,7 +9,6 @@ AGENTS.md
 CHANGELOG.md
 CLAUDE.md
 README.md
-THIRD-PARTY-NOTICES.md
 deploy-prepare.sh
 docs
 node_modules

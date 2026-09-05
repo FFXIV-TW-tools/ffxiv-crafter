@@ -15,3 +15,5 @@ _site/
 .wrangler/
 # 委派任務書（delegate-coding）等一次性工作檔（.gitignore 不支援行尾註解，勿併行寫）
 tmp/
+# deploy-prepare.sh 的暫存清單：不進 gitignore 會撞頂層分類閘（健檢 R5 M5）
+.deploy-filelist.tmp

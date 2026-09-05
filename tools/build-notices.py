@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""build-notices.py — 產出 THIRD-PARTY-NOTICES.md（散布 pkg/*.wasm 的授權義務）。
+"""build-notices.py — 產出 LICENSE-THIRD-PARTY.txt（散布 pkg/*.wasm 的授權義務）。
 
 為什麼需要：`pkg/crafter_wasm_bg.wasm` 是把 raphael-rs（Apache-2.0）與一票 crate
 **編譯進去**的二進位，CF Pages 的訪客＝收受者。Apache-2.0 §4(a) 要求交付 License 副本、
@@ -89,7 +89,7 @@ def main():
     lines.append("求解引擎 [raphael-rs](https://github.com/KonaeAkira/raphael-rs) v0.26.2（`raphael-solver` / `raphael-sim`，作者 KonaeAkira）"
                  "以**未修改**的原始碼編譯連結；本專案僅另寫 WASM 薄綁定（`wasm/src/lib.rs`）與全部 UI。")
     lines.append("")
-    out = os.path.join(ROOT, "THIRD-PARTY-NOTICES.md")
+    out = os.path.join(ROOT, "LICENSE-THIRD-PARTY.txt")   # 檔名走 LICENSE*.txt：deploy-prepare.sh 二次清理與出貨白名單對它已有例外，不必動 12 repo 共用腳本（健檢 R5 M4）
     with open(out, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     print("✓ THIRD-PARTY-NOTICES.md：%d 個套件%s" % (
