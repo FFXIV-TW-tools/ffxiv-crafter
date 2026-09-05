@@ -2,6 +2,45 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-09-05 — 健檢 R5 批次 0：三支說謊的哨兵 ＋ 五條「畫面對玩家說反話」的缺陷（cycle 2026-09-05-R5）
+
+12 維健檢（報告與計畫見 `docs/health-reviews/2026-09-05-R5全維健檢-*.md`）。本筆是 16 項不需拍板的修復；
+待拍板七條入 BACKLOG B-032〜B-038。測試 654 → **683**，每條新哨兵都做過「把缺陷放回去必須轉紅」的突變驗證。
+
+**說謊的哨兵**
+- `tests/first-run-hint-key.test.mjs:47`：`/(defer|async)/` 裡兩個 `` 是字面 backspace（0x08）⇒ 改成 `defer` 照樣綠。
+  修回真 ``；它守的是載入期 CLS 從 0.0005 退回 0.094 那一發。
+- `check-actions.py` 印「pkg/ 與 wasm/src 同步」但 `BUILD-STAMP.json` 一個位元組都沒雜湊 `pkg/`：
+  戳記補 `pkg_wasm`／`pkg_js`（`build-wasm.ps1` 寫、`check-actions.py` 驗），並直接掃產物 bytes 有無帳號路徑
+  （只認 `Users\`——remap 後的 `~\.cargoegistry` 是合法殘留）。
+- `tests/run-all.mjs` 0 個檔也印「0/0 通過」並 exit 0：補檔數下限 4 ＋ `TEST-BASELINE` 標記；AGENTS.md 散文
+  那份基線數字（停在 653）整段拿掉，宣告值只留標記一處。
+
+**對玩家說反話**
+- 改食物／藥水後「最低能力要求」紅字與求解鈕不刷新（吃了藥已達標仍寫「還差 380」）：需求列抽成 `#recipe-req`
+  由 `refreshGearNote` 就地更新——**不是**改叫 `refreshSelectedGear`（那會清 HQ 素材與目標品質）。T62 守。
+- `meals.json`／`medicine.json` 一次網路抖動就把玩家保存的食藥偏好清空：載入失敗回 `null`（維持上一份），
+  `[]` 才是「品項下架」。T15／T41 守。
+- `opt-adversarial` 在 expert 配方被強制取消後，存檔被寫成 false、離開 expert 也不還原：偏好記錄一般化為
+  `optWanted`（全部 `SOLVE_OPT_IDS`，不逐 id 列舉），`app-recipe` 離開 expert 時 `restoreOpt`。T43 擴充守。
+- `isCrystal` 名稱正則把「紫水晶手鐲」「水晶燈」等 55 筆判成晶體 ⇒ 製造清單分錯組、「加進清單」被吃掉：
+  改用 `items.json` 的 `category === '水晶'`。T48／T63 守。
+- 首次提示的「前往角色數值 →」在 `await loadData()` 前是死鈕、面板全空：綁定與 `renderGearsets()` 移到 await 前
+  （前輪 T42 修的是分頁鈕、漏了這顆）。T42 擴充守。
+- `AbortSignal.timeout` 無 feature detect ⇒ 舊 Safari／WebView 整站死在 fetch 之前：退回無逾時。T63 守。
+
+**授權與部署面**
+- `THIRD-PARTY-NOTICES.md` 一直在 `deploy-deny.txt`，線上 404，而被服務的 `LICENSE-MIT.txt:4` 正指向它；
+  README 寫的前提「本 repo 未公開」早已不成立。改名 **`LICENSE-THIRD-PARTY.txt`**——命中 `deploy-prepare.sh`
+  既有的 `LICENSE*.txt` 例外，12 repo 共用腳本零改動；頁尾補 MIT 與第三方宣告連結。T63 守。
+- `.deploy-filelist.tmp` 沒進 `.gitignore` ⇒ 非正常結束後每次 build 撞分類閘，且訊息叫人加進 allow：補 `.gitignore`
+  一行（走腳本既有的 `git check-ignore` 分支）。
+
+**其餘**：`consumersOf` 把配方數當職業數（＋N 職）／T20・T32 ratchet 門檻對齊宣告值（不留 68 筆靜默縮水空間）
+／T36 中性面板清單改由 markup 反推＋涵蓋率閘／`.rt-patch` 補 `data-label="版本"`（T11 改五欄對帳）
+／`v2.xivapi.com` 補 preconnect（不帶 crossorigin）／AGENTS.md：`hqPercent` 指標改 `app-render.js`、架構表補
+`first-run-hint.js`／`404.html`／`tests/`、VERIFY 註解 T57→T62／`docs/lessons.md` 交接頁段標題改成與內文一致。
+
 ## 2026-09-02 — 舊網址 `*.pages.dev` 改回 HTTP 301（Google 一個月來把舊網址當本尊）
 
 Owner 搜尋「ff14 成績單」看到的仍是 `pages.dev`、站名顯示「Cloudflare」。GSC 實查：舊 host 今天才被抓、

@@ -86,7 +86,7 @@
   當初就是為了防這件事做的。2026-08-15 健檢 B-026、Owner 選 A：併進 `canonicalTest`。
   代價＝每次推多約 1 秒；換機少了 `py -3.11` 會以「推不出去」明確失敗，不是靜默略過。
 
-## 交接頁測試為什麼刻意不併進 run-all（B-048 Task 4）
+## 交接頁測試為什麼不得改寫介面（B-048 Task 4；它**有**被 run-all 掃到）
 
 `tests/handoff.test.mjs` 與 `functions/_middleware.js` 是 13 站**逐站複製**的樣板（每站只換 `OLD_HOST`／
 `NEW_ORIGIN` 兩個常數），檔名與介面必須跨站一致，不能為配合各站慣例改寫——改寫等於每站手動調整，
