@@ -2,6 +2,17 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-09-06 — 健檢 R5 待拍板七條全數落地（B-032〜B-038）＋三檔拆分
+
+Owner 2026-09-05 逐條「按建議」拍板，本輪逐題各自一個 commit（細節見 `docs/health-reviews/2026-09-05-R5全維健檢-fix-plan.md` 執行結果表）：
+- **B-032** 刪 `craftPlan` 死碼（鑽石依賴會重複計數）與守它的 T51；新增 **T64**：每支分層模組匯出的名字都要有生產端呼叫點——「看起來被驗證過的假護欄」比沒有更糟。
+- **B-036** 一物多配方**同職多張**（136 組）：同職取難度最低、數值與原料全同的重複列去重、鈕面帶第一個有差異的數字（都同就編號＋data-help 列原料）；深連結改走同一份挑法（smoke 抓到它自刻一條而漂開）。
+- **B-038** 引擎工具鏈釘 `nightly-2026-06-22`，BUILD-STAMP 記實際 rustc／wasm-pack，check-actions 對帳 channel；真實重建 pkg hash 不變。
+- **B-037** monorepo gate 6 `--staged` 改由 TEST-BASELINE 反推監看路徑（「宣告什麼，監看什麼」）、gate 3 補 `.mjs`；本 repo 加 `tests/hooks-installed.test.mjs`（新 clone 零閘門從靜默變成 safe-push 前明確失敗）與 `tests/deploy-prepare.test.mjs`（部署腳本本機先跑一次）。
+- **B-034** 三檔過 500 行閘門全拆：`app.js` → `app-formula.js`／`app-data.js`；`tools/build-data.py` → `tools/build_lib/`（輸出逐 byte 相同）；`styles.css` → `styles/10-base…50-tabs`（389 條規則集合相等、層疊順序＝檔名序）。**每一支都 <500 行、測試數不降、瀏覽器 smoke 選配方→求解→巨集全過。**
+- **B-033** AGENTS.md 38,974 → 30,895 B：有測試守的條目降成一行＋編號、9 段敘事搬 `docs/lessons.md`；新增 **T65** 位元組哨兵（≤ 豁免當時的 31,248，超過＝搬敘事不是改數字），讓「已豁免」與「超出豁免當時的值」在機械上可分辨。
+- 連帶：gate 3 補 `.mjs` 後 `tools/test-formulas.mjs`（3276 行）開始每次接觸印紅線 ⇒ 新開 **B-039** 拆測試檔。
+
 ## 2026-09-05 — 舊網址交接機制退役（Bulk Redirects 取代 middleware 301）
 
 舊 `*.pages.dev` host 的 301 改由 Cloudflare **帳號層 Bulk Redirects** 在邊緣執行 ⇒ 本 repo 的
@@ -20,7 +31,8 @@
   修回真 ``；它守的是載入期 CLS 從 0.0005 退回 0.094 那一發。
 - `check-actions.py` 印「pkg/ 與 wasm/src 同步」但 `BUILD-STAMP.json` 一個位元組都沒雜湊 `pkg/`：
   戳記補 `pkg_wasm`／`pkg_js`（`build-wasm.ps1` 寫、`check-actions.py` 驗），並直接掃產物 bytes 有無帳號路徑
-  （只認 `Users\`——remap 後的 `~\.cargoegistry` 是合法殘留）。
+  （只認 `Users\`——remap 後的 `~\.cargo
+egistry` 是合法殘留）。
 - `tests/run-all.mjs` 0 個檔也印「0/0 通過」並 exit 0：補檔數下限 4 ＋ `TEST-BASELINE` 標記；AGENTS.md 散文
   那份基線數字（停在 653）整段拿掉，宣告值只留標記一處。
 
