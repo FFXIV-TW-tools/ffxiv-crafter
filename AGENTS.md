@@ -40,7 +40,7 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 | `index.html` | 靜態骨架＋`document.write` 注入 portal CDN bootstrap＋SEO/JSON-LD |
 | `first-run-hint.js` | **parser-blocking** 的外部 classic script：解析階段就決定首次提示顯隱（CLS）。硬約束（不得 inline／defer／async／module、key 與 `app-gear.js` 綁定）＝`tests/first-run-hint-key.test.mjs` |
 | `404.html` | 未知路徑回真 404（不落 SPA fallback ⇒ 假路徑不放大成計費請求；monorepo `check-unknown-path-cost` 守） |
-| `tests/` | 跨檔靜態契約（settings-api 代理／first-run-hint／select 寬度預留）；`run-all.mjs` 自動掃描且有檔數下限 |
+| `tests/` | 跨檔靜態契約（settings-api 代理／first-run-hint／select 寬度預留／**pre-commit 閘真的裝著**／**deploy-prepare 本機先跑一次**）；`run-all.mjs` 自動掃描且有檔數下限 |
 | `app.js` | 前端控制器（唯一 `type=module` 入口）：資料載入／`computeSettings`・`recipeMaxes`／食藥加成／分頁／init 接線 |
 | `app-flow.js` | 流程引導：`flowState()` 純函式＝「現在該做什麼」的唯一真相 |
 | `app-render.js` | 結果渲染：`hqPercent`（純）／手法序列 chips／走查表／巨集組裝 |
@@ -84,7 +84,7 @@ node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-a
 <!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="682" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
-<!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="3" label="run-all" -->
+<!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="5" label="run-all" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
 > 機械閘基線 **只准升不准降**——**宣告值只寫在上方 `TEST-BASELINE` 標記**（四條：test-formulas／check-actions／cargo／run-all），這裡刻意不複述數字：散文那份曾停在 653 而標記已是 654，gate 6 只讀標記（健檢 R5 M6）。宣告值與實測值由 pre-commit gate 6 對帳。

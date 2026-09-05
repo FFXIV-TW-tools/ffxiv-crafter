@@ -32,3 +32,5 @@
 2026-09-05 健檢 R5 B-032（Owner 拍板 A：刪死碼）→ **675 passed**（683 → 675，**合理下降**）：T51 的 8 條 golden 隨 `craftPlan` 一起刪——它在生產路徑上零呼叫（UI 走 craftIngredient／返回堆疊），而且對鑽石依賴會重複計數；一份「看起來被驗證過」的假護欄比沒有更糟。T64 新增 2 條：index.html 載入的每支 .js 裡 `globalThis.CraftXxx = {…}` 匯出的每個名字，必須在某支載入的 .js（剝掉註解）裡有呼叫或傳遞形狀的出現（`_` 開頭的測試鉤與 `init` 除外）；負向對照＝塞回一個沒人呼叫的匯出即紅。
 
 2026-09-05 健檢 R5 B-036（Owner 拍板 A）→ **682 passed**：T52 接線段擴充 7 條——同職多張取難度最低（不是先出現的）、數值與原料完全相同的重複列只留一顆鈕（4 張→3 顆）、同職兩張難度不同時鈕面互異且帶「難度 N」、單張職業鈕面不帶多餘數字、同職多張的 data-help 列原料、三個數字都相同只差原料時編號 #1/#2、選中的是被去重掉的重複列時 aria-current 仍落在它身上。
+
+2026-09-05 健檢 R5 B-037（Owner 拍板 A）→ run-all **3 → 5 檔**：`tests/hooks-installed.test.mjs`（`core.hooksPath` 有設、底下有 pre-commit、內容是 monorepo 那支共用閘——新 clone 零閘門從「靜默」變成 safe-push 前明確失敗）、`tests/deploy-prepare.test.mjs`（本機先跑一次 `sh deploy-prepare.sh`：exit 0、輸出就緒、`_site/` 不含內部資產、允許清單每項都出貨）。不把 `sh deploy-prepare.sh` 接在 canonicalTest 尾巴：fleet-check 對 canonicalTest 有 `/deploy/` 防呆，包成測試檔才是對的形狀。monorepo 側同輪：gate 6 `--staged` 改由 TEST-BASELINE 的 cmd／cwd 反推監看路徑（只 stage `tools/test-formulas.mjs` 或 `wasm/` 也會觸發，實測）、gate 3 副檔名補 `.mjs`/`.cjs`。
