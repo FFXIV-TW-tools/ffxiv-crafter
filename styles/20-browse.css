@@ -1,0 +1,207 @@
+/* === 20-browse.css — 選配方頁：篩選子面板／首載空間預留（CLS）／翻頁器／配方表 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */
+/* ---- 選配方 ---- */
+.pick-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3, 12px);
+  flex-wrap: wrap; margin-bottom: var(--space-3, 12px); }
+.pick-head .codex-h2 { margin: 0; }
+.crafter-pick-title { min-width: 0; }
+.crafter-pick-hint { margin: var(--space-1, 4px) 0 0; }
+/* 選定配方後：整張 codex-tablet 卡（JS 卸下 tablet class）收合成一行摘要 —— 驗收線 4「版面還給主內容」。
+   HUD 角標僅屬 tablet 外觀，收合態一併隱藏（contextual override，非覆寫 .codex-hud 根 selector）。 */
+.crafter-picked { display: flex; align-items: center; gap: var(--space-3, 12px); flex-wrap: wrap;
+  padding: var(--space-2, 8px) var(--space-3, 12px); margin-bottom: var(--space-4, 16px);
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-success, #7dd87d); border-radius: var(--radius-md, 8px); }
+.crafter-picked .codex-hud { display: none; }
+.crafter-picked .pick-head { margin-bottom: 0; flex: 1; min-width: 0; }
+.crafter-picked .crafter-pick-title { display: none; }
+/* 篩選子面板：職業 + 搜尋/等級 整組成 raised 灰框卡（bg 亮一階、gray border）→ 與下方結果列表（recessed cyan-bordered well）硬分兩區（Owner：界線更硬）。組內間距靠 padding，job-chips 底 margin 收掉避免雙重間距 */
+/* 幾何（8px 圓角／1px 中性邊／底色）走共用 .codex-tint-panel--neutral，底色以 --panel-bg 傳參；
+   本地只留 padding 與外距（共用版的 8/12px 是給資訊盒用的，分組容器要更寬）。 */
+.filter-group { --panel-bg: var(--color-surface-hover); padding: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); }
+.filter-group .job-chips { margin-bottom: var(--space-2, 8px); }
+/* 職業篩選＝共用 segmented `.codex-tab--boxed`（選中態走 aria-pressed，2026-08-17 由 --primary/--ghost 遷入）。
+   此處只補兩件共用版沒有的事，其餘（padding/radius/高度/選中填色）走元件本身：
+   ① icon 尺寸 ② 圖示＋文字並排——`.codex-btn` 自帶 `display:flex; gap:8px; align-items:center`，
+   而 `.codex-tab` 是 `display:block`（它預期只有文字）⇒ 遷移後 icon 會貼著字且靠 baseline 對齊。
+   實測驗到（改前 92px / 改後 84px，差的就是那 8px gap）。選擇器用 (0,2,0) 蓋過共用版的 (0,1,0)。 */
+.job-chips { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
+.job-chips .job-btn { display: inline-flex; align-items: center; gap: var(--space-2, 8px); }
+.job-chips .job-btn img { width: 18px; height: 18px; }   /* 求解分頁與職業任務分頁共用（原本只綁 #job-chips，新分頁的 icon 會變原尺寸大圖）*/
+.filter-row { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); align-items: center; }
+.filter-row .codex-input, .filter-row .codex-select { width: auto; }
+.filter-row .grow { flex: 1; min-width: 150px; }
+.filter-row .codex-select { flex: 0 0 auto; min-width: 130px; }
+.filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
+/* ⚠️ **版本篩選要給明確寬度，`min-width` 擋不住**（2026-08-25，CLS 密集掃 800px 0.1973）：
+   `#patch-filter` 的 <option> 由 `app-browse.renderPatchOptions()` 依資料生成 ⇒ 首次繪製時它是**空的**，
+   只有 `min-width:130px` 那個地板；填完實測 **130 → 174px**。多出來的 44px 把 `#expert-filter` 擠到
+   第二列，`.filter-row` 1 列變 2 列，`#recipe-table` 整塊下推 46px ⇒ 單筆 layout shift 0.1973
+   （順帶 `.grow` 吃掉多出來的空間，所以等級／配方等級也跟著平移，看起來像整排在跳）。
+   ⚠️ 這個頻帶只有一格寬（840 ✓ / **800 ✗** / 760 ✓），挑常見寬度的取樣一定會漏。
+   ⇒ 盒子固定，與選項內容無關；日後版號變長只會裁字（看得見的降級），不會再靜默把位移放回來。 */
+.filter-row #patch-filter { flex: 0 0 176px; width: 176px; min-width: 0; }
+.recipe-count { margin: var(--space-2, 8px) 0; }
+/* 結果列表與上方搜尋/篩選控件視覺分模塊（Owner：搜尋框跟列表框顏色太近分不清）：accent 染框（與灰框 .codex-input 拉開，讀作「結果列表」非表單欄位）＋遞進實底 --color-bg（比 panel 深一階＝獨立內容井）*/
+/* 「內容井」＝比 panel 深一階的實底 ＋ accent 染框：讀作「資料在這裡面」，與外層 panel／表單控件分層。
+   Owner 2026-08-19：製造清單那兩張卡沒有這層，「根本看不清主次」⇒ 抽成一個 class 給三處共用
+   （配方表／配方清單／素材總需求），**不要各寫一份**——值一樣時畫面看不出差別，但事實源就分岔了。 */
+.crafter-well { background: var(--color-bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border));
+  border-radius: var(--radius-sm, 6px); }
+/* max-height 只是 JS 量到之前的 fallback：真值由 app-browse.js 的 fitHeight() 依「當前螢幕還剩多少」設，
+   目標是**整頁不用捲、只捲表格內部**（Owner 2026-08-19）。改這裡不會改變實際高度，改 fitHeight()。 */
+.recipe-table { max-height: 60vh; overflow-y: auto; overflow-x: auto; }
+/* 首載配方資料佔位：撐到與載入後同高（實際值由 fitHeight() 寫進 inline style，這裡的 60vh 同為 fallback）＝零版面位移 */
+.recipe-loading { display: flex; align-items: center; justify-content: center;
+  min-height: 60vh; padding: var(--space-6, 32px); text-align: center; color: var(--color-text-muted); }
+/* ---- 首載空間預留（CLS）2026-07-29 ----
+   配方表是 fetch 回來才長出來的：空殼 → 實體內容量測為 +588px（field CLS P75 0.225 的主因）。
+   #picker 靜態帶 .is-loading，各容器先撐到「載入後的真實高度」，首次 renderTable 完成即卸下。
+   高度值＝本機實測（job 按鈕 38 / codex-small 一行 17 / 表格吃滿 max-height 60vh / 翻頁鈕 38）；
+   改這些控件尺寸時要一起改（差幾 px 只是殘餘微位移，不會壞功能）。 */
+#picker.is-loading .job-chips { min-height: 38px; }
+#picker.is-loading .recipe-count { min-height: 17px; }
+/* 首載必定多頁（全部配方 >1 頁）→ 先佔位；.crafter-pager:empty 的 display:none 由本規則覆寫。
+   ⚠ 必須寫在下方 @media 之前：同特異度後者勝，寫在後面會把窄屏的預留值蓋掉（實測踩過） */
+#picker.is-loading .crafter-pager { display: flex; min-height: 38px; }
+/* 職業 chips 與翻頁器窄屏會折行 → 分段預留（斷點＝iframe 逐 px 實測的折行寬度，2026-07-29）。
+   純預留：職名長度變了頂多剩幾十 px 殘餘位移，不影響功能。 */
+@media (max-width: 909px) { #picker.is-loading .job-chips { min-height: 84px; } }
+@media (max-width: 509px) { #picker.is-loading .job-chips { min-height: 130px; } }
+@media (max-width: 409px) { #picker.is-loading .crafter-pager { min-height: 88px; } }
+@media (max-width: 343px) { #picker.is-loading .job-chips { min-height: 176px; } }
+/* 配方表不列在這裡：改由 .recipe-loading 佔位塊自己撐到 60vh
+   （載入完成 innerHTML 一換就自動消失，不靠 class 卸下）*/
+
+/* 翻頁器（取代舊 CAP 120 硬截斷）；只有一頁時 renderPager 清空內容 → :empty 收掉整條不留空隙 */
+.crafter-pager { display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: var(--space-3, 12px); margin-top: var(--space-3, 12px); }
+.crafter-pager:empty { display: none; }
+.crafter-pager__info { font-variant-numeric: tabular-nums; }
+.crafter-pager__info b { color: var(--accent); }
+/* table-layout:fixed + 百分比欄寬（📊 表格佈局穩定鐵則）：篩選/搜尋換內容時欄寬不重算＝欄位不跳動；
+   同時把原本「名稱欄吃掉全部剩餘寬」造成的中段大片空白攤回各欄。 */
+/* 基底走共用 .codex-table（+ --fixed 欄寬與內容脫鉤 + --sticky 表頭釘頂）。
+   **--sticky 才是重點**：它用 `border-collapse: separate` 解掉 portal 記錄的三個坑，其中第 ③ 個
+   （collapse 下 th 的 border-bottom 由 table 畫、不跟著 sticky 移動 ⇒ 捲動時列直接穿到表頭下方、
+   沒有分隔線）本站原本就中招——2026-08-15 截圖實證。本地只留字級與各欄的視覺特化。 */
+/* 8 欄在窄屏擠不下 → 給表格 min-width 保底、由容器 `.recipe-table` 的 overflow-x 橫捲
+   （📊 表格佈局穩定鐵則 場景 1 的指定做法；別硬擠到換行崩版）。 */
+.rt { font-size: var(--fs-small); min-width: 960px; }
+/* 表頭加亮（原 --color-surface 與 panel 同色會融）＋下緣 accent 分隔線 → 明確界定列表頂、與篩選區分開 */
+.rt thead th { background: var(--color-surface-hover); text-align: left;
+  padding: var(--space-2, 8px); border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, var(--color-border)); }
+/* 固定列高 + 淡化分隔線：每列都畫實線＝密集網格感，掃視改交給斑馬紋。
+   46→26px（2026-08-19）：種類由「名稱下的副行」改成獨立欄後名稱回到單行，
+   列高不必再容納兩行 ⇒ 同一個視窗高度多看到約 1/3 的配方（Owner：捲動軸太早出現、空間沒用滿）。
+   ⚠ `<td>` 的 `height` 是**內容盒**的下限，padding 與 border 另外加上去（`box-sizing: border-box`
+   對 table-cell 不生效）⇒ 實際列高＝26 + 4×2 + 1 ＝ 35px，不是 26。舊值 46 其實畫出 55px 的列，
+   而「宣告 46、量到 55」看起來像是別處在撐 ⇒ 這行的數字一律以量測為準（實測：`height:auto` 同為 35）。 */
+.rt td { padding: var(--space-1, 4px) var(--space-2, 8px); height: 26px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
+.rt th:not(:first-child), .rt td:not(.rt-name) { white-space: nowrap; text-align: center; }
+.rt th:nth-child(1) { width: 26%; }   /* 名稱 */
+.rt th:nth-child(2) { width: 12%; }   /* 種類（原本擠在名稱下方的副行，2026-08-19 拉成獨立欄）*/
+.rt th:nth-child(3) { width: 11%; }   /* 職業（含 icon）*/
+.rt th:nth-child(4) { width: 6%; }    /* Lv */
+.rt th:nth-child(5) { width: 10%; }   /* 配方等級 */
+.rt th:nth-child(6) { width: 9%; }    /* 難度（＝作業進展上限）*/
+.rt th:nth-child(7) { width: 9%; }    /* 品質（＝品質上限）*/
+.rt th:nth-child(8) { width: 8%; }    /* 版本（成品實裝版本）*/
+.rt th:nth-child(9) { width: 9%; }    /* 操作欄：＋ 恆在、− 已在清單時才出（兩顆都是 26px）*/
+/* 位數不同不左右晃（Lv／配方等級／難度／品質／版本五個數字欄）*/
+.rt td:nth-child(4), .rt td:nth-child(5), .rt td:nth-child(6), .rt td:nth-child(7), .rt td:nth-child(8) { font-variant-numeric: tabular-nums; }
+.rt-act { text-align: center; white-space: nowrap; }
+/* **固定兩格的槽位**（Owner 2026-08-19：「＋− 位置請固定，不要 − 出現了改變 ＋ 的位置」）：
+   用 inline-grid 定寬兩欄而不是 flex —— flex 下 − 被 `[hidden]` 收掉時（portal 的 `.codex-btn[hidden]`
+   中央守衛）整組會重新置中，於是「加進清單」那一瞬間 ＋ 會往左跳，游標剛好停在原位就會誤點到 −。
+   grid 的空欄不會塌，所以 ＋ 恆在第一欄、− 恆在第二欄。欄寬＝`.codex-btn--icon` 的 38px。 */
+.rt-act .rt-actwrap { display: inline-grid; grid-template-columns: repeat(2, 38px);
+  align-items: center; justify-items: center; gap: var(--space-1, 4px); }
+.rt-actcol { text-align: center; }
+/* 密集列裡 38px 主控件過重 → 收成 26px 方鈕（帶組合子的 contextual override，不動 .codex-btn 根 selector）。
+   28→26px：列高改 34px 後，28px 鈕加上 td 的 4px 上下 padding 會把列頂回 36px（宣告的固定列高就失效了）。*/
+.rt-act .codex-btn { height: 26px; min-width: 26px; padding: 0 var(--space-1, 4px); }
+/* `.codex-btn--icon` 只管尺寸與 padding、**不**替內嵌 SVG 定尺寸（那是 `.codex-icon-btn` 才有的事）
+   ⇒ 消費端自己給，否則 SVG 會吃 viewBox 預設而撐爆按鈕。數值對齊共用版的 15px 維持視覺重量。 */
+.rt-add > svg, .rt-del > svg { display: block; width: 15px; height: 15px; }
+/* 觸控補償（同 .ing-hq-in 既有慣例）：28px 在手機上太小，且整列本身可點＝誤觸會變成「選配方」 */
+@media (pointer: coarse) { .rt-act .codex-btn { height: 40px; min-width: 40px; } }
+/* ── 手機：配方列表由「9 欄橫捲表」改「逐列堆疊卡」（2026-08-26，行動適配預設化政策）──
+   破口＝393px 實測 `#recipe-table` scrollWidth 960 / clientWidth 357：可視區只剩名稱欄，
+   種類／職業／Lv／配方等級／難度／品質／版本／加入鈕全在畫面外，而捲軸是隱藏的
+   ⇒ 使用者看到的是一張「只有名字」的清單，且不知道右邊還有東西。
+   ⚠️ DOM 只加不減：四個純數字欄在 `app-browse.js` 補了 `data-label`（桌面不顯示、
+   只有本段的 `::before` 會用到）——沒有它，堆疊後 `90 / 690 / 5280 / 15200` 是四個無名數字。
+   ⚠️ `min-width: 960px` 必須歸零，否則 `display:block` 也救不了橫捲。 */
+@media (max-width: 700px) {
+  .recipe-table { overflow-x: visible; max-height: 70vh; }
+  .rt { min-width: 0; display: block; }
+  .rt thead { display: none; }                 /* 堆疊後欄名由 data-label 提供 */
+  .rt tbody { display: block; }
+  /* flex-wrap 而不是 grid：欄位寬度差很多（「錬金原料」vs「Lv 100」），grid 會逼每格
+     各佔一列（第一版實測長成 6 行的鬆散卡）。flex 讓短欄自然併行、長名自己換行。
+     加入鈕改絕對定位釘右上，並用 padding-right 留出它的位子（不留＝長配方名會壓到鈕上）。
+     ⚠️ 92px 不是隨手抓的：`.rt-actwrap` 是**固定兩格**的 inline-grid（＋ 恆在第一欄、− 恆在第二欄，
+     見上方 Owner 2026-08-19 裁示），觸控下每格 40px ⇒ 實寬 84px。第一版寫 52px（照單顆鈕估）
+     結果「難度 4125」被壓在鈕底下——量過才知道那格是 80px 不是 40px。 */
+  .rt-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-3, 12px);
+    row-gap: 2px;
+    position: relative;
+    padding: var(--space-2, 8px) 92px var(--space-2, 8px) var(--space-1, 4px);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+  }
+  .rt td { display: block; height: auto; padding: 0; border-bottom: 0; }
+  .rt td:not(.rt-name) { text-align: left; }   /* 桌面的置中是為了欄對齊，堆疊後改齊左 */
+  .rt-name { flex: 1 1 100%; font-weight: var(--fw-semibold, 600); }
+  .rt-act { position: absolute; top: var(--space-2, 8px); right: var(--space-1, 4px); }
+  .rt-cat, .rt-job, .rt-patch, .rt td[data-label] {
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
+  }
+  .rt td[data-label]::before { content: attr(data-label) " "; opacity: 0.75; }
+}
+
+/* 斑馬紋＝掃視主力；:not() 讓「已加入綠底」與「選中」兩個語意態一定贏過純裝飾的斑馬 */
+.rt tbody tr:nth-child(even):not(.rt-in):not(.is-sel) { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }
+.rt-row { cursor: pointer; }
+.rt-row:hover { background: var(--color-surface-hover); }
+.rt-row.is-sel { background: var(--color-surface-hover); outline: 1px solid var(--accent); }
+.rt-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }  /* 鍵盤 focus 可見（配方列可鍵盤選取） */
+/* 已在製造清單的列：整列換綠色底（主要掃視提示，Owner 指定）＋左緣 success 色條；名稱旁徽章與 ＋→✓ 鈕由 markListState 驅動 */
+.rt-row.rt-in { background: color-mix(in srgb, var(--color-success, #7dd87d) 14%, transparent); }
+.rt-row.rt-in:hover { background: color-mix(in srgb, var(--color-success, #7dd87d) 24%, transparent); }
+.rt-row.rt-in > td:first-child { box-shadow: inset 3px 0 0 var(--color-success, #7dd87d); }
+/* 選中 + 已在清單同時成立時：選中態（暫時焦點）優先於綠底 → accent 淡染 + is-sel 的 accent 外框仍在，確保「目前選到哪列」不被綠底吃掉（對抗審 grok F5）*/
+.rt-row.rt-in.is-sel { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.rt-inlist { flex: none; }  /* 名稱旁「已加入 ×N」綠徽章不被名稱壓縮（間距走 .rt-nmline gap） */
+.rt-expert { flex: none; }  /* 同上：高難度徽章不被名稱壓縮 */
+/* 配方詳情的「最低能力要求」：符合時與其他 ri-stat 同級（只是資訊），不足才轉危險色＋游標提示可查說明。
+   不用 --danger 徽章：它不是動作、也不是毀滅性的東西，只是一個沒達標的門檻。 */
+.ri-stat--req { cursor: help; }
+.ri-stat--req.is-short { color: var(--color-danger, #e57373); }
+.ri-stat--req.is-short b { color: inherit; }
+/* ⚠ 勿對 <td> 設 display:flex — 會使該 cell 失去 table-cell 語意、不與同列等高，border-bottom 與他欄錯開（名稱/職業分隔線不對齊的老 bug）。flex 一律放 td 內層 wrapper。 */
+.rt-name { font-weight: var(--fw-semibold, 600); }
+.rt-cellflex { display: inline-flex; align-items: center; gap: var(--space-1, 4px); min-width: 0; max-width: 100%; vertical-align: middle; }
+.rt-ico { width: 24px; height: 24px; flex: none; }
+/* 名稱兩行：第一行「成品名 + 已加入徽章」、第二行道具種類（繁中）補充說明。flex 放內層 wrapper，不動 td 的 table-cell 語意（名稱/職業分隔線對齊鐵則）*/
+/* min-height 預留徽章高度 → 有/無「已加入」徽章的列**等高**（原本插了徽章那幾列會比其他列高一截）*/
+.rt-nmline { display: flex; align-items: center; gap: var(--space-2, 8px); min-width: 0; min-height: 22px; }
+.rt-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 種類獨立欄：字重與名稱分層即可，不降對比（灰字鐵則：不與最小字級疊 muted）。
+   靠左＝與名稱同一個閱讀軸；特異度 (0,2,0) 且寫在 `.rt td:not(.rt-name)` 之後才蓋得掉那條置中。 */
+.rt td.rt-cat { text-align: left; font-weight: var(--fw-regular, 400);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-job { white-space: nowrap; }
+.rt-jico { width: 18px; height: 18px; vertical-align: middle; margin-right: 2px; }
+/* 當前位置狀態列（目前配方：X）；返回控件＝右上「← 返回配方列表」鈕。不做「配方瀏覽›」假 nav 麵包屑（死 span 會誤導可點）。*/
+.selected-bar { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-1, 4px) var(--space-2, 8px);
+  font-size: var(--fs-body); flex: 1; min-width: 0; }
+.selected-bar[hidden] { display: none; }   /* display:flex 蓋 UA [hidden] → 補守衛（showPicker 靠 hidden 收合）*/
+.sb-cur { color: var(--accent); font-weight: var(--fw-bold, 700); }
+

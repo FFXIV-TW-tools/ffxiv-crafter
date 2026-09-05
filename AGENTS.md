@@ -58,7 +58,7 @@ external repo 的 AGENTS.md 全部內嵌該段且明文要求同步全部副本*
 | `crafting-list.js` | 製造清單：清單狀態(localStorage)／素材彙總 `aggregateMats`（純函式）／採購 CSV |
 | `worker.js` | web worker：載 raphael WASM 跑 `solve` |
 | `functions/` | 本 repo 唯一的伺服器端程式碼（CF Pages Functions）：`settings-api` 設定 API 同源代理（service binding 直呼，**不得改成 `fetch(URL)`**——會讓 per-IP 額度變全站共用；路徑白名單＋Origin 缺席才補）。有 `tests/*.test.mjs` 守 |
-| `styles.css` | 工具樣式，token 全來自 portal CDN |
+| `styles/` | 工具樣式按頁面邊界拆成 `NN-*.css` 序載（base／browse／recipe／result／tabs），token 全來自 portal CDN；**層疊順序＝檔名數字序**，改動要對齊 `index.html` 的 `<link>` 順序（吃 CSS 的測試依檔名序掃描串接，不手維護清單） |
 | `wasm/` | 自寫 Rust 薄綁定（raphael-rs v0.26.2，Apache-2.0）；公式在 JS 端算好、WASM 只跑引擎 |
 | `pkg/` | wasm-pack 輸出 — **必須 commit**（CF Pages 不編 Rust）。`.gitignore` 是 `*` 且改不動，故同步戳記放 `wasm/BUILD-STAMP.json` |
 | `data/` | recipes／items／ingredients／recipe_levels／craft-actions／meals／medicine／quality-stages／level-sync／job-quests／vendors JSON（`tools/build-data.py` 產） |

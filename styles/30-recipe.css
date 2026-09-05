@@ -1,0 +1,250 @@
+/* === 30-recipe.css — 求解頁設定側：兩欄骨架／配方詳情／等級同步／原料＋HQ／食藥自繪下拉／求解選項 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */
+/* ---- 設定/結果 兩欄 ---- */
+/* 左右兩欄：設定（左）＋ 結果/巨集（右）。align-items:stretch → 兩欄等高（消「左高右矮」長短混亂）*/
+.work { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4, 16px); align-items: stretch; }
+.work[hidden] { display: none; }  /* grid 會蓋掉 hidden 屬性，須補回 */
+.work .panel { margin-bottom: 0; }
+@media (max-width: 760px) { .work { grid-template-columns: 1fr; } }  /* 窄屏單欄堆疊，等高失效無妨 */
+/* 尚無結果（is-idle，app-flow 驅動）→ 結果欄不與設定欄等高：否則右半邊是一整片只有兩行字的空面板。
+   有結果／求解中才恢復 stretch 拉齊兩欄。 */
+.work.is-idle #results-col { align-self: start; }
+#results-col { display: flex; flex-direction: column; }
+/* 兩欄的步驟標題（② 設定條件 / ③ 求解結果）：欄位身分一眼可辨 */
+.crafter-col-title { margin: 0 0 var(--space-3, 12px); }
+/* 空狀態＝.codex-empty（dashed 置中框）。display:flex 蓋過 UA [hidden] → 補守衛（有結果時要真的收起） */
+#results-placeholder[hidden] { display: none; }
+.results-ph { text-align: center; line-height: var(--lh-normal, 1.5); }
+.crafter-ph__list { list-style: none; margin: var(--space-1, 4px) 0 var(--space-3, 12px); padding: 0;
+  display: flex; flex-direction: column; gap: 2px; }
+.crafter-ph__warn { color: var(--color-warn); font-weight: var(--fw-semibold, 600); }
+
+/* 配方詳情：識別（icon+名稱+一行數值）在左、動作鈕在右上、套用狀況橫跨底部。
+   原本四個等寬 stat 格佔掉整整一行又留白，按鈕再獨佔一整行 → 垂直空間被吃掉、重心不明。 */
+.recipe-info { display: flex; flex-direction: column; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
+.ri-head { display: flex; align-items: flex-start; gap: var(--space-3, 12px); flex-wrap: wrap; }
+.ri-icon { width: 52px; height: 52px; flex: 0 0 auto;
+  background: var(--color-bg-deep, #03060c); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--color-border));
+  border-radius: var(--radius-sm, 6px); }
+/* 品名欄要有**收縮下限**：`min-width: 0` + `flex: 1` 時它是同列裡唯一能縮的東西，
+   動作鈕一多（製作鏈的「← 回『長配方名』」是第 4 顆）就把它壓成一個字寬、品名直排、
+   三個數值各自折行 —— 與 B-029 交付物列同一個形狀。給下限後放不下的是**動作群整條換行**
+   （`.ri-head` 本來就 flex-wrap），那正是 540 門檻以下的既有版面。T55 守。 */
+.ri-main { display: flex; flex-direction: column; gap: var(--space-1, 4px);
+  flex: 1 1 260px; min-width: min(260px, 100%); }
+.ri-name { font-size: var(--fs-h3); color: var(--accent); font-weight: var(--fw-bold, 700); line-height: var(--lh-tight, 1.15); }
+.ri-name .codex-small { color: var(--color-warn); font-weight: var(--fw-regular, 400); }
+/* 難度/品質/耐久 收成同一行的 label+值（格子化只是把三個小數字撐成三個大方塊）*/
+.ri-stats { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1, 4px) var(--space-3, 12px);
+  font-size: var(--fs-small); }
+.ri-stat { display: inline-flex; align-items: baseline; gap: var(--space-1, 4px); }
+.ri-stat b { color: var(--accent); font-weight: var(--fw-bold, 700); font-variant-numeric: tabular-nums; }
+/* 職業＝身分標籤（chip 風），與三個數值語意不同故不同形 */
+.ri-job { display: inline-flex; align-items: center; gap: var(--space-1, 4px); flex: 0 0 auto;
+  padding: 1px var(--space-2, 8px); border-radius: var(--radius-xs, 4px);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--color-border));
+  color: var(--accent); font-weight: var(--fw-semibold, 600); }
+.ri-jico { width: 18px; height: 18px; }
+/* 動作鈕與識別同一列、靠右收邊：獨佔一列時右側是一整條空白、卻多吃掉一行高度
+   （Owner 2026-08-09：求解器高度要壓低）。
+   **門檻看設定欄自己的寬度，不看視窗寬**（container query）：這一區住在雙欄版面的左欄，
+   視窗 900px 時它其實只有約 420px —— 拿 @media 判斷會在那個區段把按鈕與長配方名擠成
+   三四行，比獨佔一列還高（實測 ri-head 68px → 236px）。窄欄一律退回獨佔整列。 */
+.recipe-info { container-type: inline-size; }
+.ri-actions { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); flex: 1 0 100%;
+  justify-content: flex-end; align-items: flex-start; }
+/* 540 不是猜的：實測同一配方在欄寬 553px 時同列高度 67px（勝獨佔一列的 104），
+   503px 起按鈕折兩行反而變差 → 門檻取 540。改按鈕數量或字數要重量一次。 */
+@container (min-width: 540px) {
+  .ri-actions { flex: 0 1 auto; margin-left: auto; }
+}
+/* 角色數值套用狀況＝共用 .codex-tint-panel--bar 左緣色條資訊盒（原本是浮在版面中間的一行彩色字）*/
+/* 多職業切換：同一件東西好幾個職業都能做（宇宙探索那批中間材 3〜12 個）→ 一列小鈕直接換。
+   「未填」標記讓玩家一眼看出哪些職業按下去會被擋在角色數值頁，而不是按了才知道。*/
+.ri-jobs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1, 4px);
+  margin-top: var(--space-2, 8px); }
+.ri-jobs__label { color: var(--color-text-muted); margin-right: var(--space-1, 4px); }
+/* 同上 `.job-chips .job-btn`：共用 `.codex-tab` 沒有 flex/gap（它預期只有文字），本地補回並發選擇器
+   提高到 (0,2,0) 蓋過共用版 (0,1,0)；height/padding 沿用原本的密集尺寸。 */
+.ri-jobs .ri-job-btn { height: 28px; padding: 0 var(--space-2, 8px);
+  display: inline-flex; align-items: center; gap: var(--space-1, 4px); }
+.ri-job-btn__no { opacity: .7; }
+.ri-job-btn__var { color: var(--color-text-muted); }   /* 同職多張時的分辨資訊（難度／品質／耐久／編號）：次於職業名 */
+/* 製作鏈：可製作的素材給「先做這個」入口，做完由 ri-actions 的「← 回…」回上一層 */
+.ing-go { height: 26px; padding: 0 var(--space-2, 8px); white-space: nowrap; }
+
+.ri-gear { font-size: var(--fs-small); }
+.ri-gear a { color: var(--accent); }
+
+/* ---- 等級同步（宇宙探索配方）---- */
+.crafter-lvsync { display: flex; flex-direction: column; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
+.crafter-lvsync[hidden] { display: none; }   /* display:flex 蓋 UA [hidden] → 補守衛（只有會同步的配方才該出現）*/
+.crafter-lvsync__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2, 8px); }
+.crafter-lvsync__line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); }
+.crafter-lvsync__input { width: 6em; flex: 0 0 auto; }   /* 定寬：等級最多三位數，跟著容器伸縮只是噪音 */
+.crafter-lvsync__note { opacity: .9; }
+
+/* ---- 原料 + HQ ---- */
+.ingredients { margin-bottom: var(--space-3, 12px); }
+.ing-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2, 8px); }
+.ing-group-title { font-size: var(--fs-small); color: var(--color-text-muted); font-weight: var(--fw-semibold, 600);
+  margin: var(--space-2, 8px) 0 var(--space-1, 4px); }
+.ing-list { display: flex; flex-direction: column; gap: var(--space-1, 4px); margin-bottom: var(--space-2, 8px); }
+.ing { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 36px; padding: 0 var(--space-2, 8px);
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); font-size: var(--fs-small); }
+/* 可 HQ ＝左緣金條（原本整框金色，一排下來比 accent 還搶眼）*/
+.ing--hq { border-left: 3px solid var(--color-gold, var(--accent)); }
+.ing-ico { width: 24px; height: 24px; flex: 0 0 auto; }
+.ing-name { font-weight: var(--fw-semibold, 600); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ing-name--link { color: inherit; text-decoration: none; }   /* 素材名連 marketboard 查價；平時同內文色、hover 才亮 accent（不喧賓奪主）*/
+.ing-name--link:hover { color: var(--accent); text-decoration: underline; }
+.ing-amt { color: var(--color-text); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+/* HQ 控制固定寬 → 各列輸入框左緣對齊成一直行（原本隨名稱長度浮動）*/
+.ing-hqctl { margin-left: auto; display: inline-flex; align-items: center; justify-content: flex-end;
+  gap: var(--space-1, 4px); white-space: nowrap; flex: 0 0 auto; min-width: 106px; }
+.ing-hqctl__tag { color: var(--color-gold, var(--accent)); font-weight: var(--fw-semibold, 600); }
+.ing-hq-in { width: 44px; height: 26px; padding: 2px 4px; text-align: center; }
+@media (pointer: coarse) { .ing-hq-in { min-height: 40px; width: 48px; } }  /* a11y：行動觸控目標放大至 ≥40px（桌機維持精簡）*/
+/* 不可 HQ ＝短破折號佔位（原本每列都印「不可 HQ」四字＝一排重複噪音，說明改掛 data-help）*/
+.ing-na { margin-left: auto; flex: 0 0 auto; min-width: 106px; text-align: right; color: var(--color-text-muted); cursor: help; }
+/* 初始品質改「數值 + 進度條」卡：一眼看出離「最高可帶入」還差多少 */
+.ing-initial { padding: var(--space-2, 8px) var(--space-3, 12px); background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--color-border)); border-radius: var(--radius-sm, 6px); }
+.ing-initial b { color: var(--accent); font-variant-numeric: tabular-nums; }
+.ing-initial__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2, 8px);
+  margin-bottom: var(--space-1, 4px); }
+.ing-initial__foot { margin-top: var(--space-1, 4px); }
+
+.cfg-line { display: flex; align-items: center; gap: var(--space-2, 8px); }
+.cfg-line .codex-select { width: auto; flex: 1; max-width: 240px; }
+.cfg-line__label { flex: 0 0 3.5em; }   /* 食物/藥水 標籤定寬 → 兩列下拉起點對齊 */
+
+/* config 子分組卡 — 安靜 inset（非 codex-card 互動卡：表單分組滑過不該跳動發光）
+   幾何走共用 .codex-tint-panel--neutral；本地只留 padding（上下不等）與外距 */
+.cfg-card { --panel-bg: var(--color-bg-deep, #03060c);
+  padding: var(--space-3, 12px) var(--space-4, 16px) var(--space-4, 16px);
+  margin-top: var(--space-4, 16px); }
+.cfg-card__title { margin: 0 0 var(--space-1, 4px); }
+/* 每張設定卡一行「這張卡在決定什麼」——不靠使用者自己摸索欄位用途（Owner 引導性要求）*/
+.cfg-card__desc { margin: 0 0 var(--space-3, 12px); }
+.cfg-card .consumable-block { border-top: none; margin-top: 0; }  /* 卡內首元素免上分隔線 */
+/* 求解模式 / 目標品質：兩欄表單網格（label 走 .codex-field__label，禁 placeholder 當 label）*/
+.crafter-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); }
+
+/* 消耗品（食物 / 藥水；專家之證已移到角色數值分頁）*/
+.consumable-block { border-top: 1px solid var(--color-border); margin: var(--space-2, 8px) 0; }
+.consumable-block > summary { cursor: pointer; list-style: none; padding: var(--space-2, 8px) 0;
+  display: flex; align-items: baseline; gap: var(--space-2, 8px); }
+.consumable-block > summary::-webkit-details-marker { display: none; }
+.consumable-block > summary::before { content: '▸'; color: var(--accent); margin-right: var(--space-1, 4px); display: inline-block; transition: transform var(--transition-fast, .15s); }
+.consumable-block[open] > summary::before { transform: rotate(90deg); }
+/* 展開後是一組有功能的表單 → 給它自己的卡片底（原本裸貼在卡片背景上，欄位像散落的） */
+/* 幾何走共用 .codex-tint-panel--neutral（同 .cfg-card／.filter-group／.cl-card／.result-summary，B-027）：
+   本地只留 flex 版面、padding 與外距。底色用共用預設（--color-surface）故不傳 --panel-bg。
+   ⚠ 圓角由 6px（--radius-sm）改為共用版的 8px —— 這是唯一的視覺變化。
+   ⚠⚠ **`--panel-bg` 是 CSS 自訂屬性，會繼承**：本區塊巢狀在 `.cfg-card`（它傳 --color-bg-deep）裡，
+   不顯式指定就會吃到父層的深色底，正好抵銷「展開後給它自己的卡片底、與卡片背景分開」的原意
+   （實測遷移當下就踩到：底色變成 rgb(3,6,12)）。**巢狀的 tint panel 一律顯式寫 --panel-bg。** */
+.consumables { --panel-bg: var(--color-surface);
+  display: flex; flex-direction: column; gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px); margin-bottom: var(--space-2, 8px); }
+.consumables .cfg-line .codex-select { width: auto; flex: 1; max-width: 220px; }
+
+/* ---- 食物/藥水自繪下拉（原生 <option> 放不了 icon／品級／功效 → 自建 listbox）---- */
+.crafter-cons { position: relative; flex: 1; min-width: 0; max-width: 320px; }
+/* 外觀對齊 .codex-select（高度 38px 是共用控制項不變量），但不覆寫該 class 本體 */
+.crafter-cons__btn { width: 100%; min-height: 38px; display: flex; align-items: center; gap: var(--space-2, 8px);
+  padding: 0 var(--space-2, 8px); text-align: left; cursor: pointer;
+  background: var(--color-bg-mid); color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+.crafter-cons__btn:hover { border-color: var(--accent); }
+.crafter-cons__btn::after { content: '▾'; margin-left: auto; color: var(--accent); }
+/* 名稱優先完整顯示、功效才是被截的那個（名稱截成「椒麻…」等於認不出選了什麼） */
+.crafter-cons__btn-name { flex: 0 0 auto; max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crafter-cons__btn-name--none { color: var(--color-text-muted); }
+.crafter-cons__btn-eff { flex: 1 1 0; min-width: 0; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crafter-cons__menu { position: absolute; z-index: var(--z-dropdown, 100); top: calc(100% + 4px); left: 0;
+  width: max(100%, min(400px, calc(100vw - 64px))); max-height: 320px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px);
+  box-shadow: var(--shadow-card-hover); }
+/* 手機寬度：選單不再堅持 400px 最小寬，改與按鈕同寬。
+   固定 min-width 在窄屏必然溢出，且「距視窗左緣多少」隨版面變動（實測 24→59px），
+   用 calc(100vw - 常數) 去扣是靠猜的；100% 由版面自己保證落在容器內。 */
+@media (max-width: 700px) {
+  /* 標籤定寬 3.5em 在窄屏會吃掉近三分之一橫向空間 → 讓標籤獨佔一行、控制項吃滿寬 */
+  .cfg-line { flex-wrap: wrap; }
+  .cfg-line__label { flex: 0 0 100%; }
+  .cfg-line .crafter-cons { flex: 1 1 100%; }
+  .crafter-cons__menu { width: 100%; }
+}
+.crafter-cons__opt { display: flex; align-items: center; gap: var(--space-2, 8px);
+  padding: var(--space-1, 4px) var(--space-2, 8px); border-radius: var(--radius-sm, 6px); cursor: pointer; }
+.crafter-cons__opt:nth-child(even) { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }   /* 斑馬紋掃視（表格穩定鐵則同精神：不加實線）；值與本檔其餘 6 處斑馬紋一致，不另寫 rgba */
+.crafter-cons__opt:hover { background: var(--color-surface-hover); }
+.crafter-cons__opt:focus-visible {
+  background: var(--color-surface-hover);
+  outline: 2px solid var(--accent, var(--color-accent-cyan, #4ec9d0));
+  outline-offset: -2px; /* 選單可捲動，負 offset 讓 ring 不被 overflow-y 裁掉 */
+}
+.crafter-cons__opt.is-sel { box-shadow: inset 2px 0 0 var(--accent); }
+.crafter-cons__ico { width: 24px; height: 24px; flex: 0 0 24px; border-radius: var(--radius-xs, 4px); }
+.crafter-cons__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.crafter-cons__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 功效不換行：換行會讓每列高度不一，掃視時上下對不齊（表格佈局穩定鐵則同精神） */
+.crafter-cons__eff { color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crafter-cons__ilv { flex: 0 0 auto; color: var(--color-text-muted); font-weight: var(--fw-semibold, 600); }
+/* 摺疊起來時也看得到現值（Owner：不要塞一個欄位在那邊等人發現）—— 未展開就知道有沒有吃食藥 */
+.crafter-sum { margin-left: auto; color: var(--accent); font-weight: var(--fw-semibold, 600);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.eff-stats { color: var(--color-text); }
+.eff-stats b { color: var(--accent); }
+
+.sum-err { color: var(--color-warn); margin-bottom: var(--space-2, 8px); }
+
+/* ---- 求解選項 ---- */
+/* 兩組區隔：可用技能（會動用的製作技能）vs 求解風格（求解器行為旗標）*/
+.opt-group { margin-bottom: var(--space-2, 8px); }
+.opt-group + .opt-group { margin-top: var(--space-1, 4px); padding-top: var(--space-3, 12px); border-top: 1px solid var(--color-border); }
+.opt-group__label { font-weight: var(--fw-semibold, 600); margin-bottom: var(--space-2, 8px); }
+.opt-group__hint { margin-left: var(--space-1, 4px); }
+.opt { display: inline-flex; align-items: center; gap: var(--space-1, 4px); cursor: pointer; }
+.opt input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+/* 求解選項＝每項常駐一行說明（設計系統：開關逐項要有說明；hover 才出的 title 觸控無效、且要停頓 1 秒）。
+   選中態換底色 → 「哪些會被求解器動用」掃一眼就看得出來。 */
+.crafter-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-2, 8px); }
+.crafter-opt { display: flex; align-items: flex-start; gap: var(--space-2, 8px); cursor: pointer;
+  padding: var(--space-2, 8px); background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px); }
+.crafter-opt:hover { background: var(--color-surface-hover); }
+.crafter-opt:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--color-surface)); }
+.crafter-opt:has(input:disabled) { opacity: .6; cursor: not-allowed; }   /* 停用＝暗掉不隱藏（驗收線 3），原因寫在 .crafter-why */
+.crafter-opt input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; flex: 0 0 auto; margin-top: 2px; }
+.crafter-opt__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.crafter-opt__name { font-weight: var(--fw-semibold, 600); }
+.crafter-opt__desc { line-height: var(--lh-snug, 1.3); }
+/* 品質階段的門檻原值：中性說明，**刻意不用 .crafter-why**（那是警告色，留給「此欄為何停用」）。
+   門檻原值要看得見——玩家對不上遊戲畫面時，才分得出是資料錯還是換算錯。
+   **刻意不降色**：它已是 codex-small，再疊 muted 就撞上灰字鐵則（最小字級不與 muted 併用）。 */
+.crafter-stage-hint { line-height: var(--lh-snug, 1.3); }
+/* 「為什麼現在不能用」——控制停用時必寫原因，不隱藏控制 */
+.crafter-why { color: var(--color-warn); font-weight: var(--fw-semibold, 600); }
+.crafter-why[hidden] { display: none; }
+/* 主 CTA 常駐列：sticky 貼設定欄底部 → 捲到素材清單中段也按得到，不必找回底部 */
+/* 不用負 margin 貼齊面板邊：.codex-tablet 有切角 clip-path，貼邊會被裁角 → 改浮動圓角條 */
+.crafter-actionbar { position: sticky; bottom: var(--space-2, 8px); z-index: var(--z-base, 0);
+  margin-top: var(--space-4, 16px); padding: var(--space-3, 12px);
+  background: var(--color-bg-mid, #070b12);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--color-border));
+  border-radius: var(--radius-md, 8px); }
+.crafter-actionbar__row { display: flex; gap: var(--space-2, 8px); align-items: center; flex-wrap: wrap; }
+/* 缺角色數值＝暗掉但仍可按（按下導去「角色數值」分頁）；不用 :disabled 以保鍵盤/SR 可達 */
+#solve-btn[aria-disabled="true"], #ph-solve[aria-disabled="true"] { opacity: .55; }
+.crafter-actionbar__hint { min-width: 0; }
+.crafter-actionbar__hint--warn { color: var(--color-warn); font-weight: var(--fw-semibold, 600); }
+.solve-status { margin-top: var(--space-2, 8px); min-height: 1.4em; display: flex; align-items: center; gap: var(--space-2, 8px); }
+.solve-status:empty { display: none; margin-top: 0; min-height: 0; }
+
+/* 資料載入失敗橫幅：語意與配色走共用 tint panel，本地只留外距（DS-05：原本是 inline style）*/
+.crafter-loaderr { margin: var(--space-4, 16px) 0; }
+

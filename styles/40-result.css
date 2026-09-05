@@ -1,0 +1,97 @@
+/* === 40-result.css — 求解頁結果側：結果摘要／手法卡／逐步走查表／巨集框／「繼續做」選取視窗 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */
+/* ---- 結果 + 摺疊 ---- */
+/* 結果摘要＝獨立的 inset 面板（徽章 + 步數/秒數 metric + 兩條進度條），與下方摺疊區塊分開。
+   幾何走共用 .codex-tint-panel--neutral（同 .cfg-card／.filter-group／.cl-card）；本地只留 padding 與外距。
+   2026-08-13 那輪遷了三個容器卻漏掉這一個——它的幾何與共用版**逐項相同**（8px 圓角／1px 中性邊／bg-deep 底），
+   純粹是當時沒掃到 ⇒ 遷移後畫面零變化，收掉的是第二份會漂移的事實源。*/
+.result-summary { --panel-bg: var(--color-bg-deep, #03060c);
+  padding: var(--space-3, 12px); margin-bottom: var(--space-3, 12px); }
+.sum-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
+.sum-meta { margin-left: auto; display: inline-flex; gap: var(--space-2, 8px); flex: 0 0 auto; }
+/* 步數 / 秒數：值大、單位小，與左側徽章群拉開重量差（原本是一行同字級小字）*/
+.sum-metric { display: inline-flex; align-items: baseline; gap: 2px; }
+.sum-metric b { color: var(--accent); font-size: var(--fs-h3); font-weight: var(--fw-bold, 700);
+  line-height: 1; font-variant-numeric: tabular-nums; }
+/* 數字欄定寬 + tabular → 兩條長條的右側數字對齊成一直行 */
+.bar-row { display: grid; grid-template-columns: 3em minmax(0, 1fr) 8.5em; align-items: center;
+  gap: var(--space-2, 8px); margin: var(--space-1, 4px) 0; }
+.bar-label { font-weight: var(--fw-semibold, 600); }
+.bar-num { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+
+.res-block { border-top: 1px solid var(--color-border); padding: var(--space-1, 4px) 0; }
+.res-block > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: var(--space-2, 8px); padding: var(--space-2, 8px) 0; }
+.res-block > summary::-webkit-details-marker { display: none; }
+.res-block > summary::before { content: '▸'; color: var(--accent); transition: transform var(--transition-fast, .15s); display: inline-block; }
+.res-block[open] > summary::before { transform: rotate(90deg); }
+.res-block > summary .codex-h3 { margin: 0; }
+
+/* CSS counter 給每張手法卡編號 → 與下方「逐步走查」的 # 欄一一對應（純 CSS，不動 render） */
+/* gap 12px（非 8px）：序號角標外移 6px，8px 間距會讓角標壓到左鄰卡片邊緣 */
+.rotation { display: flex; flex-wrap: wrap; gap: var(--space-3, 12px); padding-bottom: var(--space-2, 8px); counter-reset: rotstep; }
+/* 圖示卡放可變長技能名：fit-content 撐到名寬、名 nowrap 不切（§圖示+文字並排鐵則#2）*/
+/* <button> 而非 div（可點連動走查、鍵盤可達）→ 需自行歸零瀏覽器按鈕預設外觀 */
+.chip { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; width: fit-content; min-width: 56px; max-width: 120px;
+  padding: var(--space-1, 4px); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px);
+  color: inherit; font: inherit; cursor: pointer; }
+.chip:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--color-border)); }
+/* 連動選取態：手法卡與走查列同時亮 accent → 兩邊對得起來 */
+.chip.is-linked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--color-surface)); }
+.wt-table tr.is-linked > td { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.chip::before { counter-increment: rotstep; content: counter(rotstep);
+  position: absolute; top: -6px; left: -6px; min-width: 16px; height: 16px; padding: 0 3px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-bg-deep, #03060c); border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--color-border));
+  border-radius: var(--radius-pill, 999px); color: var(--accent);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold, 700); line-height: 1; }
+/* 統一 icon 框：技能 icon 素材留白差異大（跨職通用是滿版魔法陣、職業專屬是帶留白的工具圖），
+   套同尺寸深底圓角框後每格視覺重量一致 */
+.chip img { width: 36px; height: 36px; flex: 0 0 auto;
+  background: var(--color-bg-deep, #03060c); border-radius: var(--radius-xs, 4px); }
+.chip-name { max-width: 100%; text-align: center; line-height: var(--lh-tight, 1.15); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.walkthrough { overflow-x: auto; padding-bottom: var(--space-2, 8px); }
+/* 基底走共用 .codex-table（寬度／collapse／表頭 accent 色與字重／hover 由它提供）；
+   本地只留特化：字級小一階、padding 收緊、數字欄靠右、分隔線淡化到 55%（密集網格感的取捨，見上方註解）*/
+.wt-table { font-size: var(--fs-small); }
+.wt-table th, .wt-table td { padding: var(--space-1, 4px) var(--space-2, 8px); text-align: right;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
+.wt-table th:nth-child(2), .wt-table td:nth-child(2) { text-align: left; }
+.wt-table th { background: var(--color-surface-hover); }
+.wt-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }
+.wt-table td { font-variant-numeric: tabular-nums; }   /* 進展/品質/耐久/CP 逐步遞減時位數對齊 */
+.wt-act { display: flex; align-items: center; gap: var(--space-1, 4px); }
+.act-ico { width: 20px; height: 20px; }
+
+.macro-opts { margin-bottom: var(--space-2, 8px); }
+.macro { padding-bottom: var(--space-2, 8px); }
+.macro-block { margin-bottom: var(--space-3, 12px); }
+.macro-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-1, 4px); }
+/* 巨集框＝要被複製的「產出物」：accent 淡框 + 深底，與周邊表單控件區隔 */
+.macro-text { width: 100%; resize: vertical; font-family: var(--font-mono); line-height: var(--lh-snug, 1.3);
+  background: var(--color-bg-deep, #03060c); border-color: color-mix(in srgb, var(--accent) 32%, var(--color-border)); }
+
+/* ---- 「繼續做」選取視窗 ---- */
+/* 殼與按鈕全走 portal 共用 .codex-modal / .codex-btn / .codex-input；本地只留這扇窗的版面特化。*/
+.crafter-next-modal { max-width: 720px; }                    /* 一列有 品名／職業／用量 三欄，600px 會逼品名截斷 */
+.crafter-next-count { margin-left: auto; margin-right: var(--space-2, 8px); color: var(--color-text-muted); }
+.crafter-next-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-2, 8px); }
+/* 共用 .codex-input／.codex-select 預設 width:100% ⇒ 不覆寫的話三個篩選各佔一整行（實測 114px 高，
+   清單被推到摺線下）。只改版面（寬度／收縮），視覺仍全走共用元件。*/
+.crafter-next-search { flex: 1 1 200px; width: auto; min-width: min(200px, 100%); }   /* 同 .ri-main 教訓：唯一能縮的那欄要有收縮下限 */
+.crafter-next-filters .codex-select { flex: 0 1 160px; width: auto; }
+.crafter-next-filters .opt { flex: 0 0 auto; }
+.crafter-next-list { display: flex; flex-direction: column; gap: var(--space-1, 4px); }
+/* 整列可點（button）：與素材列同一套視覺，右側資訊靠右對齊成直行 */
+.crafter-next-row { display: flex; align-items: center; gap: var(--space-2, 8px); width: 100%; min-height: 40px;
+  padding: 0 var(--space-2, 8px); text-align: left; cursor: pointer; font: inherit; font-size: var(--fs-small);
+  color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); }
+.crafter-next-row:hover { border-color: var(--accent); }
+.crafter-next-ico { width: 24px; height: 24px; flex: 0 0 auto; }
+.crafter-next-name { font-weight: var(--fw-semibold, 600); flex: 1 1 auto; min-width: min(120px, 100%); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crafter-next-job { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; color: var(--color-text-muted); }
+.crafter-next-jico { width: 18px; height: 18px; }
+.crafter-next-more { color: var(--color-text-muted); }
+.crafter-next-amt { flex: 0 0 auto; min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+.crafter-next-no { flex: 0 0 auto; color: var(--color-text-muted); }
+.crafter-next-note { margin-bottom: var(--space-2, 8px); color: var(--color-text-muted); }
+.crafter-next-empty { margin: var(--space-3, 12px) 0; }

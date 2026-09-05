@@ -18,7 +18,13 @@ const FORMULA_SRC = fs.readFileSync(path.join(ROOT, 'app-formula.js'), 'utf8');
 const DATA_SRC = fs.readFileSync(path.join(ROOT, 'app-data.js'), 'utf8');
 const RECIPE_SRC = fs.readFileSync(path.join(ROOT, 'app-recipe.js'), 'utf8');
 const RENDER_SRC = fs.readFileSync(path.join(ROOT, 'app-render.js'), 'utf8'); // 結果渲染層（hqPercent 純函式住此）
-const CSS_SRC = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');       // T17 首載空間預留（CLS）規則哨兵
+// 工具樣式已拆成 `styles/NN-*.css` 序載（B-034，2026-09-06）：**掃描目錄依檔名序串接、不手維護清單**——
+// 手打清單漏一支的症狀是「該檔的規則被刪掉仍全綠」（同上面 HANDWRITTEN_JS 的既有教訓）。
+// 串接順序 == index.html 的 <link> 順序 == 層疊順序，故所有吃 CSS_SRC 的斷言語意不變。
+const CSS_DIR = path.join(ROOT, 'styles');
+const readAllCss = () => fs.readdirSync(CSS_DIR).filter((f) => f.endsWith('.css')).sort()
+  .map((f) => fs.readFileSync(path.join(CSS_DIR, f), 'utf8')).join('\n');
+const CSS_SRC = readAllCss();                                                // T17 首載空間預留（CLS）規則哨兵
 // 站台手寫 JS＝repo 根的 .js，**掃描產生、不手維護清單**。
 // 由來（健檢 2026-08-15 docs-drift／tests 同一根因）：這份清單原本是手打的 10 支，
 // 漏掉 app-quests.js（第二大模組）／app-gear.js／app-recipe.js —— 靜默 catch 哨兵宣稱掃「全部手寫 JS」
@@ -2007,11 +2013,11 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 
 // ===== T21：`hidden` 屬性必須真的收得起來（[hidden] 守衛哨兵）=====
 // UA 樣式的 [hidden]{display:none} 優先權最低，本地 `.x{display:flex}` 一寫就蓋掉它 →
-// JS 設 `el.hidden = true` 完全沒作用，元素照樣顯示。這個坑在本 repo 反覆出現（styles.css 已有 6 條
+// JS 設 `el.hidden = true` 完全沒作用，元素照樣顯示。這個坑在本 repo 反覆出現（`styles/` 已有 6 條
 // 手寫守衛），且**用 `el.hidden` 斷言驗不出來**（屬性是 true、畫面是顯示）——2026-08-02 等級同步面板
 // 就是這樣過了測試卻每個配方都顯示。故改成機械掃描：index.html 裡帶 hidden 的元素，其 id/class 若在
-// styles.css 被指定了非 none 的 display，就必須有對應的 `[hidden]` 守衛。
-// 涵蓋範圍限本地 styles.css（portal CDN 的 .codex-* 不在此檔，其守衛見 styles.css 檔頭 B-006 註）。
+// `styles/` 被指定了非 none 的 display，就必須有對應的 `[hidden]` 守衛。
+// 涵蓋範圍限本地 `styles/`（portal CDN 的 .codex-* 不在此檔，其守衛見 styles/10-base.css 檔頭 B-006 註）。
 {
   const HTML_SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const sels = new Set();
@@ -2852,7 +2858,7 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
 // 抽成 `.crafter-well` 後最容易回流的錯是「在本地再寫一次 background/border」——
 // 值一樣時**畫面完全看不出差別**，但事實源就分岔了（同 .codex-tint-panel--neutral 的既有教訓）。
 {
-  const CSS = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
+  const CSS = readAllCss();
   const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const CL = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
   const well = (CSS.match(/\.crafter-well \{[^}]*\}/) || [''])[0];

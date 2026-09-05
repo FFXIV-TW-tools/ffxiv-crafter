@@ -1,0 +1,80 @@
+/* === 10-base.css — 全站基底：body／panel padding 鐵則／分頁外距／流程軸 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */
+/* 配方製作求解器 — 工具樣式。token 來自 portal CDN（tokens.css / header.css）。 */
+:root { --accent: var(--color-accent-cyan); }
+
+/* 圖示一律不可拖曳：<img> 預設可拖曳，點技能時微滑會觸發瀏覽器原生拖曳殘影（半透明圖示浮在游標旁，曾被誤判為版面 bug）。 */
+.codex-container img { -webkit-user-drag: none; user-select: none; }
+
+/* `.codex-btn[hidden]` 的守衛已由 portal `header.css` 全域提供（`.codex-btn/.codex-chip/.codex-icon-btn`），
+   本工具原本收窄到 5 個按鈕 ID 的 interim 已於 2026-08-03 移除（B-006 結案）。
+   新增「靠 hidden 收合」的元素時：**是 codex 元件 → 不用做任何事**；是本工具自己的 class 且本地 CSS
+   指定了非 none 的 display → 必須在本檔補 `[hidden]` 守衛（T21 機械掃描會擋）。 */
+
+body {
+  margin: 0;
+  padding-top: 64px;
+  font-family: var(--font-sans, "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif);
+  background:
+    var(--pattern-overlay),
+    var(--pattern-scanline),
+    var(--gradient-body, linear-gradient(180deg, #03060c 0%, #070b12 50%, #03060c 100%));
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+/* 鐵則：codex-tablet 容器必須有 padding ≥16px（否則 .codex-hud 角標壓內文 / 字擠邊框） */
+.panel { padding: var(--space-4, 16px); margin-bottom: var(--space-4, 16px); }
+.panel > .codex-h2 { margin-top: 0; }
+
+/* ---- 分頁（.codex-tabs/.codex-tab 共用元件；此處僅補外距）----
+   掛在本工具的 #main-tabs 而非 .codex-tabs 根 selector：外距是本頁版面需求、不是元件屬性，
+   寫成根 selector 會被 design-lint R5 判為覆寫共用元件（本 repo 最後一處 grandfather，2026-07-27 收斂）。 */
+#main-tabs { margin-bottom: var(--space-4, 16px); }
+
+.run-hint { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3, 12px);
+  padding: var(--space-3, 12px); margin-bottom: var(--space-4, 16px); background: var(--color-surface);
+  border: 1px dashed var(--accent); border-radius: var(--radius-md, 8px); }
+.run-hint[hidden] { display: none; }   /* display:flex 蓋 UA [hidden] → 補守衛（updateHint 靠 hidden 收合）*/
+.run-hint > span { flex: 1; min-width: 0; }
+
+/* ---- 流程軸（app-flow.js 驅動）----
+   設計系統 §功能頁引導標準：三步狀態（完成／進行中／待辦）＋固定位置的「下一步」。
+   狀態靠 [data-state] 語意屬性驅動樣式（元件狀態 API），不用純視覺 class。 */
+.crafter-flow-wrap { margin-bottom: var(--space-4, 16px); }
+.crafter-flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2, 8px);
+  list-style: none; margin: 0; padding: 0; }
+@media (max-width: 760px) { .crafter-flow { grid-template-columns: 1fr; } }
+.crafter-flow__step { display: flex; align-items: flex-start; gap: var(--space-2, 8px); min-width: 0;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px); border-left-width: 3px; }
+/* 序號徽章固定寬 → 三步文字左緣對齊（圖示+文字並排鐵則#1）*/
+.crafter-flow__n { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: var(--radius-pill, 999px);
+  background: var(--color-bg-deep, #03060c); border: 1px solid var(--color-border);
+  font-size: var(--fs-small); font-weight: var(--fw-bold, 700); }
+.crafter-flow__body { display: flex; flex-direction: column; min-width: 0; }
+.crafter-flow__t { font-weight: var(--fw-semibold, 600); line-height: var(--lh-tight, 1.15); }
+.crafter-flow__note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 待辦＝低調但不失可讀（灰字鐵則：不與最小字級疊 muted → 只降底色不降文字對比）*/
+.crafter-flow__step[data-state="todo"] { opacity: .75; }
+.crafter-flow__step[data-state="done"] { border-left-color: var(--color-success, #7dd87d); }
+.crafter-flow__step[data-state="done"] .crafter-flow__n { color: var(--color-success, #7dd87d); border-color: var(--color-success, #7dd87d); }
+/* 進行中＝唯一高亮步驟（Owner：可操作處要看得出來）*/
+.crafter-flow__step[data-state="current"] { border-color: var(--accent); border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--color-surface)); }
+.crafter-flow__step[data-state="current"] .crafter-flow__n { color: var(--accent); border-color: var(--accent); }
+.crafter-flow__step[data-state="current"] .crafter-flow__t { color: var(--accent); }
+.crafter-flow__step[data-state="blocked"] { border-color: var(--color-warn); border-left-color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 10%, var(--color-surface)); }
+.crafter-flow__step[data-state="blocked"] .crafter-flow__n,
+.crafter-flow__step[data-state="blocked"] .crafter-flow__t { color: var(--color-warn); }
+.crafter-flow__next { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2, 8px);
+  margin: var(--space-2, 8px) 0 0; font-size: var(--fs-body); }
+.crafter-flow__next-label { flex: 0 0 auto; padding: 1px var(--space-2, 8px); border-radius: var(--radius-xs, 4px);
+  background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent);
+  font-size: var(--fs-small); font-weight: var(--fw-semibold, 600); }
+/* 螢幕閱讀器專用文字（步驟狀態）：視覺上不佔位，但 SR 讀得到「已完成／進行中」*/
+.crafter-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+

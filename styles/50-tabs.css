@@ -1,0 +1,159 @@
+/* === 50-tabs.css — 三個非求解分頁：角色數值表／製造清單／職業任務 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */
+/* ---- 角色數值表 ---- */
+/* 三分頁 panel 一律吃滿 .codex-container（切頁不跳寬，痛點5）；此表於面板內以內容寬水平置中，左右留白對稱 */
+.hint { margin-bottom: var(--space-4, 16px); }
+.gearsets { overflow-x: auto; }  /* 窄螢幕表格內部橫捲，不撐破頁面 */
+/* 撐滿面板（原本 width:auto + margin auto 置中 → 寬螢幕下左右各留一大片空白、表格孤懸中間）*/
+/* 基底走共用 .codex-table（+ --fixed）：寬度／collapse／th·td padding（8/12 與共用版相同）／
+   表頭 accent 色與字重／hover 全由它提供。本地只留 min-width（窄螢幕內部橫捲）與淡化的分隔線。*/
+.gear-table { min-width: 640px; }
+.gear-table th, .gear-table td {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
+.gear-table td { text-align: center; }   /* 輸入框在欄內置中 → 與置中表頭同一垂直軸 */
+.gear-table th:first-child { width: 24%; }
+.gear-table thead th { text-align: center; }  /* 數值欄表頭置中（色與字重走共用 .codex-table）*/
+.gear-table thead th:first-child { text-align: left; }  /* 職業欄表頭靠左（對齊職名）*/
+.gear-table tbody tr:hover { background: var(--color-surface-hover); }
+.gear-table .gj { text-align: left; font-weight: var(--fw-semibold, 600); white-space: nowrap; }
+/* 「預設」是所有未填職業的 fallback ≠ 一般職業列 → 淡 accent 底 + 下緣加重線與 8 職分開 */
+.gear-table .gj-default { color: var(--accent); }
+.gear-table tbody tr:first-child { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.gear-table tbody tr:first-child td, .gear-table tbody tr:first-child th {
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 35%, var(--color-border)); }
+.gj-ico { display: inline-block; width: 22px; height: 22px; vertical-align: middle; margin-right: var(--space-2, 8px); }
+.gj-ico--empty { visibility: hidden; }  /* 預設列佔位、不顯圖但保留寬度 */
+/* 專家之證欄（每職一份、遊戲上限 3）：計數常駐在表頭，滿額時轉警示色 —— 不必逐格數 */
+.gear-table .gear-spec { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+@media (pointer: coarse) { .gear-table .gear-spec { width: 24px; height: 24px; } }  /* a11y：觸控目標放大 */
+.gear-table .gear-na { color: var(--color-text-muted); }
+.gear-spec-count { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: var(--fw-bold, 700); }
+.gear-spec-count.is-full { color: var(--color-warn); }
+.gear-in { width: 100%; max-width: 160px; text-align: center; font-variant-numeric: tabular-nums; }  /* 隨欄寬伸縮 + 置中（對齊置中表頭）*/
+
+.attribution { margin-top: var(--space-5, 24px); opacity: .85; }
+.attribution a { color: var(--accent); }
+
+/* ---- 製造清單分頁（panel 吃滿版 container，與其他兩頁一致；痛點5）---- */
+/* 上下兩張獨立卡片（配方清單 / 素材總需求）：surface 底與 tablet 分層、彼此硬分開（Owner）*/
+/* 幾何走共用 .codex-tint-panel--neutral（底色即共用預設 --color-surface，故不傳 --panel-bg）*/
+.cl-card { padding: var(--space-4, 16px); margin-bottom: var(--space-4, 16px); }
+.cl-card:last-child { margin-bottom: 0; }
+.cl-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 8px); flex-wrap: wrap; margin-bottom: var(--space-3, 12px); }
+.cl-card-head > .codex-h3 { margin: 0; }
+.cl-card-actions { display: flex; align-items: center; gap: var(--space-2, 8px); flex-wrap: wrap; }  /* 複製 / 開採購清單 按鈕組 → 卡頭右側對齊 */
+.cl-count { color: var(--color-text); }
+.cl-empty-cta { margin-top: var(--space-2, 8px); }
+/* 配方列：icon + 名稱資訊（吃剩餘寬）+ 動作群（前往求解 / 行情 / 次數 / 刪除）*/
+.cl-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px); min-height: 44px;
+  padding: var(--space-2, 8px) 0; border-bottom: 1px solid var(--color-border); }
+.cl-ico { width: 32px; height: 32px; flex: 0 0 auto; }
+.cl-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }  /* 名稱 + 職業/rlv 吃剩餘寬、可縮（icon+文字並排鐵則）*/
+.cl-name { font-weight: var(--fw-semibold, 600); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 動作群：flex:0 0 auto 不縮 → 各列等寬（成品產量已移進資訊列）→ 前往求解/行情/次數/✕ 右側按鈕跨列垂直對齊 */
+.cl-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px); flex: 0 0 auto; }
+.cl-qty { display: inline-flex; align-items: center; gap: var(--space-1, 4px); white-space: nowrap; }
+.cl-qty-in { width: 68px; text-align: center; }
+.cl-del { flex: 0 0 auto; }
+/* 配方列與素材格都住在 .crafter-well 裡（與配方表同一種「內容井」）；這裡只補內距 */
+.cl-rows { padding: 0 var(--space-3, 12px); }
+.cl-rows .cl-row:last-child { border-bottom: none; }  /* 卡片內最後一列不留懸邊 */
+/* 素材依「接下來要做什麼」分三組（可自製 / 採集購買 / 晶體）：每組一個標題 + 一句該怎麼處理 */
+.cl-matgroup { margin-bottom: var(--space-4, 16px); }
+.cl-matgroup:last-child { margin-bottom: 0; }
+.cl-matgroup__head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-1, 4px) var(--space-3, 12px);
+  margin-bottom: var(--space-2, 8px); border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-1, 4px); }
+.cl-matgroup__head > .codex-h4 { margin: 0; }
+.cl-matgroup__n { color: var(--accent); font-variant-numeric: tabular-nums; }
+/* 組說明吃剩餘寬並靠右：長度差很多（三組文案不等長），靠左會讓三個標題右邊參差 */
+.cl-matgroup__hint { flex: 1; min-width: 0; text-align: right; }
+/* 220→320px：列內多了商人徽章與「加進清單」鈕，220px 欄會被擠到換行 */
+.cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-1, 4px) var(--space-4, 16px); padding: var(--space-2, 8px) var(--space-3, 12px); }
+.cl-mat { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 34px; }
+.cl-mat-ico { width: 22px; height: 22px; flex: 0 0 auto; }
+/* 名稱吃剩餘寬（原本靠 .cl-mat-amt 的 margin-left:auto 推右，加了徽章/按鈕後那招會把數量也一起推到最右）*/
+.cl-mat-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-mat-name--link { color: inherit; text-decoration: none; }   /* 素材名連 marketboard 查價/來源；hover 才亮 accent */
+.cl-mat-name--link:hover { color: var(--accent); text-decoration: underline; }
+.cl-mat-amt { flex: 0 0 auto; font-weight: var(--fw-semibold, 600); color: var(--accent); font-variant-numeric: tabular-nums; }
+/* 密集列裡 38px 主控件過重（同 .rt-act 的既有取捨）→ 收成 26px */
+.cl-mat-go { flex: 0 0 auto; height: 26px; padding: 0 var(--space-2, 8px); font-size: var(--fs-xs, .6875rem); }
+@media (pointer: coarse) { .cl-mat-go { height: 38px; } }   /* 觸控補償（同 .rt-act） */
+
+/* ---- 職業任務分頁（app-quests.js）----
+   左：任務清單（勾完成）｜右：未完成任務的素材彙總。兩欄在窄屏堆疊。 */
+.crafter-qt-bar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3, 12px);
+  margin: var(--space-3, 12px) 0; }
+.crafter-qt-progress { color: var(--color-text); }
+.crafter-qt-progress b { color: var(--accent); font-variant-numeric: tabular-nums; }
+.crafter-qt-cols { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: var(--space-4, 16px);
+  align-items: start; }
+@media (max-width: 900px) { .crafter-qt-cols { grid-template-columns: 1fr; } }
+.crafter-qt-list { display: flex; flex-direction: column; gap: var(--space-2, 8px);
+  max-height: 70vh; overflow-y: auto; padding-right: var(--space-1, 4px); }
+.crafter-qt-quest { padding: var(--space-2, 8px) var(--space-3, 12px); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-left: 3px solid var(--accent); border-radius: var(--radius-sm, 6px); }
+/* 完成的任務不隱藏也不刪線一整塊：只降存在感，仍看得清楚交了什麼（要藏走「只顯示未完成」）*/
+.crafter-qt-quest.is-done { opacity: .55; border-left-color: var(--color-success, #7dd87d); }
+.crafter-qt-quest__head { display: flex; align-items: center; gap: var(--space-2, 8px); cursor: pointer; }
+.crafter-qt-quest__head input { width: 18px; height: 18px; accent-color: var(--accent); flex: 0 0 auto; }
+@media (pointer: coarse) { .crafter-qt-quest__head input { width: 24px; height: 24px; } }
+.crafter-qt-lv { flex: 0 0 auto; min-width: 4.2em; color: var(--accent); font-weight: var(--fw-bold, 700);
+  font-variant-numeric: tabular-nums; }
+.crafter-qt-name { font-weight: var(--fw-semibold, 600); min-width: 0; }
+.crafter-qt-items { display: flex; flex-direction: column; gap: var(--space-1, 4px); margin-top: var(--space-2, 8px); }
+.crafter-qt-item { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 34px;
+  padding: 0 var(--space-2, 8px); background: var(--color-bg); border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px); font-size: var(--fs-small); }
+/* 名稱不吃滿剩餘寬度（原本 flex:1 會把數量/複製鈕推到最右）→ 數量與複製鈕緊跟在品名後面，
+   右側動作群靠 margin-left:auto 收邊。長品名仍可截斷（min-width:0 + ellipsis）。 */
+.crafter-qt-item__name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crafter-qt-item__src { display: flex; align-items: center; gap: var(--space-2, 8px); flex: 0 0 auto;
+  margin-left: auto; }
+/* 窄屏：右側徽章／動作群落到第二行，品名拿回整行。
+   由來（B-029，2026-08-15 實測；報告的前提「必然溢出」是錯的，實測文件層級**沒有**水平溢出）：
+   單列時 __src 是 flex:0 0 auto 不收縮（實測 222px），品名是唯一能縮的 ⇒ 它吸收全部不足。
+   實測截斷從 ≤560px 開始（3/27）、460px 有 11/27、**≤390px 全部 27 筆的品名寬度是 0**
+   —— 玩家看到「圖 + ×1 + 複製鈕 + 徽章」而沒有品名，等於這一列最重要的資訊被犧牲掉。
+   斷點沿用本檔既有的 760px（.crafter-flow／.work 單欄化用的同一個），不另發明數字。 */
+@media (max-width: 760px) {
+  .crafter-qt-item { flex-wrap: wrap; padding-top: var(--space-1, 4px); padding-bottom: var(--space-1, 4px); }
+  .crafter-qt-item__src { flex: 1 1 100%; margin-left: 0; }
+}
+/* 徽章走共用 .codex-badge（含 --gold／--success 語意變體，DS-02）：底色／字色／圓角／字重都由它提供。
+   本地只留「這一列很密」需要的收斂：字級降一階、上下 padding 收緊、不換行。
+   ——不重刻底色與圓角，那正是 2026-08-13 那輪在中性面板上收掉的同一種第二份事實源。*/
+.crafter-qt-tag { padding-top: 1px; padding-bottom: 1px; font-size: var(--fs-xs, .6875rem); white-space: nowrap; }
+.crafter-qt-mats { position: sticky; top: 80px; }   /* 捲任務清單時素材彙總跟著（兩邊要對照著看）*/
+.crafter-qt-mats__group { margin-bottom: var(--space-3, 12px); }
+.crafter-qt-mats__group .codex-h4 { display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-2, 8px); margin: 0 0 var(--space-2, 8px); }
+.crafter-qt-mats__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-1, 4px); }
+/* 容器只負責框與排列；可點去查價的是內層 <a>，複製鈕與它同層（<a> 內不得放 <button>）*/
+.crafter-qt-mat { display: flex; align-items: center; gap: var(--space-1, 4px); min-height: 32px;
+  padding: 0 var(--space-1, 4px) 0 var(--space-2, 8px); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm, 6px); font-size: var(--fs-small); }
+.crafter-qt-mat:hover { border-color: var(--accent); }
+.crafter-qt-mat__link { display: flex; align-items: center; gap: var(--space-2, 8px); flex: 1; min-width: 0;
+  color: inherit; text-decoration: none; }
+.crafter-qt-mat__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crafter-qt-mat__n { flex: 0 0 auto; color: var(--accent); font-variant-numeric: tabular-nums; }
+.crafter-qt-item__qty { flex: 0 0 auto; color: var(--accent); font-variant-numeric: tabular-nums; }
+/* 數量未知＝資料缺口，用警示色寫出來（不是灰掉裝沒事）*/
+.crafter-qt-item__qty--unknown { color: var(--color-warn); cursor: help; }
+.crafter-qt-mats__note { padding: var(--space-2, 8px) var(--space-3, 12px); margin-bottom: var(--space-3, 12px);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warn) 40%, var(--color-border));
+  border-radius: var(--radius-sm, 6px); }
+/* 商人徽章：解包說「NPC 有賣」才出；地點/單價是社群資料，寫在 data-help 裡不擠版面。
+   顏色走 .codex-badge--success，這裡只留 cursor（它是 hover 說明的觸發點）*/
+.crafter-qt-tag--shop { cursor: help; }
+/* 需 HQ ＝品名後直接貼遊戲內的 HQ icon（assets/hq.png，與 marketboard 同一張），不另開標籤；
+   未知＝同一張圖淡化＋問號（仍要標，不假裝知道） */
+/* 白色（Owner 2026-08-09）：原圖是銅色漩渦，在深底的品名旁偏暗；轉成純白剪影＝遊戲內品名後
+   那顆 HQ 標記的樣子，也不跟旁邊的金色數量/徽章打架。filter 而非另存一張圖：同一份 asset 不分岔。 */
+.crafter-qt-hq { width: 14px; height: 14px; margin-left: 3px; vertical-align: -0.15em; cursor: help;
+  filter: brightness(0) invert(1); }
+.crafter-qt-hq--unknown { color: var(--color-warn); font-weight: var(--fw-bold, 700); cursor: help; }
+.crafter-qt-hq--unknown .crafter-qt-hq { opacity: .5; }
+

@@ -31,5 +31,5 @@ LICENSE-THIRD-PARTY.txt
 pkg
 robots.txt
 sitemap.xml
-styles.css
+styles
 worker.js

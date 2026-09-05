@@ -15,15 +15,20 @@
  * 套用在這個 select 上」需要 DOM 祖先資訊；沒有 DOM 的版本會把別處的
  * `.someParent .codex-select { width: … }` 當成本元素有 width ⇒ 連原始 bug 都抓不到。
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const html = readFileSync(join(ROOT, "index.html"), "utf8");
-// 先剝註解：本檔與 styles.css 的說明都寫著這些選擇器名，不剝的話規則被刪掉仍會全綠。
-const css = readFileSync(join(ROOT, "styles.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+// 工具樣式已拆成 `styles/NN-*.css` 序載（B-034，2026-09-06）：依檔名序掃描串接（== index.html 的 <link> 順序
+// == 層疊順序），**不手維護清單**——漏一支的症狀是「該檔的規則被刪掉仍全綠」。
+// 先剝註解：本檔與 styles/ 的說明都寫著這些選擇器名，不剝的話規則被刪掉仍會全綠。
+const cssDir = join(ROOT, "styles");
+const css = readdirSync(cssDir).filter((f) => f.endsWith(".css")).sort()
+  .map((f) => readFileSync(join(cssDir, f), "utf8")).join("\n")
+  .replace(/\/\*[\s\S]*?\*\//g, "");
 
 /** 取選擇器**最後一個 compound** 命中 `#id` 的所有規則 body（祖先部分不影響命中）。 */
 function bodiesFor(id) {

@@ -24,6 +24,9 @@
   Cache-Control: public, max-age=0, must-revalidate
 /*.css
   Cache-Control: public, max-age=0, must-revalidate
+# 工具樣式已拆成 styles/NN-*.css 序載（2026-09-06）：CF Pages 的 `*` 是否跨 `/` 不靠猜，明列一段同規則。
+/styles/*
+  Cache-Control: public, max-age=0, must-revalidate
 /pkg/*
   Cache-Control: public, max-age=0, must-revalidate
 /data/*
