@@ -3272,5 +3272,19 @@ check('effectiveStats/hqPercent/recipeMaxes 均為函式',
   check(`T64 匯出的函式都有生產端呼叫點（掃到 ${exported} 個匯出）`, exported >= 40 && dead.length === 0, dead.join(' '));
 }
 
+// ===== T65：AGENTS.md 位元組數不得超過 R7 豁免當時的值（B-033 C）=====
+// 由來：豁免落地時（2026-08-17，0ca22de）是 31,248 B；之後長到 38,974 B（+25%）而沒有任何閘會發現——
+// check-devloop-artifacts 對「已豁免」與「超出豁免當時的值」印的是同一行 `⚠ R7 … > 20KB`，
+// 那行從豁免那天起每次 commit 都在印，於是被合理地當成已知而略過。**修法必須讓兩者在機械上可分辨**：
+// 這條只在「超過豁免當時的值」時紅。超標的處置是搬敘事到 docs/lessons.md、把有測試守的條目降成一行，
+// **不是改這裡的數字**——改數字＝把護欄變 KPI。豁免撤銷（R7-exempt 行拿掉）時本條一併改成 20KB。
+{
+  const AGENTS_CAP = 31248;
+  const agentsBytes = Buffer.byteLength(fs.readFileSync(path.join(ROOT, 'AGENTS.md'), 'utf8'), 'utf8');
+  const agentsSrc = fs.readFileSync(path.join(ROOT, 'AGENTS.md'), 'utf8');
+  check(`T65 AGENTS.md 位元組數 ${agentsBytes} ≤ 豁免當時的 ${AGENTS_CAP}（超過＝搬敘事到 docs/lessons.md，不是改數字）`, agentsBytes <= AGENTS_CAP);
+  check('T65 AGENTS.md 仍帶 R7-exempt 戳（豁免撤銷時本條的上限要改回 20KB）', /R7-exempt:\s*\d{4}-\d{2}-\d{2}/.test(agentsSrc));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
