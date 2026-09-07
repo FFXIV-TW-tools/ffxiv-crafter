@@ -1,78 +1,60 @@
 # AGENTS.md — ffxiv-crafter
 
-FFXIV 繁中服 DoH 配方製作求解器。純靜態站 + Rust/WASM raphael 引擎（web worker）。**沒有自己的資料後端**（配方資料全是 build 時產的靜態 JSON），另有兩支 CF Pages Functions（見架構表 `functions/`）。輸入配方＋角色數值 → 算最佳製作手法 → 手法序列 + 逐步走查 + 一鍵複製遊戲巨集。external 公開工具，部署 Cloudflare Pages，FFXIV-TW-tools portal 註冊。
-
-**規模級別：S**（DEVLOOP §5）——單一子系統、約 3.9k 行手寫碼、單一部署目標、無 cron／多機協作／即時資料管線。**不設 ROADMAP 分解層**（直接 Plan→Build）。判 S 偏 M（有 Rust/WASM 一層非顯而易見），但無跨子系統協調需求 → 維持 S。**檔案清單看下方架構表**（本段刻意不列，那會是第二份會漂移的名單）。
+FFXIV 繁中服 DoH 配方製作求解器：純靜態站 + Rust/WASM raphael 引擎（web worker），**無自有資料後端**，另有兩支 CF Pages Functions。external 公開工具，部署 Cloudflare Pages。**規模級別 S**：不設 ROADMAP 分解層，直接 Plan→Build。
 
 R7-exempt: 2026-11-16 依據：2026-08-16 Owner 拍板（B-025 第二輪）——第二事實源已移除、敘事已搬 `docs/lessons.md`、有測試守的條目已降成「規則一行＋測試編號」；剩下的「部署面鐵則」段是 13 個 external repo 共用的內嵌副本，不得單邊移出。**本檔位元組數不得超過豁免當時的 31,248**（T65 機械守；超過＝先搬敘事，不是改數字）。到期時重評：若該段已在艦隊層集中化即撤銷豁免。
 
-> 設計＆決策不在本 repo：spec `external/ffxiv-tw-tools-portal/docs/specs/` 的 `2026-06-22-craft-solver-spec.md`（公式 §4 對抗驗證）+ ADR-013。重建 / 部署見 `README.md`。踩坑敘事＝[`docs/lessons.md`](docs/lessons.md)、測試數字沿革＝[`docs/test-baseline-history.md`](docs/test-baseline-history.md)。
+> **三層分工**：本檔＝全 repo 適用的規則；由來／事故／實測數字／拍板日期＝`docs/rules-rationale.md`（同標題對應），踩坑敘事＝`docs/lessons.md`，測試數字沿革＝`docs/test-baseline-history.md`。設計 spec 落 portal repo（`external/ffxiv-tw-tools-portal/docs/specs/` 的 `2026-06-22-craft-solver-spec.md` + ADR-013），本 repo 不另立 specs/；重建見 `README.md`。
+
+**路徑專屬規則（`.claude/rules/`）——Claude 讀到該路徑才載入；其他 agent 動那些檔前手動讀**：
+
+| 規則檔 | 觸發路徑 | 管什麼 |
+|------|------|------|
+| `.claude/rules/frontend-state.md` | `app-*.js`／`crafting-list.js`／`first-run-hint.js`／`worker.js` | 前端狀態與流程：分層硬失敗、`flowState()`、返回堆疊、`pickRecipeForItem`、本地保存、轉義 |
+| `.claude/rules/ui-design.md` | `index.html`／`404.html`／`styles/**`／render・browse・recipe・quests・consumable 層 | UI／設計系統：codex 元件、內容井、表格、`fitHeight()`、CLS、窄屏量測、CSP |
+| `.claude/rules/job-quests.md` | `app-quests.js`／`tools/fetch-quest-qty.py`／`tools/job-quest-qty.json`／`tools/build_lib/**` | 職業任務：解包 vs 社群試算表的權威分工、HQ 徽章、商人、icon 取列 |
+| `.claude/rules/wasm-engine.md` | `wasm/**`／`pkg/**`／`tools/sim-diff/**` | WASM 引擎：綁定與 `pkg/` 重建、差分閘、工具鏈釘日期、授權清單重產 |
 
 ---
 
 ## 🔒 工具鐵則（違反必阻擋）
 
-- **`hqPercent()` 品質%→HQ% 對照表勿改**（`app-render.js`）：逐格移植自 ffxiv-crafting 7.4.5 權威遊戲表（Tnze），表的斷點/缺口是遊戲真實值、**不是 bug**。改前先舉具體「品質→HQ%」反例。
-- **製作公式已對抗驗證**（`computeSettings`，spec §4）：改動前先舉具體「錯誤輸入→輸出」反例，勿憑印象報「公式可能錯」。u16 無溢位、serde 對超界值**報錯而非靜默截斷**——勿改成 clamp 吞錯。
-- **DRY — 遊戲資料一律來自 monorepo `game_ref.sqlite`**（`build_game_ref.py` 產）→ `tools/build-data.py` 轉成 `data/*.json`。**禁自建對照表**，三處各有機械守：
-  - 技能繁中名／icon：`craft-actions.json` 鍵集合必 == `wasm/src/lib.rs` 的 Action 變體（35=35，`check-actions.py`）
-  - 「哪些配方會依等級同步」：`recipe_level_sync`（由 `Recipe.MaxAdjustableJobLevel` 解出）→ `level-sync.json`。**禁用「rlv==690」之類的形狀猜測**（現況巧合，改版即靜默失效）。等級→生效 rlv 的換算只在 `app-level-sync.js` 一處
-  - 品質階段：`recipe_quality_stages`（由 `Recipe.CollectableMetadata` ＋ `CollectableMetadataKey` 解出）→ `quality-stages.json`。只收已確證的 key 1（收藏品）與 key 7（宇宙任務）＝992 個配方；key 2/3/4/6 的 728 個**刻意不輸出**（root BACKLOG B-041），那些配方只有「滿品質」可選是預期行為。換算只在 `app-quality-stages.js` 一處（T54 守：資料出現前端不認得的 `src` 即紅）
-- **繁中服至上**：所有顯示一律繁體中文正名（職業名 木工/鍛造/…、技能名走 game_ref、高難度=expert）。疑慮查 Lumina `ChineseSimplified.ScName` 或灰機 wiki，不自創。
-- **codex 設計系統**：button/form/token/table 用 portal CDN 的 `.codex-*`，勿 local 重寫；`.panel`/`.codex-tablet` padding ≥16px。**改 UI/CSS 前先 Read** portal repo（`external/ffxiv-tw-tools-portal`）的 `_DESIGN-SYSTEM.md`（跨 repo 指標拆兩段寫，勿寫死磁碟機代號）。
-- **共用鐵則（monorepo 全域）**：`except: pass` 禁止（失敗至少 `console.warn`）；dict 快取一律 bounded；新建原始碼檔 >500 行禁止（既有檔 >500 被實質修改時觸發拆分 review 閘門）。
+- **`hqPercent()` 對照表勿改**（`app-render.js`）：斷點／缺口是遊戲真實值不是 bug；改前先舉「品質→HQ%」反例。
+- **製作公式已對抗驗證**（`computeSettings`，spec §4）：改前先舉「錯誤輸入→輸出」反例；serde 對超界值**報錯而非截斷**，勿改 clamp。
+- **遊戲資料一律來自 monorepo `game_ref.sqlite`** → `tools/build-data.py` 轉 `data/*.json`，**禁自建對照表**；三處機械守：
+  - 技能繁中名／icon：`craft-actions.json` 鍵集合必 == `wasm/src/lib.rs` 的 Action 變體（`check-actions.py`）
+  - 等級同步：`recipe_level_sync`（由 `Recipe.MaxAdjustableJobLevel` 解出）→ `level-sync.json`；**禁「rlv==690」形狀猜測**；換算只在 `app-level-sync.js`
+  - 品質階段：`recipe_quality_stages`（由 `CollectableMetadata`＋`CollectableMetadataKey` 解出）→ `quality-stages.json`；只收已確證的 key 1／key 7，其餘 key **刻意不輸出**（B-041）；換算只在 `app-quality-stages.js`（T54）
+- **繁中服至上**：顯示一律繁中正名（技能名走 game_ref、高難度=expert）；疑慮查 Lumina `ChineseSimplified.ScName` 或灰機 wiki，不自創。
+- **codex 設計系統**：UI 元件一律走 portal CDN 的 `.codex-*`，勿 local 重寫；**改 UI/CSS 前先 Read** portal repo（`external/ffxiv-tw-tools-portal`）的 `_DESIGN-SYSTEM.md`（跨 repo 指標拆兩段寫，勿寫死磁碟機代號）。細則＝`.claude/rules/ui-design.md`。
+- **monorepo 全域**：`except: pass` 禁止（至少 `console.warn`）；快取一律 bounded；新建原始碼檔 >500 行禁止。
 
 ---
 
 ## 🏗 架構
 
-純靜態站，三層 + 引擎。**每支模組的職責細節與「為什麼」都在該檔檔頭註解**——下表只給一句話定位，不複述（第二份事實源會漂移）。
+**模組 pattern（動任何一層前先懂）**：classic script 發佈 `globalThis.CraftXxx` ＋ `app.js` init 注入依賴 ＋ `app.js` 以**同名 proxy** 委派；「同名函式」不是重複實作。分層檔＝`app-{formula,data,flow,render,solve,browse,gear,recipe,nextcraft,quests,consumable,quality-stages,level-sync}.js`＋`crafting-list.js`＋`app.js`（唯一 `type=module` 入口），**各檔職責看該檔檔頭註解**；下表只列帶硬約束者。
 
-**模組 pattern（跨層一致，動任何一層前先懂這個）**：classic script 發佈 `globalThis.CraftXxx` ＋ `app.js` init 注入依賴（getter 取 live 狀態，因為 `loadData` 會重新賦值 `ITEMS`／`ACTIONS` 綁定）＋ `app.js` 以**同名 proxy** 委派 → 拆檔時既有呼叫點零改。看到「app.js 與模組有同名函式」不是重複實作。
-
-| 檔案 / 目錄 | 一句話職責 |
+| 路徑 | 硬約束 |
 |------|------|
-| `index.html` | 靜態骨架＋`document.write` 注入 portal CDN bootstrap＋SEO/JSON-LD |
-| `first-run-hint.js` | **parser-blocking** 外部 classic script：解析階段就決定首次提示顯隱（CLS）。硬約束＝`tests/first-run-hint-key.test.mjs` |
-| `404.html` | 未知路徑回真 404（不落 SPA fallback ⇒ 假路徑不放大成計費請求；monorepo `check-unknown-path-cost` 守） |
-| `tests/` | 跨檔靜態契約（settings-api 代理／first-run-hint／select 寬度預留／pre-commit 閘裝著／deploy-prepare 本機先跑）；`run-all.mjs` 自動掃描且有檔數下限 |
-| `app.js` | 前端控制器（唯一 `type=module` 入口）：狀態持有／分頁／公式與資料層的同名 proxy／init 接線 |
-| `app-formula.js` | FFXIV 公式面（spec §4 已對抗驗證）：三上限 `recipeMaxes`／能力門檻 `statShortfall`／食藥與專家之證加成／`computeSettings` |
-| `app-data.js` | 資料載入面：11 支靜態 JSON 的必要／選配分類與降級策略、三份配方索引、配方表快照 `RINDEX` |
-| `app-flow.js` | 流程引導：`flowState()` 純函式＝「現在該做什麼」的唯一真相 |
-| `app-render.js` | 結果渲染：`hqPercent`（純）／手法序列 chips／走查表／巨集組裝 |
-| `app-solve.js` | 求解編排：worker 生命週期／`doSolve`／求解計時／世代守衛／取消 |
-| `app-browse.js` | 配方瀏覽表：職業篩選 chips／每頁 60 筆分頁／已加入清單標示 |
-| `app-gear.js` | 角色數值：localStorage 讀寫與型別驗證／等級 clamp／專家之證逐職勾選 |
-| `app-recipe.js` | 配方詳情狀態機：選配方／原料與初始品質／**製作鏈**（返回堆疊）／**多職業切換** |
-| `app-nextcraft.js` | 「用這個成品還能做什麼」：由 `ingredients.json` 倒建反查索引＋下一階配方選取視窗（**無新資料檔**）|
-| `app-quests.js` | 職業任務分頁：11 職任務清單／完成勾選／素材遞迴展開／商人徽章 |
-| `app-consumable.js` | 食物／藥水自繪 listbox（原生 `<option>` 放不了 icon／品級／功效）＋本區本地保存 |
-| `app-quality-stages.js` | 品質階段 → 目標品質。**兩種來源單位不同，換算只有這裡一份** |
-| `app-level-sync.js` | 等級同步：解出生效 rlv 並寫回 `selected.rlv`（顯示與求解共用） |
-| `crafting-list.js` | 製造清單：清單狀態(localStorage)／素材彙總 `aggregateMats`（純函式）／採購 CSV |
-| `worker.js` | web worker：載 raphael WASM 跑 `solve` |
-| `functions/` | 本 repo 唯一的伺服器端程式碼（CF Pages Functions）：`settings-api` 同源代理——service binding 直呼，**不得改成 `fetch(URL)`**（會讓 per-IP 額度變全站共用）。`tests/settings-api.test.mjs` 守 |
-| `styles/` | 工具樣式按頁面邊界拆成 `NN-*.css` 序載，token 全來自 portal CDN；**層疊順序＝檔名數字序＝`index.html` 的 `<link>` 順序**（吃 CSS 的測試依檔名序掃描串接） |
-| `wasm/` | 自寫 Rust 薄綁定（raphael-rs v0.26.2，Apache-2.0）；公式在 JS 端算好、WASM 只跑引擎 |
-| `pkg/` | wasm-pack 輸出，**必須 commit**（CF Pages 不編 Rust）；同步戳記＝`wasm/BUILD-STAMP.json` |
-| `data/` | recipes／items／ingredients／recipe_levels／craft-actions／meals／medicine／quality-stages／level-sync／job-quests／vendors JSON（`tools/build-data.py` 產） |
-| `assets/` | `hq.png`（遊戲內 HQ 圖，**與 marketboard 同一張**，不自畫） |
-| `tools/` | `build_lib/`（`build-data.py` 的實作層：一模組一個產出職責，主檔只留旗標編排與缺件收尾）／`build-data.py`／`fetch-quest-qty.py`／`check-actions.py`／`build-wasm.ps1`／`build-notices.py`／`serve.py`／`test-formulas.mjs`（入口：掃 `tests/` 依檔名序跑）／`tests/`（主題分檔＋共用 `_harness.mjs`）／`sim-diff/` |
-| `_headers` | CF Pages 安全標頭（CSP 完整分域）＋快取策略（一律 `must-revalidate` → **無 cachebust 腳本**，靠 ETag/304） |
-| `LICENSE-*.txt` | 散布 `pkg/*.wasm` 的授權義務（Apache-2.0 §4(a)／MIT 著作權宣告；頁尾只寫授權名稱不算）。`build-notices.py` 自 `wasm/Cargo.lock` 產，**改 wasm 依賴後必須重跑並一起 commit** |
-| `docs/health-reviews/` | 永久健檢檔案庫（豁免 docs 暫存→歸檔規則） |
+| `404.html` | 未知路徑回真 404，**不落 SPA fallback** |
+| `tests/` | 跨檔靜態契約；`run-all.mjs` 自動掃描且有檔數下限 |
+| `functions/` | 唯一伺服器端碼（CF Pages Functions）：`settings-api` 同源代理走 service binding 直呼，**不得改成 `fetch(URL)`**；`tests/settings-api.test.mjs` 守 |
+| `wasm/`／`pkg/` | Rust 薄綁定（raphael-rs, Apache-2.0）＋ wasm-pack 輸出；公式在 JS 端算，WASM 只跑引擎。改動規則見 `.claude/rules/wasm-engine.md` |
+| `data/` | recipes／items／ingredients／recipe_levels／craft-actions／meals／medicine／quality-stages／level-sync／job-quests／vendors，全由 `tools/build-data.py` 產 |
+| `assets/` | `hq.png` **與 marketboard 同一張**，不自畫 |
+| `tools/` | `build_lib/`＋`build-data.py`／`fetch-quest-qty.py`／`check-actions.py`／`build-wasm.ps1`／`build-notices.py`／`serve.py`／`test-formulas.mjs`（掃 `tools/tests/`） |
+| `_headers` | CSP 完整分域＋快取一律 `must-revalidate`，**無 cachebust 腳本** |
+| `_routes.json` | 只攔 API 代理路徑，每條 include 都是計費面；舊網址 301 走 CF 帳號層 Bulk Redirects，本 repo 無 middleware |
+| `LICENSE-*.txt` | 散布 `pkg/*.wasm` 的授權義務；`build-notices.py` 自 `wasm/Cargo.lock` 產，**改依賴後必重跑並一起 commit** |
 
-**資料流**：選配方 + 填角色數值 → `computeSettings`（FFXIV 公式，含食物/藥水/專家之證）→ postMessage worker → raphael `MacroSolver` → replay 逐步 → render 手法序列 + 巨集。
-跨工具深連結：`?recipe=<id>` / `?item=<id>`＋`?stage=1|2|3`。**`stage` 只認階段序號、不收絕對品質數字**（第二條換算路徑，對面資料一舊就靜默給出達不到門檻的手法）。
+深連結 `?recipe=<id>`／`?item=<id>`＋`?stage=1|2|3`：**`stage` 只認階段序號、不收絕對品質數字**。
 
 ---
 
 ## ✅ VERIFY（改動後跑，未過不算完成）
 
-- **只看 localStorage 就能決定的顯隱，在解析階段就定案**：`first-run-hint.js` 是 parser-blocking 的外部 classic script（不得 inline／defer／async／module；inline 會被 T53 擋——它是對的）；key 與 `app-gear.js` 有兩份，`tests/first-run-hint-key.test.mjs` 守。留給 `app.js`（module ⇒ defer）決定＝首次繪製之後才長出 80px（CLS 0.044〜0.094）。
-
-**canonicalTest（safe-push 實跑的那一條；claude-skills `process/` 的 `fleet.json` 逐字對照本行）**：
+**canonicalTest（safe-push 實跑；claude-skills `fleet.json` 逐字對照本行）**：
 
 ```bash
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py
@@ -84,112 +66,55 @@ node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-a
 <!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="5" label="run-all" -->
 <!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 機械閘基線 **只准升不准降**——宣告值只寫在上方 `TEST-BASELINE` 標記（散文不複述數字：曾停在 653 而標記已 654，gate 6 只讀標記）。
-> 逐輪沿革＝[`docs/test-baseline-history.md`](docs/test-baseline-history.md)；「為什麼這幾支被併進 canonicalTest」＝[`docs/lessons.md`](docs/lessons.md)。
+> 基線 **只准升不准降**；宣告值只在上方標記，散文不複述數字。
 
 ```bash
-node --check *.js                       # JS 語法（用萬用字元，不列清單——手維護的清單會漏掉新模組）
-node tools/test-formulas.mjs            # 前端純函式 golden + 機械哨兵（T0〜T65 拆在 tools/tests/，用途寫在各主題檔內）
-py -3.11 tools/check-actions.py         # 不變量：Action 變體對照 ＋ pkg/ 同步戳記 ＋ sim-diff 與 wasm 同一 raphael tag
-cd wasm && cargo test                   # 不變量：parse_action ∘ action_name round-trip + 名稱唯一 + 神速技巧三條
+node --check *.js                # JS 語法（萬用字元；手維護清單會漏新模組）
+node tools/test-formulas.mjs     # 純函式 golden + 機械哨兵（T0〜T65 在 tools/tests/）
+py -3.11 tools/check-actions.py  # Action 變體 ＋ pkg/ 戳記 ＋ sim-diff 與 wasm 同一 tag
+cd wasm && cargo test            # round-trip + 名稱唯一 + 神速技巧三條
 ```
 
-> 舊網址 301 自 2026-09-05 起由 CF 帳號層 Bulk Redirects 執行，本 repo 無 middleware；`_routes.json` 只攔 API 代理路徑（每條 include 都是計費面）。
-- **改 `wasm/`（改綁定或換 raphael 版本）→ 另跑引擎差分閘**（不進 pre-commit，太慢）：
-  ```bash
-  cd tools/sim-diff && cargo run --release          # 約 1 分鐘，~96 萬次施放；清單外的新分歧 → exit 1
-  cargo run --release --bin js-golden > golden.json && node compare-js.mjs ../.. golden.json
-  ```
-  已知差異寫在 `src/main.rs` 的 `ALLOWED` 且每條附理由——**清單外一律失敗，加新條目前先查遊戲客戶端判誰對**；清單裡的條目某輪沒出現會印警告（多半＝上游修好了，該移除我方 workaround）。為什麼養這支閘＝`docs/lessons.md`。
-- **改 `wasm/src/lib.rs` 或 `Cargo.lock`** → `cargo test`（host target 可跑）＋ `powershell tools\build-wasm.ps1` 重建 `pkg/` 並更新 `BUILD-STAMP.json`（否則 `check-actions.py` 會紅），`pkg/` 一起 commit。**別跑裸 `wasm-pack`**（產物會帶建置者帳號名，`docs/lessons.md`）。**工具鏈釘日期**（`wasm/rust-toolchain` 的 `nightly-YYYY-MM-DD`，B-038）：裸 `nightly` 即紅；升級＝改 channel → 重建 → `pkg/`＋戳記一起 commit（`check-actions.py` 對帳 channel）。
-- **改 `wasm/Cargo.toml` 依賴** → `py -3.11 tools/build-notices.py` 重產 `LICENSE-THIRD-PARTY.txt` 一起 commit（授權義務跟著依賴變）。
-- **改 `.js` / `.css`** → **無 cachebust 步驟**（index.html 靜態引用無 `?v=`，`_headers` 的 `must-revalidate` 負責重驗）。
-- **手動 smoke**（改 UI / render / 求解路徑後）：`py -3.11 tools/serve.py`（no-cache dev server :8809；勿用裸 `python -m http.server`）＋ portal svc :8774 提供 codex CDN（`svc start portal`）→ 選配方 → 填數值 → 求解 → 複製巨集。零 console error。
-- **純文件 / 規則檔改動**：pre-commit gate 過 + 目視 diff 即足。
+- 改 `wasm/`／`pkg/`／`tools/sim-diff/` → 另有引擎差分閘、`pkg/` 重建與授權清單重產的必跑步驟，**全在 `.claude/rules/wasm-engine.md`**（太慢故都不進 pre-commit）。
+- 改 `.js` / `.css` → **無 cachebust 步驟**。
+- **手動 smoke**（改 UI／render／求解後）：`py -3.11 tools/serve.py`（:8809，勿用裸 `python -m http.server`）＋ `svc start portal`（:8774 供 codex CDN）→ 選配方 → 填數值 → 求解 → 複製巨集，零 console error。
+- 純文件／規則檔改動：pre-commit gate 過 + 目視 diff 即足。
 
 ---
 
-## 🛠 開發注意（踩坑 / 教訓）
+## 🛠 開發注意（可執行規則）
 
-> **可執行的規則全在本節**（每 session 自動載入）；「怎麼發現的、錯了會怎樣」在 [`docs/lessons.md`](docs/lessons.md)。**標了測試編號的條目，敘事在該測試自己的註解裡**——動那一區前先讀測試。新增條目前先問「能否固化成測試」（DEVLOOP §4.4.1）。
+> 標了測試編號的條目**敘事在該測試自己的註解裡**——動那一區前先讀測試；其餘由來見 `docs/lessons.md`／`docs/rules-rationale.md`。新增條目前先問「能否固化成測試」（DEVLOOP §4.4.1）。
+> **本節只放全 repo 適用的規則**；另四塊在檔頭索引表列的 `.claude/rules/*.md`，動那些路徑前務必讀。
 
 ### 資料與求解
 
-- **上游 raphael 把「工匠的神速技巧」的耐久寫死 10，遊戲實際是 0**：補償在 `wasm/src/lib.rs`、**不動 raphael 原始碼**（保住「以未修改原始碼編譯」聲明）。上游修好時 `trained_eye_plan_is_not_padded_by_upstream_durability_bug` 轉紅＝該移除 workaround（敘事＝`docs/lessons.md`）。
-- **宇宙探索配方的 rlv 不是資料裡那個**（768 個一律存 690，實際依角色等級同步）：判準＝`Recipe.MaxAdjustableJobLevel`、**不是 rlv 的形狀**；等級→rlv＝取該職業等級的最小 rlv（T20 全量釘住）；不要拿任務 LevelGroup 反推。
-- **配方資料源＝tnze zh-CN（7.5 跟版）＋item_lookup 繁中化**：zh-TW 源停更 7.1 勿換回；重建＝best-craft `build-static-data.py` → 本 repo `tools/build-data.py`。舊逐色染劑 200 筆是遊戲 7.5 移除，勿當缺漏回補。
-- **`build-data.py` 缺上游輸入＝exit 1**（B-030）：缺的那份不覆蓋、但不得回報成功；新增上游輸入用 `problem()` 不用 `print`。
-- **資料檔的 ratchet 只准升不准降**（T31／T32／T54：交付數量 228/290、商人 247/256、食藥 icon 全中、quality-stages 992）：產生端全是 fail-open，退步時畫面只是「多幾件標未知」，只有資料斷言擋得住。
-- **expert（高難度）配方靜態巨集僅供參考**（536 個在遊戲內為隨機製作狀態）：render 用「試算完成 ⚠」＋警語，勿改回無條件「✓ 可完成」。
-- **求解上限單一算式**：顯示與求解共用 `recipeMaxes(recipe, rlv)`，配方表欄位亦然（RINDEX 建索引時算一次）；缺 rlv 列顯「—」不顯 0。
-- **配方有最低能力要求就得擋**（`RequiredCraftsmanship`／`RequiredControl`，3396 個有；遊戲內不到門檻根本不給做）：單一出口＝`app-formula.js` 的 `statShortfall`（`app.js` 同名 proxy），顯示紅字與 `doSolve` 擋閘共用；比較基準＝`effectiveStats`（含食藥／專家之證，遊戲判定同樣吃 buff）；求解鈕走 `aria-disabled`。T60／T61 守。
-- **配方版本＝成品的實裝版本**（`item_lookup.items.patch`）：`#patch-filter` 選項**由資料生成**（<7.0 併成「7.0 以前」），版號比較一律 `parseFloat`、**不可拆 (major, minor) 整數比**（7.15 會排到 7.5 後面）。T11 守。
-- **高難度是配方屬性 `is_expert` 不是名字**：`.rt-expert` 徽章＋`#expert-filter` 三態。**新增任何篩選控件都要同時做三件事**：進 `filterKey()`、進「無符合配方」判斷、在 `app.js` 掛 `change`——漏任一項畫面都「正常」。T11 守。
-- **配方表可就地增減**（每列 ＋／−）：− **恆 render、用 `hidden` 收合**（`markListState` 是 in-place 更新）；兩顆不上 `--danger`；**槽位固定＝定寬兩欄 grid**（flex 下 − 收掉時 ＋ 會跳位，Owner 2026-08-19）。T11 守。
-- **素材總需求分三組**（可自製／採集購買／晶體）：挑配方走 `CraftRecipe.pickRecipeForItem`、商人徽章走 `CraftQuests.vendorHtml`，不在製造清單層另刻；「加進清單」傳做幾次不是要幾個；`removeOne` 是 −1。T58 守。
-- **改任一求解輸入 → 舊巨集失效**：`invalidateResults()` 集中失效；程式設值不觸發 input 者須手動呼叫，新增求解輸入時記得掛。
-- **巨集每一段結尾都要有帶音效的 `/echo`**（Owner 2026-08-16）：中段「第 N 段完成」、末段「製作完成」；開音效時單段容量 14 步。例外：① 末段剛好 15 步整段塞滿不補 echo ② `#macro-echo` 可關（偏好 `ffxiv-crafter-macro-echo-v1`，關掉回 15 步；切換不是求解輸入、不進 `invalidateResults()`）。T39 守；為什麼＝`docs/lessons.md`。
-
-### 前端狀態與流程
-
-- **分層 classic script 缺席一律硬失敗**：`app.js` init 對每一支分層檔 `throw new Error('<檔名> 未載入（部署不完整）')`，不得 `?.` 軟略過（404 時玩家拿到「按下去才無聲 TypeError」的頁面）。T49 由 index.html 的 script 清單反推涵蓋率；各層內部的 `globalThis.CraftXxx?.` 是給測試 sandbox 用的，不在此列（stub 收在 `LAYER_STUBS()`）。
-- **「現在該做什麼」的唯一真相＝`app-flow.js` 的 `flowState()`**：步驟軸／文案／CTA／`pick-panel` 收合／`work.is-idle` 全由它算，勿在各層自寫；改變流程位置的事件 → `globalThis.CraftFlow?.update?.()`。
-- **晶體判定只有 `app.js` 的 `isCrystal(iid, name)` 一份**：各層經 deps 注入取用，**不得自己寫那個正則**（T48 守）。
-- **程式化切頁一律帶移焦**（`switchTab(name, true)`）：那幾條路徑都是「被擋下 → 去補資料」的補救動線。只有 tablist 自己的 click handler 例外（T47 掃描）。
-- **製作鏈：中間材要能「先做這個 → 一鍵回來」**：`.ing-go` 入口把當前配方推進**返回堆疊**（多層）；堆疊**不在切分頁時清空**，只有返回列表或另選配方才放棄。鈕上的次數＝「做幾次」不是「要幾個」（T58）。`craftPlan` 整鏈展開已刪（B-032；匯出必有呼叫端由 T64 守）。
-- **「繼續做」＝反方向的動線**（Owner 2026-08-17）：`app-nextcraft.js` 由 `ingredients.json` 倒建索引（無新資料檔），入口住「目前配方」列、沒下一階整顆收起；**往上走不推返回堆疊**，選到堆疊頂等同「← 回」（T57）；一件成品只佔一列、做得起的排前面；最多 234 筆故走彈窗。
-- **遮罩關閉必須「按下」也在遮罩上**：只看 `click` 會讓開窗那一發滑鼠放開時打到遮罩、視窗開了又關，而 console 全乾淨；`.click()` 測不出來。T56 守；新 modal 一律照這條。
-- **同一件東西常常好幾個職業都能做**（651 件）**、同職也常多張**（136 組）：`RECIPE_BY_ITEM` 的「取先出現者」只用於配方表；深連結、製作鏈、職業切換一律走 `pickRecipeForItem()`＝有填數值的職業 → 同職取難度最低；數值與原料全同的重複列只留一顆鈕；同職多張鈕面帶第一個有差異的數字、都同就編號並在 data-help 列原料。畫面一律給切換鈕。T52 守。
-- **專家之證是「角色狀態」不是求解選項**：住 `gearsets[職業].specialist`，上限 3 由 `CraftGear.SPEC_MAX` 守（回退＋toast，不用 disabled）。求解端一律讀 `gear.specialist`，**禁止再從 DOM 讀**；證不跟著數值的 fallback 走。
-- **求解計時＝軟提示不殺 worker**（≥60s 只升級「可取消」提示）；`stopSolveClock()` 掛在 onWorkerMsg／cancelSolve／onerror。
-- **三處本地保存的欄位要在 `init` 套回 DOM**：食藥區（`ffxiv-crafter-consumables-v1`）／等級同步（`ffxiv-crafter-level-sync-v1`，留空＝跟隨角色）／角色數值；少一步＝「重整就跑掉」。等級輸入框在使用者聚焦時不得被 `refreshSelectedGear` 覆寫。
-- **轉義紀律**：動態字串（配方名／技能名／引擎 error）進 innerHTML 一律 `esc()`；icon 路徑來自 build-data 常數／game_ref、無注入面故不 esc（勿當 drift 誤補）。
-
-### UI / 設計系統
-
-- **「內容井」只有 `.crafter-well` 一份**（配方表／配方清單／素材總需求共用）：本地**不得再宣告 background／border／border-radius**——值一樣畫面全正常，事實源卻分岔。T59 守。
-- **中性分組容器走共用 `.codex-tint-panel--neutral`**、底色以 `--panel-bg` 傳參，本地只留 padding 與外距；**巢狀時一律顯式寫 `--panel-bg`**（自訂屬性會繼承）。T36 守。
-- **配方表高度＝當前螢幕還剩多少**（`CraftBrowse.fitHeight()`）：可用高度＝視窗高 −表格上緣 −（`<main>` 底緣 − 表格底緣）−8；**不可拿 `document.scrollHeight` 反推**（body `min-height:100vh` 使它不隨內容縮，每量一次多扣一截）；極矮視窗收在 `MIN_H`。T11 守冪等與下限。
-- **配方表欄數與 CSS 的 `nth-child` 百分比寬是隱性契約**（T11 對帳兩邊數量）。`<td>` 的 `height` 是內容盒下限，實際列高＝宣告值＋padding／border；改列高以量測為準。
-- **表格一律消費共用 `.codex-table`**（`--fixed` 欄寬脫鉤、`--sticky` 釘頂表頭），**不要自刻 sticky**（`border-collapse: collapse` 下分隔線不跟著動）；本地只留視覺特化。可能插徽章的儲存格預留 `min-height`。T50 守。
-- **功能性圖示鈕與剪貼簿走 portal 共用元件**：`window.FFXIVIcons.btnHTML(name, label, attrs)`／`window.FFXIVClipboard.copy(text, label)`，缺 CDN 要有退場版（T34）；禁自刻 emoji 鈕；`label` 必填；鈕不放進 `<a>`（素材列＝容器 div＋內層連結＋同層鈕，click 要 `preventDefault()`）。帶文字的動作鈕（`📋 加入清單`）刻意維持 emoji（T35 負向哨兵）。
-- **hover 說明一律 `data-help`，禁原生 `title`**：圖示鈕另補 `aria-label`；`window.FFXIVHelp.setup()` 在 init 呼叫一次（冪等）。
-- **`hidden` 設了不等於收得起來**（本地一條 `display:flex` 就蓋掉 UA 的 `[hidden]`）：驗收看 `getComputedStyle(el).display`；靠 hidden 收合的區塊要補 `[hidden]` 守衛（T21）。
-- **首屏「等 fetch 才長內容」的區塊一律要預留高度**（CLS）：①內容確定→靜態寫進 index.html（T17）②筆數不定→`.is-loading` 分段 `min-height`（失敗路徑也要卸）③佔位塊自撐。
-- **同一列裡「唯一能縮的那一欄」不得 `min-width: 0`**（動作鈕一多就把品名壓成一個字寬）：給收縮下限，放不下的是動作群整條換行。T44／T55 守形狀，驗收看量測。
-- **窄屏溢出只有實測才算數**：定案＝窄屏（≤700px 下拉／≤760px 交付物列）讓標籤與動作群獨佔一行、**不用魔術常數**；改這一區必重跑同源 iframe 逐寬量測（1400→360，驗 `left>=0`、`right<=視窗寬`）。T26／T44 只擋已知會壞的形狀，**CSS 文字比對驗不了 layout**（敘事＝`docs/lessons.md`）。
-- **求解選項的說明是常駐文字不是 hover**（`.crafter-opt__desc`）：停用時**不隱藏控制**，改暗掉 + `.crafter-why` 寫出原因。
-- **食物/藥水下拉是自繪 listbox**：按鈕上的 Enter/Space 不要自己處理（瀏覽器已轉成 click），keydown 只接 ↑↓。
-- **icon 一律走 xivapi v2 asset CDN**（v1 停更、7.5 新 icon 404）：`app.js` `iconUrl()` 轉 v2 URL（權威寫法＝marketboard `modules/` 的 `icon.js`，跨 repo 指標拆兩段寫）；CSP img-src 已鎖 `v2.xivapi.com`。
-- **CSP `unsafe-inline` 的依賴面不得擴大**：index.html 的可執行 inline script 恰為 1 段（T53）。要加第 2 段先問「能不能改成外部 `.js`」。
-
-### 職業任務分頁
-
-- **資料有兩個來源**：任務／交付物／職業對照與商人＝**台服解包**（權威；商人不再從社群試算表補）；交付數量＝社群試算表（`tools/job-quest-qty.json`），社群名對回 item id 走 `name_tc`→`name_sc`→OpenCC t2s、**id 相符才採用**；顯示一律用解包台服名；地名縮寫用試算表首頁對照表還原。T31／T32 守。
-- **要交 HQ 的東西不能說「商人有賣」**（商人賣 NQ ⇒ 整個徽章不出）；**`hq == null` 是「未知」不是「不用」**；要交 HQ＝品名後貼 `assets/hq.png`（與 marketboard 同一張，不自創符號）。T33 守。
-- **沒有座標 ≠ 沒有商人**：通用商人常只有名字，照樣列、帶座標的排前面（`if n.zone` 過濾會讓 247 件掉到 172 件；敘事＝`docs/lessons.md`）。
-- **技能 icon 取列策略勿改回 `ORDER BY id LIMIT 1`**：排除佔位圖 `000786` → `class_job_level` DESC → id ASC（`check-actions.py` 守）；只改技能對照用 `--actions-only`。職業專屬 icon 固定木工版＝Owner 裁示（B-008 已否決勿再提案）。
-- **DOH / JOB_ICON 為 local hardcode**：`jobs.json` 僅 21 戰鬥職、不含製作職 → 刻意 local，非漏 sync（BACKLOG B-001 待拍板）。
+- 宇宙探索配方 rlv 判準＝`Recipe.MaxAdjustableJobLevel`；**勿看 rlv 形狀、勿拿任務 LevelGroup 反推**；等級→rlv 取該職業等級最小 rlv。T20。
+- 配方資料源＝tnze zh-CN＋item_lookup 繁中化，zh-TW 源停更**勿換回**；重建＝best-craft `build-static-data.py` → `tools/build-data.py`；舊逐色染劑**勿當缺漏回補**。
+- `build-data.py` 缺上游輸入＝exit 1：不覆蓋、也不得回報成功；新增輸入用 `problem()` 不用 `print`。
+- 資料檔 ratchet **只准升不准降**（T31／T32／T54）。
+- 求解上限唯一算式＝`recipeMaxes(recipe, rlv)`，顯示／求解／配方表共用；缺 rlv 顯「—」不顯 0。
+- 最低能力擋閘唯一出口＝`app-formula.js` 的 `statShortfall`；基準 `effectiveStats`；求解鈕走 `aria-disabled`。T60／T61。
+- 版本篩選選項**由資料生成**；版號一律 `parseFloat` 比較，**不可拆整數比**。T11。
+- 高難度＝`is_expert` 屬性不是名字；**新增篩選控件要同時做三件事**：進 `filterKey()`、進「無符合配方」判斷、`app.js` 掛 `change`。T11。
+- 改任一求解輸入 → `invalidateResults()` 集中失效；程式設值不觸發 input 者須手動呼叫。
+- 巨集每段結尾要有帶音效 `/echo`（中段「第 N 段完成」、末段「製作完成」，單段 14 步）；例外＝末段剛好 15 步塞滿、或 `#macro-echo` 關（`ffxiv-crafter-macro-echo-v1`，回 15 步、切換不進 `invalidateResults()`）。T39。
 
 ### Git 邊界
 
-commit 先知會、逐主題切；**push → CF Pages 自動部署對外可見 → STOP，由 Owner 跑** `bash ~/.claude/skills/process/tools/safe-push.sh --repo C:/FFXIVProject/external/ffxiv-crafter --reason "<原因>"`（canonicalTest 綠才推＋留痕）。裸 `git push` 被 hook 硬擋、不得繞，也不要改列 `!git push` 代跑（少一筆 push-log）。401＝在 git-bash 重跑。
+commit 先知會、逐主題切；**push → CF Pages 自動部署對外可見 → STOP，由 Owner 跑** `bash ~/.claude/skills/process/tools/safe-push.sh --repo C:/FFXIVProject/external/ffxiv-crafter --reason "<原因>"`。裸 `git push` 被 hook 硬擋、不得繞，也不要改列 `!git push` 代跑。401＝在 git-bash 重跑。
 
 ---
 
 ## 開發循環（DEVLOOP）
 
-正典：`~/.claude/process/DEVLOOP.md`。本 repo 工件：`CHANGELOG.md`、`docs/BACKLOG.md`、`docs/health-reviews/`（健檢檔案庫）。**設計 spec 落外部 portal repo**（`external/ffxiv-tw-tools-portal/docs/specs/` 的 `2026-06-22-craft-solver-spec.md` + ADR-013），本 repo 不另立 specs/。
+正典：`~/.claude/process/DEVLOOP.md`。本 repo 工件：`CHANGELOG.md`、`docs/BACKLOG.md`、`docs/health-reviews/`（永久，豁免 docs 歸檔規則）；設計 spec 落 portal repo（見檔頭指標）。
 
-### 🔒 部署面鐵則（2026-08-01，勿回退）
+### 🔒 部署面鐵則（勿回退）
 
-本 repo 的 CF Pages 部署**不是「發佈 repo 根目錄」**，而是由 `deploy-prepare.sh` 依 `deploy-allow.txt` 產出 `_site/`。CF dashboard 必須設 Build command = `sh deploy-prepare.sh`、Build output directory = `_site`。
+CF Pages 部署**不是「發佈 repo 根目錄」**，而是由 `deploy-prepare.sh` 依 `deploy-allow.txt` 產出 `_site/`。CF dashboard 必須設 Build command = `sh deploy-prepare.sh`、Build output directory = `_site`。**本段是 external repo 共用權威版本**：改本段請同步全部副本，不得單邊移出。事故經過見 `docs/rules-rationale.md`。
 
-> 本段為 12 個 external repo 的**共用權威版本**（2026-08-15 統一）：三條原本只寫在單一 repo 的教訓（cache-bust 假紅燈／分類閘的靜默放行／產物路徑並行安全）已回填到所有副本。改本段請同步全部副本，不要只改一份。
-
-- **為什麼**：CF Pages 無 build 步驟時把 repo 根整棵目錄當靜態資產上傳 → `AGENTS.md`／`docs/`／`tools/`／`tests/`／`worker/` 後端源碼全部變成該網域下可直接 GET 的公開檔（2026-08-01 實測 12/13 站中招）。**private repo 只保護「誰能 clone」，不保護「已部署的檔案誰能下載」**；`.gitignore`（檔是 tracked）／`_headers`（只加標頭）／`robots.txt`（只擋收錄不擋直取）都擋不到。
-- **允許清單而非排除清單**：頂層出現任何未列入 `deploy-allow.txt`／`deploy-deny.txt` 的項目 → **build 直接失敗**。新增內部資產的預設值是「不發佈」，不靠任何人記得。排除清單做不到（實測當天漏了 `worker/` 106 支 .ts 與 `_tools/`／`_cache/` 141 檔）。注意（健檢 R3 D6）：分類閘另有兩條靜默放行（CF 容器 npm 產物固定 skip 清單、`git check-ignore`）——它是「逼人歸類」的提醒層；**真正的部署邊界是第 2 段複製迴圈的 allow-list 比對**，改腳本時該比對不可動、skip 清單只放建置環境產物不得用來繞分類。
-- **新增站台資產**（新頁面／新資料夾）→ 加進 `deploy-allow.txt`；**新增內部資產** → 加進 `deploy-deny.txt`。改完跑一次 `sh deploy-prepare.sh` 確認印出「✓ 部署輸出就緒」。
-- **腳本改動禁忌**：① 只能用 POSIX 語法（CF 容器的 `sh` 是 dash，`read -r -d ''` 之類 bashism 會靜默失敗、輸出 0 檔而 build 仍「成功」⇒ **整站 404**，2026-08-01 實際發生）② 根層檔名不可無條件 `mkdir "$OUT/${f%/*}"`（會建出「叫 index.html 的目錄」⇒ `/` 404）③ 不得移除出貨前驗收閘（輸出 <3 檔／缺 index.html／內部檔混入 → 非零 exit，CF 保留前一版）④ **產物路徑不得假設獨佔**：只要主工作樹可能被並行 session 或 cron 同時使用，固定的 `_site` 一定互踩。ranking B-117（2026-08-15）實證：只做「逐次專屬」而不加鎖**仍然兩份都 exit 1**（撞在 `rm -rf _site`），現行解＝建到 `_site.tmp.$$`、清單走 `mktemp`（repo 外）、換名段用 `mkdir "$_site.lock"` 序列化，哨兵＝`test_deploy_prepare_is_concurrency_safe`。兩次實際故障的訊息（「頂層出現未分類項目」「輸出缺 index.html」）**都指向錯的方向**，看起來像漏加允許清單 —— 本 repo 日後若接排程／並行寫入者，照 ranking 的做法改，別重新 debug 一次。
-- **部署後驗**（**務必帶 cache-bust**）：`curl -sI "https://<repo>.pages.dev/AGENTS.md?cb=$(date +%s)"` → 回 `text/html` 正常（檔案不存在、走 SPA fallback）；回 `text/markdown` = 紅燈。
-  - ⚠️ **不帶 cache-bust 會得到假紅燈**：舊部署（發佈 repo 根的那版）留在 CF 邊緣的物件帶 `s-maxage=604800`，命中時回 `text/markdown` 但 header 有 `CF-Cache-Status: HIT` ＋ 大 `Age`。**那是快取殘留不是外洩**，最長 7 天自癒（pages.dev 非自有 zone，dashboard 沒有 Purge Everything，收斂路徑就是等 TTL）。2026-08-01 R3 健檢實測：帶 cache-bust 的 `/AGENTS.md`、`/worker/src/index.js`、`/deploy-allow.txt` 全回 SPA fallback＝現行部署乾淨。
+- **允許清單而非排除清單**：頂層出現任何未列入 `deploy-allow.txt`／`deploy-deny.txt` 的項目 → **build 直接失敗**。分類閘另有兩條靜默放行（CF 容器 npm 產物 skip 清單、`git check-ignore`），它只是提醒層；**真正的邊界是第 2 段複製迴圈的 allow-list 比對**，該比對不可動、skip 清單不得用來繞分類。
+- **新增站台資產** → 加 `deploy-allow.txt`；**新增內部資產** → 加 `deploy-deny.txt`。改完跑一次 `sh deploy-prepare.sh` 確認印出「✓ 部署輸出就緒」。
+- **腳本改動禁忌**：① 只能用 POSIX 語法（CF 容器的 `sh` 是 dash，bashism 靜默失敗 ⇒ 整站 404）② 根層檔名不可無條件 `mkdir "$OUT/${f%/*}"` ③ 不得移除出貨前驗收閘（輸出 <3 檔／缺 index.html／內部檔混入 → 非零 exit，CF 保留前一版）④ **產物路徑不得假設獨佔**：建到 `_site.tmp.$$`、清單走 `mktemp`（repo 外）、換名段用 `mkdir "$_site.lock"` 序列化，哨兵＝`test_deploy_prepare_is_concurrency_safe`。
+- **部署後驗（務必帶 cache-bust）**：`curl -sI "https://<repo>.pages.dev/AGENTS.md?cb=$(date +%s)"` → 回 `text/html` 正常；回 `text/markdown` ＝紅燈。⚠️ 不帶 cache-bust 會得到**假紅燈**（邊緣殘留 `CF-Cache-Status: HIT`＋大 `Age`）。
