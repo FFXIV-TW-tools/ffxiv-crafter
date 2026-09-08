@@ -2,6 +2,23 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-09-08 — 凍結配方資料的建置自 best-craft 接手（monorepo B-083 ⑧ / B-073 前置）
+
+`tools/build_lib/common.py` 的 `STATIC_SRC` 原本指著 `ffxiv-best-craft-main/public/static-data`，
+recipes／recipe_levels／ingredients／meals／medicine 五支都是從那裡複製進 `data/`。**best-craft 整個
+退場（monorepo B-073）後這條依賴會斷**，而斷掉的樣子是「`build-data.py` 報缺件 exit 1」——不會靜默，
+但也就完全重建不了資料。故把產生端與快照都搬進本 repo：
+
+- `tools/build-static-data.py`（自 best-craft `scripts/` 接手）＋ `tools/static-data/` 8 支 JSON（6.8 MB，
+  **tracked**）。快照 tracked 而非 gitignore：上游是外部服務 tnze，`cached_json` 的設計本來就是「產出過就
+  重用」，不進 git 等於把資料源託付給一台隨時會 404 的機器。`tools/` 整個在 `deploy-deny.txt` 內，不會出貨。
+- 接手只改路徑（輸出改本 repo、monorepo 根與快照位置一律取自 `build_lib/common.py`，產生端與消費端共用
+  同一個常數）與兩處 `except: pass` 窄化；演算法逐行沿用。**證據**：同一份快取下，本 repo 的腳本與 best-craft
+  原版跑出來的 8 支 JSON **逐 byte 相同**；`data/*.json` 重建後零 diff。
+- ⚠️ 重跑不是冪等的：步驟⑦ 會拿**當下**的 `item_lookup.name_tc` 重寫顯示名。實測相對 2026-07-29 那份快照已
+  漂 169 個配方名／175 個物品名（monorepo 端修正了繁中名）。要不要吃這批更名是資料決策，不能當「重跑一下」
+  順手做掉——本次刻意保留原快照。
+
 ## 2026-09-06 — 健檢 R5 待拍板七條全數落地（B-032〜B-038）＋三檔拆分
 
 Owner 2026-09-05 逐條「按建議」拍板，本輪逐題各自一個 commit（細節見 `docs/health-reviews/2026-09-05-R5全維健檢-fix-plan.md` 執行結果表）：

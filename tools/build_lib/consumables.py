@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""meals/medicine 的 icon + item id 補欄（best-craft 凍結資料只有 name/level/加成，無圖示）。"""
+"""meals/medicine 的 icon + item id 補欄（凍結快照只有 name/level/加成，無圖示）。"""
 import json, os, sqlite3
 
 from .common import ITEM_LOOKUP, OUT, problem
 
 
 def enrich_consumables():
-    """meals/medicine 補 icon + item id（best-craft 凍結資料只有 name/level/加成，無圖示）。
+    """meals/medicine 補 icon + item id（凍結快照只有 name/level/加成，無圖示）。
 
     比對鍵＝繁中名（item_lookup.name_tc）；`level` 欄已驗證 == items.level_item（＝物品品級），故不覆寫。
     對 OUT 內的檔就地加欄，可重複執行（idempotent）。

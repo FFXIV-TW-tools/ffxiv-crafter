@@ -90,7 +90,7 @@ cd wasm && cargo test            # round-trip + 名稱唯一 + 神速技巧三�
 ### 資料與求解
 
 - 宇宙探索配方 rlv 判準＝`Recipe.MaxAdjustableJobLevel`；**勿看 rlv 形狀、勿拿任務 LevelGroup 反推**；等級→rlv 取該職業等級最小 rlv。T20。
-- 配方資料源＝tnze zh-CN＋item_lookup 繁中化，zh-TW 源停更**勿換回**；重建＝best-craft `build-static-data.py` → `tools/build-data.py`；舊逐色染劑**勿當缺漏回補**。
+- 配方資料源＝tnze zh-CN＋item_lookup 繁中化，zh-TW 源停更**勿換回**；重建＝`tools/build-static-data.py` → `tools/build-data.py`；舊逐色染劑**勿當缺漏回補**。
 - `build-data.py` 缺上游輸入＝exit 1：不覆蓋、也不得回報成功；新增輸入用 `problem()` 不用 `print`。
 - 資料檔 ratchet **只准升不准降**（T31／T32／T54）。
 - 求解上限唯一算式＝`recipeMaxes(recipe, rlv)`，顯示／求解／配方表共用；缺 rlv 顯「—」不顯 0。

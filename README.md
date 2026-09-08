@@ -10,7 +10,7 @@ FFXIV 繁中服製作（DoH）求解器 + 模擬器。輸入配方 + 角色數�
 - **WASM 綁定**：`wasm/`（自寫 Rust 薄層，`wasm-pack` 編 → `pkg/`）。
 - **公式**：配方+數值 → SolverSettings 在 `app.js` 算（FFXIV 公開公式，已對抗驗證；見 spec §4），WASM 只跑引擎。
 - **UI**：codex 設計系統（portal CDN）+ vanilla JS + web worker。
-- **資料**：`data/`（recipes/recipe_levels/items 來自 monorepo；craft-actions 繁中名+icon 來自 game_ref，DRY）。
+- **資料**：`data/`（recipes/recipe_levels/items 來自 `tools/static-data` 凍結快照＋monorepo `item_lookup`；craft-actions 繁中名+icon 來自 game_ref，DRY）。
 
 > 設計＆決策：`external/ffxiv-tw-tools-portal/docs/specs/2026-06-22-craft-solver-spec.md` + ADR [[08-ADR-013]]。
 
@@ -18,7 +18,10 @@ FFXIV 繁中服製作（DoH）求解器 + 模擬器。輸入配方 + 角色數�
 
 ```bash
 # 1. （前置）game_ref.sqlite 含 craft_actions：XIVDiscordBot/ 跑 py -3.11 -m scripts.build_game_ref
-# 2. 產 data/（craft-actions.json + 複製 static-data）
+# 2. （只在遊戲版本更新時）重抓凍結配方資料 → tools/static-data/（tracked 快照；
+#    已存在的 json 一律 reuse，要強制重爬 tnze 就先刪掉那一支）
+py -3.11 tools/build-static-data.py
+# 3. 產 data/（craft-actions.json + 複製 tools/static-data）
 py -3.11 tools/build-data.py
 ```
 

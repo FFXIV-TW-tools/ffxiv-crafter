@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """配方資料的複製與 items.json 生成。
 
-recipes/recipe_levels/ingredients/meals/medicine 從 best-craft 凍結的 static-data 複製（同 monorepo
-遊戲資料，那批另有自己的重建節奏）；items.json 則自 item_lookup 生成（含 icon，給 UI 顯示物品/原料圖示）。
+recipes/recipe_levels/ingredients/meals/medicine 從 tools/static-data 的凍結快照複製（產生端＝
+tools/build-static-data.py，那批另有自己的重建節奏）；items.json 則自 item_lookup 生成（含 icon，
+給 UI 顯示物品/原料圖示）。
 """
 import json, os, shutil, sqlite3
 
@@ -10,14 +11,14 @@ from .common import ITEM_LOOKUP, OUT, STATIC_SRC, problem
 
 
 def copy_static_data():
-    """複製 recipes / recipe_levels / ingredients / meals / medicine（best-craft 凍結）。"""
+    """複製 recipes / recipe_levels / ingredients / meals / medicine（tools/static-data 凍結快照）。"""
     for fn in ("recipes.json", "recipe_levels.json", "ingredients.json", "meals.json", "medicine.json"):
         src = os.path.join(STATIC_SRC, fn)
         if os.path.exists(src):
             shutil.copy(src, os.path.join(OUT, fn))
             print("✓ 複製 %s (%.1f MB)" % (fn, os.path.getsize(src) / 1024 / 1024))
         else:
-            problem("缺 static-data 來源：" + src + "（先跑 best-craft 的 build-static-data.py）")
+            problem("缺 static-data 來源：" + src + "（先跑 tools/build-static-data.py）")
 
 
 def write_items():

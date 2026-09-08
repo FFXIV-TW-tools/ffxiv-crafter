@@ -4,7 +4,7 @@
 
 1. craft-actions.json：35 個 raphael Action 變體 → 繁中名 + icon（**權威=game_ref.sqlite**，
    DRY 鐵則：禁自建技能對照表。craft_actions 表由 XIVDiscordBot/scripts/build_game_ref.py 建）。
-2. recipes/recipe_levels/items.json：從 best-craft 凍結的 static-data 複製（同 monorepo 遊戲資料）。
+2. recipes/recipe_levels/items.json：從 tools/static-data 的凍結快照複製（產生端＝tools/build-static-data.py）。
 3. quality-stages.json：配方的三段品質門檻（**權威=game_ref.sqlite 的 recipe_quality_stages**，
    由 build_game_ref.py 從 Recipe.CollectableMetadata 解出。DRY 鐵則：禁自建收藏值對照表）。
 
@@ -42,7 +42,7 @@ def main():
 
     write_craft_actions()
 
-    # 只修技能對照時不必重刷 3.5MB 配方資料（那批來源是 best-craft 凍結的 static-data，另有自己的重建節奏）
+    # 只修技能對照時不必重刷 3.5MB 配方資料（那批來源是 tools/static-data 凍結快照，另有自己的重建節奏）
     if "--actions-only" in sys.argv:
         print("（--actions-only：略過 recipes / items 重建）")
         return

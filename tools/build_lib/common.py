@@ -29,5 +29,7 @@ GAME_REF = os.path.join(ROOT, "data", "item_dict", "game_ref.sqlite")
 ITEM_LOOKUP = os.path.join(ROOT, "data", "item_dict", "item_lookup.sqlite")
 DUMP_TC = os.path.join(ROOT, "data", "item_dict", "datamining_tc")
 JOBS_JSON = os.path.join(ROOT, "data", "item_dict", "jobs.json")
-STATIC_SRC = os.path.join(ROOT, "ffxiv-best-craft-main", "public", "static-data")
+# 凍結配方資料（tnze zh-CN ＋ item_lookup 繁中化）＝本 repo 自有，產生端＝tools/build-static-data.py。
+# 2026-09-08 自 ffxiv-best-craft-main/public/static-data 接手（best-craft 退場＝monorepo B-073）。
+STATIC_SRC = os.path.join(TOOLS, "static-data")
 OUT = os.path.normpath(os.path.join(TOOLS, "..", "data"))

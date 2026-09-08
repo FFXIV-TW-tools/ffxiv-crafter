@@ -74,7 +74,10 @@ def write_craft_actions():
             miss.append(variant)
     con.close()
 
-    with open(os.path.join(OUT, "craft-actions.json"), "w", encoding="utf-8") as f:
+    # newline="\n"：本檔是 data/ 裡唯一有換行的輸出（indent=0）。text mode 在 Windows 會寫成 CRLF，
+    # 而 core.autocrlf 全機已設 false（2026-09-07）⇒ 每跑一次 build-data.py 就留一筆 422 行的
+    # 純行尾假 diff，把「重建後資料真的沒變」這個訊號淹掉。
+    with open(os.path.join(OUT, "craft-actions.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(actions, f, ensure_ascii=False, indent=0, separators=(",", ":"))
     print("✓ craft-actions.json：%d/%d 對到 game_ref%s" % (
         len(VARIANT_EN) - len(miss), len(VARIANT_EN),
