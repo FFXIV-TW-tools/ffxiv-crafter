@@ -11,6 +11,7 @@ CHANGELOG.md
 CLAUDE.md
 README.md
 deploy-prepare.sh
+devloop.json
 docs
 node_modules
 package-lock.json
