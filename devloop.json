@@ -1,0 +1,5 @@
+{
+  "canonicalTest": "node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py",
+  "scale": "S",
+  "delegable": true
+}
