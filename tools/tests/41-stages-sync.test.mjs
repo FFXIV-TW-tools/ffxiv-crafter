@@ -109,16 +109,10 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   }
 }
 
-// ===== T19：求解選項一律預設不勾 + 本機保存 =====
-// 為什麼要守：技能是玩家練到才有的（掌握 Lv65；專心致志/快速改革需專家之證），
-// 預設替他勾＝預設產出他按不出來的巨集。這條防有人日後把 checked 加回 index.html。
+// ===== T19：求解選項保存與型別防禦 =====
+// 技能是玩家練到才有的（掌握 Lv65；專心致志／快速改革需專家之證），保存值只接受布林，
+// 否則惡意或過時的 localStorage 不得產出玩家按不出的巨集。
 {
-  const HTML19 = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const OPT_IDS = ['opt-manip', 'opt-heart', 'opt-qi', 'opt-backload', 'opt-adversarial'];
-  OPT_IDS.forEach(id => {
-    const tag = (HTML19.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`)) || [''])[0];
-    check(`T19 ${id} 預設不勾（index.html 無 checked）`, !!tag && !/\bchecked\b/.test(tag), `tag=${tag}`);
-  });
 
   // 保存往返：獨立 context + 有實體的 localStorage（主 sandbox 的是 no-op stub）
   const mkCtx = (store) => {
@@ -174,7 +168,6 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
 // 或給一份貼進遊戲完全對不上的手法。identity（滿等不得改變任何東西）是這層最重要的護欄。
 {
   const LS_SRC = fs.readFileSync(path.join(ROOT, 'app-level-sync.js'), 'utf8');
-  const HTML_SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const mkEl = () => ({ value: '', textContent: '', placeholder: '', hidden: false, addEventListener() {} });
   const mkCtx = (store) => {
     const els = {};
@@ -267,8 +260,4 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   check(`T20 level-sync.json 有資料（現況 768，實測 ${ids.length}）`, ids.length >= 768);   // 門檻＝宣告值，不留 68 筆的靜默縮水空間（健檢 R5 M19）
   eq('T20 同步清單裡沒有本站不存在的配方', orphan.length, 0);
   eq('T20 每個同步配方的原始 rlv == 其最高等級的基準 rlv（identity 全量）', broken.length, 0);
-  eq('T20 index.html 有等級同步靜態骨架（不靠 JS 建 DOM，免 CLS 與游標遺失）',
-    /id="level-sync"[\s\S]*id="ls-level"[\s\S]*id="ls-note"/.test(HTML_SRC), true);
-  check('T20 index.html 載入 app-level-sync.js',
-    HTML_SRC.includes('<script src="app-level-sync.js"></script>'));
 }

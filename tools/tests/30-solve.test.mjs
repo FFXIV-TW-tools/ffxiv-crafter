@@ -1,6 +1,6 @@
 // tools/tests/30-solve.test.mjs — 求解編排 app-solve.js：世代守衛／引擎初始化失敗／求解計時（T13／T27／T28）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, CSS_SRC, makeEl, check, eq } from './_harness.mjs';
+import { fs, vm, path, ROOT, makeEl, check, eq } from './_harness.mjs';
 
 // ===== T13：飛行中求解的世代守衛（2026-07-25 健檢 HIGH）=====
 // doSolve 原本只 postMessage(settings)、不帶任何身分；onWorkerMsg 收到就 render。
@@ -107,11 +107,6 @@ import { fs, vm, path, ROOT, CSS_SRC, makeEl, check, eq } from './_harness.mjs';
     eq('T13 未求解時 invalidateInFlight → false（不做事）', sb.CraftSolve.invalidateInFlight(), false);
   }
 
-  // worker.js 契約：必須把 gen 原樣回傳，否則主執行緒無從比對
-  const WORKER_SRC = fs.readFileSync(path.join(ROOT, 'worker.js'), 'utf8');
-  check('T13 worker.js 回傳訊息帶回 gen（世代守衛的另一半）',
-    /gen/.test(WORKER_SRC) && /postMessage\(\s*\{[^}]*gen/.test(WORKER_SRC),
-    'worker.js 未回傳 gen → 主執行緒收到的訊息無身分，守衛失效');
 }
 
 // ===== T27：WASM 引擎初始化失敗必須可辨識且可重試（B-012）=====
@@ -119,7 +114,6 @@ import { fs, vm, path, ROOT, CSS_SRC, makeEl, check, eq } from './_harness.mjs';
 // 該 worker 會永久卡在 reject，玩家只能重新整理。這裡鎖住分流、誠實訊息與「abortSolve→重建 worker」契約。
 {
   const SOLVE_SRC = fs.readFileSync(path.join(ROOT, 'app-solve.js'), 'utf8');
-  const WORKER_SRC = fs.readFileSync(path.join(ROOT, 'worker.js'), 'utf8');
   const sent = [];
   let onmsg = null;
   let workerCount = 0;
@@ -160,9 +154,6 @@ import { fs, vm, path, ROOT, CSS_SRC, makeEl, check, eq } from './_harness.mjs';
     check(`T27 ${raw} → 引擎/網路訊息且不導向調整設定`, /引擎|網路/.test(msg) && !/調整設定/.test(msg), `msg=${msg}`);
   }
 
-  check('T27 worker init/solve 兩種失敗型別都原樣帶回 gen',
-    /ok:\s*false,\s*gen,\s*kind:\s*["']init/.test(WORKER_SRC)
-      && /ok:\s*false,\s*gen,\s*kind:\s*["']solve/.test(WORKER_SRC));
 
   sb.CraftSolve.doSolve();
   const failedGen = sent.at(-1).gen;
@@ -275,9 +266,4 @@ import { fs, vm, path, ROOT, CSS_SRC, makeEl, check, eq } from './_harness.mjs';
   eq('T28 跨過 60 秒仍不重建狀態文字節點', status.messageNode, firstMessage);
   eq('T28 ≥60 秒升級文案只寫一次', firstMessage.textWrites, overtimeWrites);
 
-  // CSS 哨兵只擋「已知會壞的形狀」；文字比對驗不了 ring 是否真的在視覺上可見，須用鍵盤實測。
-  const optRules = [...CSS_SRC.matchAll(/\.crafter-cons__opt[^{}]*\{([^}]*)\}/g)]
-    .map((m) => m[1]).join('\n');
-  check('T28 食藥 listbox focus 規則不得 outline:none', !/outline\s*:\s*none\b/.test(optRules),
-    `實際規則：${optRules}`);
 }

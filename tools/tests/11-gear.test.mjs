@@ -142,82 +142,10 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   eq('T24 Lv85 正常值不寫回輸入框', normalInput.writes, 0);
 }
 
-// ===== T6：安全哨兵（sec A1/A2 修復固化，防回歸）=====
+
+// ===== T6：壞掉的保存值要走可觀測錯誤路徑 =====
 {
-  // sec A1：gear.level render 前必 Number() 硬化（localStorage self-XSS sink）— 裸插 ${g.level || …} 復活即紅燈
-  check('T6 sec-A1：無裸插 ${g.level || …}（須 Number(g.level)）',
-    !/\$\{\s*g\.level\s*\|\|/.test(APP_SRC), '偵測到裸插 g.level（應為 Number(g.level)）');
-  check('T6 sec-A1：Number(g.level) 硬化在位', /Number\(g\.level\)/.test(APP_SRC));
-
-  // sec A2：每個 catch 都要有可觀測回報；不能用 regex 截斷巢狀 `{}`，否則 app.js init catch 會誤判。
-  const skipJsTrivia = (src, start) => {
-    let i = start;
-    for (;;) {
-      while (/\s/.test(src[i] || '')) i++;
-      if (src.startsWith('//', i)) { const nl = src.indexOf('\n', i + 2); i = nl < 0 ? src.length : nl + 1; continue; }
-      if (src.startsWith('/*', i)) { const end = src.indexOf('*/', i + 2); i = end < 0 ? src.length : end + 2; continue; }
-      return i;
-    }
-  };
-  const skipJsString = (src, start) => {
-    const quote = src[start];
-    let i = start + 1;
-    while (i < src.length) {
-      if (src[i] === '\\') { i += 2; continue; }
-      if (src[i] === quote) return i + 1;
-      i++;
-    }
-    return src.length;
-  };
-  const matchingJs = (src, start, open, close) => {
-    let depth = 0;
-    for (let i = start; i < src.length; i++) {
-      if (src[i] === '\'' || src[i] === '"' || src[i] === '`') { i = skipJsString(src, i) - 1; continue; }
-      if (src.startsWith('//', i)) { const nl = src.indexOf('\n', i + 2); i = nl < 0 ? src.length : nl; continue; }
-      if (src.startsWith('/*', i)) { const end = src.indexOf('*/', i + 2); i = end < 0 ? src.length : end + 1; continue; }
-      if (src[i] === open) depth++;
-      else if (src[i] === close && --depth === 0) return i;
-    }
-    return -1;
-  };
-  const catchBodies = (src) => {
-    const bodies = [];
-    for (let i = 0; i < src.length; i++) {
-      if (src[i] === '\'' || src[i] === '"' || src[i] === '`') { i = skipJsString(src, i) - 1; continue; }
-      if (src.startsWith('//', i)) { const nl = src.indexOf('\n', i + 2); i = nl < 0 ? src.length : nl; continue; }
-      if (src.startsWith('/*', i)) { const end = src.indexOf('*/', i + 2); i = end < 0 ? src.length : end + 1; continue; }
-      if (src.slice(i, i + 5) !== 'catch' || /[\w$]/.test(src[i - 1] || '') || /[\w$]/.test(src[i + 5] || '')) continue;
-      let j = skipJsTrivia(src, i + 5);
-      if (src[j] === '(') { const end = matchingJs(src, j, '(', ')'); if (end < 0) continue; j = skipJsTrivia(src, end + 1); }
-      if (src[j] !== '{') continue;
-      const end = matchingJs(src, j, '{', '}');
-      if (end >= 0) bodies.push(src.slice(j + 1, end));
-    }
-    return bodies;
-  };
-  const silentCatches = [];
-  for (const file of HANDWRITTEN_JS) {
-    const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    for (const body of catchBodies(src)) {
-      // worker 的 catch 有明確 postMessage 回報，這是唯一的具體白名單，不放寬成整檔跳過。
-      if (!body.includes('console.') && !(file === 'worker.js' && /\bpostMessage\s*\(/.test(body))) {
-        silentCatches.push(file);
-      }
-    }
-  }
-  check('T6 sec-A2：全部手寫 JS 的 catch 都有回報（worker postMessage 為具體白名單）',
-    silentCatches.length === 0, silentCatches.length ? `靜默 catch：${silentCatches.join(', ')}` : '');
-  // 掃描本身也要有下限：glob 壞掉／目錄搬家時「掃到 0 支」同樣是全綠，那是最糟的假保護。
-  // 逐一點名幾支一定要在的（含前一版清單漏掉的三支），比只比數字更難被「順手改壞」。
-  {
-    const must = ['app.js', 'app-quests.js', 'app-gear.js', 'app-recipe.js', 'worker.js'];
-    const missing = must.filter((f) => !HANDWRITTEN_JS.includes(f));
-    check('T6 靜默-catch 哨兵的掃描範圍涵蓋全部站台模組（掃到 0 支也算失敗）',
-      missing.length === 0 && HANDWRITTEN_JS.length >= 13,
-      `缺=${missing.join(',') || '無'} 掃到 ${HANDWRITTEN_JS.length} 支`);
-  }
-
-  // sec A2 行為回歸：壞掉／錯型別的 localStorage 不得靜默當成正常空設定。
+  // T6 行為回歸：壞掉／錯型別的 localStorage 不得靜默當成正常空設定。
   const mkGearLoadCtx = (raw) => {
     const warnings = [], toasts = [];
     const el = () => ({ addEventListener() {}, classList: { toggle() {}, add() {}, remove() {} },

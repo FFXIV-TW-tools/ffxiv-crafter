@@ -1,6 +1,17 @@
 # CHANGELOG — ffxiv-crafter
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
+## 2026-09-13 — 移除無條件成功計數
+
+- `51-nextcraft.test.mjs` 刪除 `check(true)` 摘要；鏈深度、選取與按鈕契約的實際斷言保留。
+- PowerShell：`node tools/test-formulas.mjs` 實跑 **556 passed／0 failed**（557→556）；未改其他測試入口。
+
+## 2026-09-12 — 稽核低價值測試精準摘除
+
+依逐段稽核判準刪除 TAUTOLOGICAL／IMPL-COUPLED 原始碼文字掃描、PADDING 與 SELF-REFERENTIAL 測試；完整移除 `tests/first-run-hint-key.test.mjs`、`tests/hooks-installed.test.mjs`、`tests/select-width-reserve.test.mjs`，並從公式／gear／browse／solve／flow／stages／UI／repo sentinel 主題移除對應 source-only 段落。保留公式 golden、實際 VM 行為、資料不變量，以及 `_headers`、部署輸出與授權清單等跨部署面哨兵。
+
+- `test-formulas` 基線 **684 → 557 passed**（0 failed）。
+- `tests/run-all` 基線 **5 → 2 測試檔**（2/2 通過）；同步降低 runner 檔數下限。
 
 ## 2026-09-08 — 凍結配方資料的建置自 best-craft 接手（monorepo B-083 ⑧ / B-073 前置）
 

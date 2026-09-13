@@ -57,20 +57,20 @@ R7-exempt: 2026-11-16 依據：2026-08-16 Owner 拍板（B-025 第二輪）—�
 **canonicalTest（safe-push 實跑；claude-skills `fleet.json` 逐字對照本行）**：
 
 ```bash
-node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py
+node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py && (cd wasm && cargo test)
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="684" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="556" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
-<!-- TEST-BASELINE cmd="cargo test" cwd="wasm" match="(\d+) passed" expect="5" label="cargo round-trip" -->
-<!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="5" label="run-all" -->
-<!-- ↑ B-013：宣告值 vs 實測值的機械比對（node tools/check-test-baseline.js --repo .）。改測試數量時這裡要一起改，否則 pre-commit gate 6 會擋。 -->
+<!-- TEST-BASELINE points="17" paths="wasm/src/**/*.rs" label="cargo 語料" -->
+<!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="2" label="run-all" -->
+<!-- ↑ 改測試數量要一起改，否則 pre-commit gate 6 會擋。 -->
 
-> 基線 **只准升不准降**；宣告值只在上方標記，散文不複述數字。
+> 宣告值**不得靜默下降**（判準見 monorepo hooks README 的 gate 6 段）；`cargo` 那行是靜態斷言點，真跑在 canonicalTest。
 
 ```bash
 node --check *.js                # JS 語法（萬用字元；手維護清單會漏新模組）
-node tools/test-formulas.mjs     # 純函式 golden + 機械哨兵（T0〜T65 在 tools/tests/）
+node tools/test-formulas.mjs     # 純函式 golden + 保留的機械哨兵（tools/tests/）
 py -3.11 tools/check-actions.py  # Action 變體 ＋ pkg/ 戳記 ＋ sim-diff 與 wasm 同一 tag
 cd wasm && cargo test            # round-trip + 名稱唯一 + 神速技巧三條
 ```

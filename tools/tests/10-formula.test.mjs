@@ -1,11 +1,7 @@
-// tools/tests/10-formula.test.mjs — 公式面 golden：computeSettings／effectiveStats／hqPercent／recipeMaxes（T0〜T5、T22）
+// tools/tests/10-formula.test.mjs — 公式面 golden：computeSettings／effectiveStats／hqPercent／recipeMaxes（T1〜T5、T22）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
 import { sandbox, T, check, eq, eqObj, rlv640, recipe100, gear, gearSpec, setInputs } from './_harness.mjs';
 
-// ===== T0：載入 smoke =====
-check('app.js 純函式導出成功（computeSettings 為函式）', typeof T.computeSettings === 'function');
-check('effectiveStats/hqPercent/recipeMaxes 均為函式',
-  typeof T.effectiveStats === 'function' && typeof T.hqPercent === 'function' && typeof T.recipeMaxes === 'function');
 
 // ===== T1：computeSettings baseline（spec §4 golden：base_progress 250、base_quality 266）=====
 {

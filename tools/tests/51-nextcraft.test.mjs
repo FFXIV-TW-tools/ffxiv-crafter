@@ -182,7 +182,6 @@ import { fs, vm, path, ROOT, T, check, eq, eqObj } from './_harness.mjs';
   R2.continueWith(3);                       // 從 B「繼續做」到 C（不是來源）
   eq('T57 繼續做 → 切到目標配方', sel2.recipe.id, 3);
   eq('T57 繼續做不推堆疊（往上做不是「做完回來」）', R2.chainDepth(), 1);
-  check('T57 底下那條未完成的鏈保留（回 A 的路還在）', true);
   R2.selectRecipe(1); R2.craftIngredient(2);   // 重來：站在 B，堆疊 [A]
   eq('T57 重來後堆疊深度', R2.chainDepth(), 1);
   R2.continueWith(1);                       // 選到的正好是來源 A

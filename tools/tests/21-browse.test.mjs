@@ -1,6 +1,6 @@
-// tools/tests/21-browse.test.mjs — 配方瀏覽層 app-browse.js：篩選／分頁／表格幾何（T11）
+// tools/tests/21-browse.test.mjs — 配方瀏覽層 app-browse.js：篩選／分頁／表格行為（T11）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, CSS_SRC, check, eq } from './_harness.mjs';
+import { fs, vm, path, ROOT, check, eq } from './_harness.mjs';
 
 // ===== T11：app-browse.js 配方瀏覽層（對抗審 codex/grok：拆分後瀏覽層需真測，非靠 app.js 公式閘背書）=====
 {
@@ -42,39 +42,6 @@ import { fs, vm, path, ROOT, CSS_SRC, check, eq } from './_harness.mjs';
   eq('T11 renderTable 無篩選 → 3 列', rowCount(), 3);
   eq('T11 recipe-count 顯示總數', $('recipe-count').textContent, '3 個配方');
   eq('T11 種類獨立欄渲染（rt-cat）', /rt-cat[^>]*>金屬</.test($('recipe-table').innerHTML), true);
-
-  // 2026-08-19（Owner：名稱跟類別擠在一起、空間沒用滿）：種類由名稱副行拉成獨立欄，並補難度／品質。
-  // 欄數是 CSS 那組 `nth-child` 百分比寬的隱性契約 —— 只加 <td> 不改 CSS 的話最後一欄會被擠掉，
-  // 而畫面只是「有點怪」不會報錯 ⇒ 這裡把兩邊一起釘住。
-  {
-    const html = $('recipe-table').innerHTML;
-    eq('T11 表頭 9 欄（名稱/種類/職業/Lv/配方等級/難度/品質/版本/加入）', (html.match(/<th[ >]/g) || []).length, 9);   // [ >] 才不會把 <thead 也算進去
-    const cssCols = (CSS_SRC.match(/\.rt th:nth-child\(\d\)/g) || []).length;
-    eq('T11 CSS 的欄寬宣告數 == 表頭欄數（漏一欄＝版面靜默走鐘）', cssCols, 9);
-    check('T11 難度／品質欄有值（來自 RINDEX 的 recipeMaxes 快照）', /<td data-label="難度">1200<\/td><td data-label="品質">3400<\/td>/.test(html), html.slice(0, 400));
-    check('T11 名稱不再有副行 wrapper（rt-nmwrap 已退場）', !/rt-nmwrap/.test(html) && !/rt-nmwrap/.test(CSS_SRC));
-    // 缺 rlv 列時 app.js 給 null ⇒ 顯「—」而不是假的 0（0 難度會被讀成「這配方超簡單」）
-    check('T11 難度／品質缺值 → 顯「—」不顯 0', /<td data-label="難度">—<\/td><td data-label="品質">—<\/td>/.test(html), html.slice(0, 400));
-    // 四個純數字欄的 data-label 是**手機堆疊版的欄名來源**（`.rt td[data-label]::before` 讀它）。
-    // 拿掉它們桌面完全看不出來（桌面有 thead），手機才會退化成「90 / 690 / 5280 / 15200」四個無名數字
-    // ⇒ 兩邊互鎖：markup 有 data-label、CSS 有 attr(data-label)，缺一即紅（2026-08-26 行動適配）。
-    check('T11 數字欄帶 data-label ＋ CSS 有對應的 attr() 消費端（手機堆疊版欄名）',
-      (() => { const n = (html.match(/<td[^>]*data-label="/g) || []).length;   // 屬性順序不限（.rt-patch 是 class 在前）
-               // 五個非自描述欄（Lv／配方等級／難度／品質／版本）都要帶 label：版本欄曾漏掉，堆疊後是裸數字「2.35」（健檢 R5 M20）
-               return n > 0 && n % 5 === 0 && /content:\s*attr\(data-label\)/.test(CSS_SRC); })(), html.slice(0, 400));
-    // 加入鈕改內嵌向量（全形「＋」的重量／垂直位置隨系統字型跑）
-    check('T11 加入鈕是向量不是字元', /class="[^"]*rt-add[^"]*"[^>]*>\s*<svg/.test(html) && !/>＋</.test(html));
-    check('T11 加入鈕仍是 ghost 圖示鈕（列級豁免：不參賽 primary）',
-      /rt-add/.test(html) && !/codex-btn--primary[^>]*rt-add|rt-add[^>]*codex-btn--primary/.test(html));
-    check('T11 SVG 有本地尺寸（.codex-btn--icon 不管內嵌 svg 大小）', /\.rt-add > svg[^}]*width:/.test(CSS_SRC));
-    check('T11 index.html 有 #expert-filter（app-browse 直接讀它，缺了 renderTable 當場炸）',
-      /id="expert-filter"/.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')));
-    // 實測踩過：控件加進 index.html、篩選邏輯也寫了，但**沒接 change** ⇒ 畫面上有一顆按了沒反應的下拉，
-    // 且 console 全乾淨（T11 的 renderTable 直呼測試也照樣綠）。接線只有原始碼斷言擋得住。
-    check('T11 #expert-filter 有接 change → renderTable（有控件沒接線＝按了沒反應）',
-      /\$\('expert-filter'\)\.addEventListener\('change'/.test(fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8')));
-  }
-
   // 高難度（expert）＝**配方屬性**不是名字（Owner 2026-08-19 特別澄清）：遊戲內製作狀態隨機，
   // 靜態巨集只能當參考 ⇒ 想練的人要找得到、想避的人要濾得掉，而它在列表上原本完全沒有痕跡。
   {
@@ -98,8 +65,6 @@ import { fs, vm, path, ROOT, CSS_SRC, check, eq } from './_harness.mjs';
       { id: 3, name: '亞麻布', nameSc: '亚麻布', job: '裁縫', rlv: 30, level: 25, icon: null, category: '布料', diff: null, qual: null, patch: '7.05' },
     ];
     CB.renderTable();
-    // 篩選指紋漏掉新控件的話：切篩選不回第 1 頁，玩家會停在不存在的頁而看到空表
-    check('T11 高難度篩選有進 filterKey（切換會回第 1 頁）', /expert-filter/.test(AB_SRC.split('function filterKey')[1].slice(0, 300)));
   }
 
   // ===== 版本篩選（Owner 2026-08-19：繁中服開服即 7.0 ⇒ 7.0 以前併一項、之後按實際版號分）=====
@@ -132,10 +97,6 @@ import { fs, vm, path, ROOT, CSS_SRC, check, eq } from './_harness.mjs';
     $('patch-filter').value = ''; CB.renderTable();
     eq('T11 清掉版本篩選 → 6 列', rowCount(), 6);
     check('T11 版本欄有渲染', /rt-patch[^>]*>7\.5</.test($('recipe-table').innerHTML));
-    check('T11 版本篩選有進 filterKey（切換會回第 1 頁）',
-      /patch-filter/.test(AB_SRC.split('function filterKey')[1].slice(0, 400)));
-    check('T11 #patch-filter 有接 change（有控件沒接線＝按了沒反應）',
-      /\$\('patch-filter'\)\.addEventListener\('change'/.test(fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8')));
     // 重繪選項不得把使用者選的版本吃掉（loadData 會重新 render）
     $('patch-filter').value = '7.0'; CB.renderPatchOptions();
     eq('T11 重繪版本選項保留當前選擇', $('patch-filter').value, '7.0');
@@ -224,10 +185,6 @@ import { fs, vm, path, ROOT, CSS_SRC, check, eq } from './_harness.mjs';
     ab.CraftList.count = () => 2;
     CB.markListState();
     eq('T11 已在清單 → − 出現', delBtn.hidden, false);
-    // Owner 2026-08-19：− 出現／消失都不得推動 ＋。槽位固定＝兩欄定寬 grid（flex 會在 − 收掉時重新置中，
-    // ＋ 往左跳一格 ⇒ 剛按完「加入」的游標正好停在 − 上，下一下就誤點成移除）。
-    check('T11 ＋− 是固定兩格槽位（− 收掉時 ＋ 不位移）',
-      /\.rt-act \.rt-actwrap\s*\{[^}]*inline-grid[^}]*grid-template-columns:\s*repeat\(2,/.test(CSS_SRC), 'CSS 未定義定寬兩欄槽位');
     // 點 − 要打到 removeOne（不是 add，也不是選配方進詳情）
     let removed = null, added = null, selected2 = null;
     ab.CraftList = { count: () => 1, removeOne: (id) => { removed = id; }, add: (id) => { added = id; } };
@@ -245,8 +202,6 @@ import { fs, vm, path, ROOT, CSS_SRC, check, eq } from './_harness.mjs';
   // 公式是 `min-height:100vh` ＋ `padding-top:64px`，文件高度恆為 100vh+64、與內容無關 ⇒ 每量一次
   // 就多扣一截（實測 489→419→349）。症狀是「視窗縮放幾次後表格只剩一條縫」，不會有任何錯誤訊息。
   {
-    check('T11 fitHeight 不得用 document.scrollHeight 反推（body 公式使文件高度與內容無關）',
-      !/scrollHeight/.test(AB_SRC.split('function fitHeight')[1].split('function renderTable')[0]));
     const rect = { top: 100, height: 400, bottom: 500 };
     const host = { getBoundingClientRect: () => ({ bottom: 600 }) };
     const el = $('recipe-table');

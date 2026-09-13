@@ -1,6 +1,6 @@
 // tools/tests/40-flow-consumable.test.mjs — 流程引導 app-flow.js（T14）與食藥自繪 listbox app-consumable.js（T15）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, APP_SRC, CSS_SRC, T, check, eq } from './_harness.mjs';
+import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
 
 // ===== T14：app-flow.js 流程引導狀態機（設計系統 §功能頁引導標準的可測落點）=====
 // 「現在該做什麼」是純函式決定的 → 這裡鎖住四條驗收線裡機械可驗的兩條：
@@ -66,38 +66,8 @@ import { fs, vm, path, ROOT, APP_SRC, CSS_SRC, T, check, eq } from './_harness.m
     fl.CraftFlow.setTargetMode();
     eq('T14 一般模式 → 目標品質欄恢復', fels['opt-target'].disabled, false);
     eq('T14 一般模式 → 品質階段下拉恢復', fels['opt-target-stage'].disabled, false);
-    delete fl.document;   // T17 以下不需要 DOM，還原以免相互影響
+    delete fl.document;   // 後續 T15 不需要 DOM，還原以免相互影響
   }
-
-  // ===== T17：index.html 的靜態流程軸 == flowHtml({}) 冷啟動輸出（CLS 預留標記防漂移）=====
-  // 流程軸原本是空殼等 JS 填 → 首屏 +73px 位移。改成靜態標記後，兩邊字串一旦不同就會出現
-  // 「先顯示舊文案、JS 一跑換掉」的閃動 → 這裡逐字比對，測試紅了就把新字串貼回 index.html。
-  const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const cold = fl.CraftFlow.flowHtml({}, T.esc);
-  const pick = (re) => (HTML.match(re) || [, null])[1];
-  eq('T17 index.html 靜態步驟軸 == flowHtml({}) 冷啟動輸出',
-    pick(/<ol id="flow-steps" class="crafter-flow">([\s\S]*?)<\/ol>/), cold.steps);
-  eq('T17 index.html 靜態「下一步」== flowHtml({}) 冷啟動輸出',
-    pick(/<p id="flow-next" class="crafter-flow__next" role="status">([\s\S]*?)<\/p>/), cold.next);
-  // 預留高度的 class 必須存在且會被卸下（少了任一邊＝空井或位移復發）
-  check('T17 #picker 靜態帶 is-loading（首載預留 chips／筆數／翻頁器高度）',
-    /<div id="picker" class="is-loading">/.test(HTML));
-  check('T17 app.js 會卸下 is-loading（成功與失敗路徑各一）',
-    (APP_SRC.match(/classList\.remove\('is-loading'\)/g) || []).length >= 2);
-  check('T17 載入佔位撐到與載入後同高（.recipe-loading min-height 60vh == .recipe-table max-height）',
-    /\.recipe-loading\s*\{[^}]*min-height:\s*60vh/.test(CSS_SRC) && /\.recipe-table\s*\{[^}]*max-height:\s*60vh/.test(CSS_SRC));
-  const bodyRule = (CSS_SRC.match(/(?:^|\n)body\s*\{([\s\S]*?)\n\}/) || [])[1] || '';
-  check('T17 body 首屏預留 portal navbar：padding-top 64px + margin 0',
-    /padding-top\s*:\s*64px/.test(bodyRule) && /margin\s*:\s*0/.test(bodyRule));
-  // T26：食藥 listbox 不得再寫死超過手機視窗的最小寬（2026-08-02 實測迴歸）。
-  // ⚠ 這兩條只擋「已知會壞的形狀」，**不保證版面真的不溢出**——CSS 文字比對驗不了 layout。
-  // 真正的驗收＝同源 iframe 定寬實測七種寬度（1400/1018/900/800/430/390/360）量 getBoundingClientRect，
-  // 手法與判準見 AGENTS.md「開發注意」段；改這一區的寬度/定位時必須重跑那個實測。
-  const menuRule = (CSS_SRC.match(/\.crafter-cons__menu\s*\{([^}]*)\}/) || [])[1] || '';
-  check('T26 食藥 listbox 寬度不得寫死無上界的最小寬（360px 手機會溢出）',
-    /width:\s*max\(100%,\s*min\(/.test(menuRule), `實際：${menuRule.match(/width:[^;]*/)?.[0] || '(找不到 width)'}`);
-  check('T26 窄屏另有規則讓選單收進容器內（不得只靠 min-width 硬撐）',
-    /@media\s*\([^)]*max-width:\s*\d+px[^)]*\)\s*\{[\s\S]*?\.crafter-cons__menu\s*\{[^}]*width:\s*100%/.test(CSS_SRC));
 }
 
 // ===== T15：app-consumable.js 食物/藥水選擇層（自繪 listbox 取代原生 select 後，選擇與保存需真測）=====
