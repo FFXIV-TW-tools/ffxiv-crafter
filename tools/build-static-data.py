@@ -25,7 +25,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 # 與 build-data.py 同理：本檔是被直接執行的腳本、檔名帶連字號不能被 import ⇒ tools/ 不在 sys.path 上。
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from build_lib.common import ITEM_LOOKUP as DICT, STATIC_SRC as OUT  # noqa: E402（路徑要先接上）
+from build_lib.common import (  # noqa: E402（路徑要先接上）
+    ITEM_LOOKUP as DICT,
+    STATIC_SRC as OUT,
+    validate_recipe_bundle,
+)
 
 for _s in (sys.stdout, sys.stderr):
     try: _s.reconfigure(encoding='utf-8', errors='replace')
@@ -55,67 +59,153 @@ def get(path, tries=3):
         time.sleep(0.5 * (i + 1))
     return None
 
+def _validate_recipe_cache(data):
+    if not isinstance(data, list) or not data:
+        raise ValueError('recipes cache 必須是非空陣列')
+    seen = set()
+    for index, recipe in enumerate(data):
+        if not isinstance(recipe, dict):
+            raise ValueError('recipes cache 第 %d 筆不是物件' % index)
+        rid = recipe.get('id')
+        if isinstance(rid, bool) or not isinstance(rid, int) or rid <= 0:
+            raise ValueError('recipes cache 第 %d 筆 id 無效：%r' % (index, rid))
+        if recipe.get('rlv') is None:
+            raise ValueError('recipes cache recipe %s 缺 rlv' % rid)
+        try:
+            duplicate = rid in seen
+            hash(recipe['rlv'])
+        except (KeyError, TypeError) as e:
+            raise ValueError('recipes cache recipe %s 的 rlv 無效' % rid) from e
+        if duplicate:
+            raise ValueError('recipes cache recipe id 重複：%s' % rid)
+        seen.add(rid)
+
+
+def _validate_recipe_levels_cache(data, required_rlvs=None):
+    if not isinstance(data, dict) or not data:
+        raise ValueError('recipe_levels cache 必須是非空物件')
+    for key, value in data.items():
+        if not isinstance(value, dict) or not value:
+            raise ValueError('recipe_levels cache %s 不是非空物件' % key)
+    if required_rlvs:
+        missing = sorted(str(rlv) for rlv in required_rlvs if str(rlv) not in data)
+        if missing:
+            raise ValueError('recipe_levels cache 缺 rlv：%s' % ', '.join(missing))
+
+
+def _validate_ingredients_cache(data, required_recipe_ids=None):
+    if not isinstance(data, dict) or not data:
+        raise ValueError('ingredients cache 必須是非空物件')
+    for recipe_id, rows in data.items():
+        if not isinstance(rows, list) or not rows:
+            raise ValueError('ingredients cache recipe %s 的食材不是非空陣列' % recipe_id)
+        for index, pair in enumerate(rows):
+            if (not isinstance(pair, list) or len(pair) != 2
+                    or any(isinstance(value, bool) or not isinstance(value, int) or value <= 0
+                           for value in pair)):
+                raise ValueError('ingredients cache recipe %s 第 %d 筆形狀無效' % (recipe_id, index))
+    if required_recipe_ids:
+        missing = sorted(str(rid) for rid in required_recipe_ids if str(rid) not in data)
+        if missing:
+            raise ValueError('ingredients cache 缺 recipe：%s' % ', '.join(missing))
+
+def _source_list(name, data, allow_empty=False):
+    if not isinstance(data, list) or (not allow_empty and not data):
+        state = '非空陣列' if not allow_empty else '陣列'
+        raise ValueError('%s source 必須是%s' % (name, state))
+    return data
+
+
 def crawl_recipes():
     recipes, page = [], 0
     while True:
         d = get('recipe_table?page_id=%d&search_name=%%25%%25' % page)
-        data = (d or {}).get('data') or []
+        if not isinstance(d, dict):
+            raise ValueError('recipe page %d 回應為空或格式無效' % (page + 1))
+        data = d.get('data')
+        if not isinstance(data, list) or not data:
+            raise ValueError('recipe page %d 回應沒有資料' % (page + 1))
+        total = d.get('p') or 1
+        if not isinstance(total, int) or total < 1 or page >= total:
+            raise ValueError('recipe page %d 的頁數欄位無效：%r' % (page + 1, total))
         recipes.extend(data)
-        total = (d or {}).get('p') or 1
         print('  recipe page %d/%d (+%d)' % (page + 1, total, len(data)))
         page += 1
-        if page >= total or not data: break
+        if page >= total:
+            break
         time.sleep(DELAY)
     return recipes
+
 
 def crawl_rlv(rlvs):
     out = {}
     for i, rlv in enumerate(sorted(rlvs)):
         d = get('recipe_level_table?rlv=%d' % rlv)
-        if d:
-            d.setdefault('id', rlv); d.setdefault('stars', 0)
-            out[str(rlv)] = d
+        if not isinstance(d, dict) or not d:
+            raise ValueError('recipe level %s 回應為空或格式無效' % rlv)
+        d.setdefault('id', rlv)
+        d.setdefault('stars', 0)
+        out[str(rlv)] = d
         if i % 50 == 0: print('  rlv %d/%d' % (i, len(rlvs)))
         time.sleep(DELAY)
     return out
 
-def cached_json(fn, producer):
-    """已產出就重用（避免重跑再爬 tnze）；要強制重抓刪 tools/static-data/<fn>。"""
+
+def cached_json(fn, producer, validator):
+    """讀取並驗證既有快取；新資料只回傳，待整包驗證後由 main 發布。"""
     path = os.path.join(OUT, fn)
     if os.path.exists(path):
         print('  (reuse cache %s)' % fn)
-        with open(path, encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(path, encoding='utf-8') as f:
+                data = json.load(f)
+        except (OSError, ValueError) as e:
+            raise ValueError('無效 cache %s：%s' % (fn, e)) from e
+        validator(data)
+        return data
     data = producer()
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
+    validator(data)
     return data
+
 
 def main():
     os.makedirs(OUT, exist_ok=True)
     if not os.path.exists(DICT):
         print('✗ 找不到 item_lookup.sqlite：' + DICT, file=sys.stderr); sys.exit(1)
     conn = sqlite3.connect(DICT)
+    try:
+        _build_snapshot(conn)
+    finally:
+        conn.close()
+
+
+def _build_snapshot(conn):
 
     print('① craft_type / medicine / meals')
-    craft_type = get('craft_type') or []
-    medicine = get('medicine_table') or []
-    meals = get('meals_table') or []
+    craft_type = _source_list('craft_type', get('craft_type'))
+    medicine = _source_list('medicine_table', get('medicine_table'), allow_empty=True)
+    meals = _source_list('meals_table', get('meals_table'), allow_empty=True)
 
     print('② recipes（tnze recipe_table 全頁）')
-    recipes = cached_json('recipes.json', crawl_recipes)
+    recipes = cached_json('recipes.json', crawl_recipes, _validate_recipe_cache)
     print('   → %d 配方' % len(recipes))
 
     print('③ recipe_levels（distinct rlv，含 solver 5 核心欄位）')
-    rlvs = {r['rlv'] for r in recipes if r.get('rlv') is not None}
-    recipe_levels = cached_json('recipe_levels.json', lambda: crawl_rlv(rlvs))
+    rlvs = {r['rlv'] for r in recipes}
+    recipe_levels = cached_json(
+        'recipe_levels.json',
+        lambda: crawl_rlv(rlvs),
+        lambda data: _validate_recipe_levels_cache(data, rlvs),
+    )
     print('   → %d rlv' % len(recipe_levels))
 
     # id 對齊 spot-check：monorepo recipes.ingredients(by recipe_id) vs tnze recipes_ingredientions
     print('④ id 對齊 spot-check（monorepo ↔ tnze ingredients）')
     sample = [r['id'] for r in recipes[:3] if r.get('id')]
     for rid in sample:
-        tn = get('recipes_ingredientions?recipe_id=%d' % rid) or []
+        tn = get('recipes_ingredientions?recipe_id=%d' % rid)
+        if tn is None:
+            raise ValueError('recipe %s 的 tnze ingredients 回應為空' % rid)
         tn_norm = sorted([[int(a), int(b)] for a, b in tn])
         row = conn.execute('SELECT ingredients FROM recipes WHERE recipe_id=?', (rid,)).fetchone()
         mono = sorted(json.loads(row[0])) if row and row[0] else []
@@ -132,16 +222,20 @@ def main():
         for rid, ing in conn.execute('SELECT recipe_id, ingredients FROM recipes').fetchall():
             if ing:
                 try:
-                    out[str(rid)] = [[int(a), int(b)] for a, b in json.loads(ing)]
+                    parsed = json.loads(ing)
+                    if parsed:
+                        out[str(rid)] = [[int(a), int(b)] for a, b in parsed]
                 except (ValueError, TypeError) as e:  # 壞掉的 ingredients JSON：跳過該筆但要看得見
                     print('   ⚠ recipe %s 的 ingredients 解析失敗（略過）：%s' % (rid, e), file=sys.stderr)
         # 只留 tnze 配方有用到的（省體積）
-        needed_rids = {str(r['id']) for r in recipes if r.get('id') is not None}
+        needed_rids = {str(r['id']) for r in recipes}
         out = {k: v for k, v in out.items() if k in needed_rids}
         missing = sorted(int(k) for k in needed_rids - set(out))
         print('   monorepo 覆蓋 %d/%d；向 tnze 補爬 %d 筆' % (len(out), len(needed_rids), len(missing)))
         def fetch_one(rid):
-            tn = get('recipes_ingredientions?recipe_id=%d' % rid) or []
+            tn = get('recipes_ingredientions?recipe_id=%d' % rid)
+            if not isinstance(tn, list) or not tn:
+                raise ValueError('recipe %s 的 tnze ingredients 回應為空或格式無效' % rid)
             return rid, sorted([[int(a), int(b)] for a, b in tn])
         done = 0
         with ThreadPoolExecutor(max_workers=8) as ex:  # 並行先例＝monorepo dump_recipes.py Phase R2（同 host）
@@ -150,8 +244,13 @@ def main():
                 done += 1
                 if done % 200 == 0: print('   ingredients 補爬 %d/%d' % (done, len(missing)))
         return out
-    ingredients = cached_json('ingredients.json', build_ingredients)
+    ingredients = cached_json(
+        'ingredients.json',
+        build_ingredients,
+        lambda data: _validate_ingredients_cache(data, {r['id'] for r in recipes}),
+    )
     print('   → %d 配方有食材（covered tnze 配方）' % len(ingredients))
+    validate_recipe_bundle(recipes, recipe_levels, ingredients)
 
     print('⑥ items（monorepo items by id：配方產物 + 所有食材）')
     item_ids = set()
@@ -160,16 +259,20 @@ def main():
     for v in ingredients.values():
         for iid, _ in v: item_ids.add(int(iid))
     items = {}
-    miss = 0
+    missing_item_ids = []
     for iid in item_ids:
         row = conn.execute('SELECT id,name_tc,level_item,can_be_hq,is_collectable FROM items WHERE id=?', (iid,)).fetchone()
-        if not row: miss += 1; continue
+        if not row:
+            missing_item_ids.append(iid)
+            continue
         items[str(iid)] = {
             'id': row[0], 'name': row[1] or ('#' + str(row[0])),
             'level': row[2] or 0,
             'can_be_hq': bool(row[3]), 'is_collectable': bool(row[4]), 'always_collectable': False,
         }
-    print('   → %d items（%d 個 id 在 monorepo 查無）' % (len(items), miss))
+    print('   → %d items（%d 個 id 在 monorepo 查無）' % (len(items), len(missing_item_ids)))
+    if missing_item_ids:
+        raise ValueError('item_lookup 缺 referenced item row：%s' % sorted(missing_item_ids))
 
     # ⑦ 繁中化：zh-CN 源顯示名 → item_lookup name_tc（idempotent，cache 重跑安全）
     print('⑦ 繁中化（權威 = item_lookup name_tc；job = JOB_TC 固定對照）')
@@ -204,7 +307,6 @@ def main():
                 m['name'] = tc
             else:
                 fm_miss.append(m.get('name'))
-    conn.close()
     print('   recipes 繁中名 %d/%d（查無 %d）；食藥查無 %d' % (
         len(recipes) - len(name_miss), len(recipes), len(name_miss), len(fm_miss)))
     for x in name_miss[:10]:

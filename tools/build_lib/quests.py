@@ -4,21 +4,42 @@
 含台服解包 CSV 讀取（read_dump / job_by_category）與「社群名 → item id」的解析
 （_to_sc / resolve_item_id）——後者只服務本檔的交付數量對帳。
 """
+import csv
 import json, os, sqlite3
 
-from .common import DUMP_TC, ITEM_LOOKUP, JOBS_JSON, OUT, ROOT, TOOLS, problem
+from .common import DUMP_TC, ITEM_LOOKUP, JOBS_JSON, OUT, PROBLEMS, ROOT, TOOLS, problem
 
 
 def read_dump(name):
-    """讀台服解包 CSV（datamining_tc）：第 2 行是欄名、第 4 行起是資料，中間可能夾空行。
-
-    回 (header, rows)。**繁中名一律以此為準**（禁 OpenCC 機轉，會產出国服譯名）。
-    """
-    import csv
+    """讀台服解包 CSV，並拒絕欄位截短或 Script suffix 不成對的檔案。"""
     path = os.path.join(DUMP_TC, name)
-    lines = [ln for ln in open(path, encoding="utf-8") if ln.strip()]
-    rr = list(csv.reader(lines))
-    return rr[1], rr[3:]
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = [ln for ln in f if ln.strip()]
+    except (OSError, UnicodeError) as exc:
+        raise ValueError("無法讀取 CSV：%s（%s）" % (path, exc)) from exc
+    try:
+        rr = list(csv.reader(lines, strict=True))
+    except csv.Error as exc:
+        raise ValueError("CSV 格式錯誤：%s（%s）" % (path, exc)) from exc
+    if len(rr) < 4:
+        raise ValueError("CSV 資料列不足：%s（至少需要 4 列）" % path)
+    width = len(rr[1])
+    if not width:
+        raise ValueError("CSV header 為空：%s" % path)
+    for n, row in enumerate(rr):
+        if len(row) != width:
+            raise ValueError("CSV 欄位數不一致：%s 第 %d 列為 %d，header 為 %d" %
+                             (path, n + 1, len(row), width))
+    header = rr[1]
+    ins = [h[len("Script{Instruction}"):]
+           for h in header if h.startswith("Script{Instruction}")]
+    arg = [h[len("Script{Arg}"):]
+           for h in header if h.startswith("Script{Arg}")]
+    if ins != arg:
+        raise ValueError("CSV Script Instruction/Arg suffix 不成對：%s（Instruction=%s，Arg=%s）" %
+                         (path, ins, arg))
+    return header, rr[3:]
 
 
 def job_by_category():
@@ -93,24 +114,60 @@ def write_job_quests():
     **id 與解包 RITEM 的 id 相同才採用那個數量**。查不到或 id 不合就留 `null`＝「數量未知」，
     前端據實標示。刻意不做字面模糊比對——猜錯了採購量整批偏掉而畫面完全正常＝零回饋訊號。
     """
-    hdr, rows = read_dump("tc_Quest.csv")
+    problem_count = len(PROBLEMS)
+    try:
+        hdr, rows = read_dump("tc_Quest.csv")
+    except ValueError as exc:
+        problem(str(exc))
+        return False
     idx = {h: i for i, h in enumerate(hdr)}
+    required = ("ClassJobCategory[0]", "ClassJobLevel[0]", "Name")
+    missing = [h for h in required if h not in idx]
+    if missing:
+        problem("tc_Quest.csv 缺欄位：" + ", ".join(missing))
+        return False
     ins = [i for h, i in idx.items() if h.startswith("Script{Instruction}")]
     arg = [i for h, i in idx.items() if h.startswith("Script{Arg}")]
-    cat2abbr = job_by_category()
+    if not ins or ins != sorted(ins) or arg != sorted(arg) or len(ins) != len(arg):
+        problem("tc_Quest.csv Script Instruction/Arg 欄位無法一一配對")
+        return False
+    try:
+        cat2abbr = job_by_category()
+    except ValueError as exc:
+        problem(str(exc))
+        return False
     # jobs.json 正好也是以**職業縮寫**當鍵（CRP/BSM/…）＝與解包 ClassJobCategory 的旗標欄同一套縮寫
     # ⇒ 兩份資料直接對得上，這裡不需要（也不該有）任何自建對照表。
     # 收哪些職業同樣不寫死：`role` 是 crafter/gatherer 的就收（現況 8+3＝11 職）。
-    jobs_meta = json.load(open(JOBS_JSON, encoding="utf-8"))["jobs"]
-    qty_src = {}
+    try:
+        with open(JOBS_JSON, encoding="utf-8") as f:
+            jobs_payload = json.load(f)
+        jobs_meta = jobs_payload["jobs"]
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+        problem("jobs.json 無法讀取：%s" % exc)
+        return False
     qty_path = os.path.join(TOOLS, "job-quest-qty.json")
-    if os.path.exists(qty_path):
-        qty_src = json.load(open(qty_path, encoding="utf-8")).get("jobs", {})
-    else:
-        problem("缺 tools/job-quest-qty.json（跑 fetch-quest-qty.py）→ 本輪不帶交付數量")
-    con = sqlite3.connect(ITEM_LOOKUP)
+    if not os.path.exists(qty_path):
+        problem("缺 tools/job-quest-qty.json（跑 fetch-quest-qty.py）→ 本輪不覆寫 job-quests.json")
+        return False
+    try:
+        with open(qty_path, encoding="utf-8") as f:
+            qty_payload = json.load(f)
+        qty_src = qty_payload["jobs"]
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+        problem("job-quest-qty.json 無法讀取：%s" % exc)
+        return False
+    if not isinstance(qty_src, dict):
+        problem("job-quest-qty.json 的 jobs 必須是物件")
+        return False
+    try:
+        con = sqlite3.connect(ITEM_LOOKUP)
+        with open(os.path.join(OUT, "recipes.json"), encoding="utf-8") as f:
+            recipes = json.load(f)
+    except (OSError, UnicodeError, ValueError, sqlite3.Error) as exc:
+        problem("職業任務上游資料無法讀取：%s" % exc)
+        return False
     out, miss_item, qty_hit, qty_miss, hq_hit = [], 0, 0, 0, 0
-    recipes = json.load(open(os.path.join(OUT, "recipes.json"), encoding="utf-8"))
     recipe_by_item = {}
     for r in recipes:                                  # 成品 item_id → 配方 id（同一物品多配方時取先出現者，與配方表一致）
         if r.get("item_id"):
@@ -158,6 +215,8 @@ def write_job_quests():
             quests.append({"id": int(x[0]), "lv": int(x[idx["ClassJobLevel[0]"]] or 0),
                            "name": x[idx["Name"]], "items": items})
     con.close()
+    if len(PROBLEMS) > problem_count:
+        return False
     seen_order = [a for a in jobs_meta if a in per_job]      # 職業順序沿用 jobs.json（＝遊戲職業列序）
     for abbr in seen_order:
         e = per_job[abbr]
@@ -176,6 +235,7 @@ def write_job_quests():
     print("  交付數量：%d 件對到試算表、%d 件數量未知（名稱不一致或試算表未涵蓋 → 前端標「數量未知」）"
           % (qty_hit, qty_miss))
     print("  要求 HQ：%d 件（來源同上；對不上的是 null＝未知，**不當成不用 HQ**）" % hq_hit)
+    return True
 
 
 def write_vendors(quests_path):
@@ -193,15 +253,29 @@ def write_vendors(quests_path):
     NPC 常有十幾個 → 取前 3 個，其餘用數量帶過。
     範圍限「職業任務交付物 ＋ 它們配方展開到底的所有素材」：全量有上萬筆，對這個分頁沒用。
     """
-    jobs = json.load(open(quests_path, encoding="utf-8"))
-    recipes = json.load(open(os.path.join(OUT, "recipes.json"), encoding="utf-8"))
-    ing = json.load(open(os.path.join(OUT, "ingredients.json"), encoding="utf-8"))
-    shop_npc = {}
+    try:
+        with open(quests_path, encoding="utf-8") as f:
+            jobs = json.load(f)
+        with open(os.path.join(OUT, "recipes.json"), encoding="utf-8") as f:
+            recipes = json.load(f)
+        with open(os.path.join(OUT, "ingredients.json"), encoding="utf-8") as f:
+            ing = json.load(f)
+    except (OSError, UnicodeError, ValueError) as exc:
+        problem("vendors 上游資料無法讀取：%s" % exc)
+        return False
     shop_path = os.path.join(ROOT, "data", "item_dict", "gil_shop_npc.json")
-    if os.path.exists(shop_path):
-        shop_npc = json.load(open(shop_path, encoding="utf-8"))
-    else:
-        problem("缺 gil_shop_npc.json → 只能標「有沒有得買」，沒有販售地點")
+    if not os.path.exists(shop_path):
+        problem("缺 gil_shop_npc.json → 本輪不覆寫 vendors.json")
+        return False
+    try:
+        with open(shop_path, encoding="utf-8") as f:
+            shop_npc = json.load(f)
+    except (OSError, UnicodeError, ValueError) as exc:
+        problem("gil_shop_npc.json 無法讀取：%s" % exc)
+        return False
+    if not isinstance(shop_npc, dict):
+        problem("gil_shop_npc.json 必須是物件")
+        return False
     by_item = {}
     for r in recipes:
         if r.get("item_id"):
@@ -248,3 +322,4 @@ def write_vendors(quests_path):
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     print("✓ vendors.json：職業任務相關物品 %d 件，其中 %d 件 NPC 有賣、%d 件查得到是跟誰買"
           % (len(need), len(out), withnpc))
+    return True

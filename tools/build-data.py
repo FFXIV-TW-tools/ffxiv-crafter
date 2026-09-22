@@ -36,24 +36,30 @@ def main():
         enrich_consumables()
         return
     if "--quests-only" in sys.argv:                    # 只重刷職業任務（不動 3.5MB 配方資料）
-        write_job_quests()
+        if not write_job_quests():
+            return
         write_vendors(os.path.join(OUT, "job-quests.json"))
         return
 
-    write_craft_actions()
+    if not write_craft_actions():
+        return
 
     # 只修技能對照時不必重刷 3.5MB 配方資料（那批來源是 tools/static-data 凍結快照，另有自己的重建節奏）
     if "--actions-only" in sys.argv:
         print("（--actions-only：略過 recipes / items 重建）")
         return
 
-    copy_static_data()
+    if not copy_static_data():
+        return
     enrich_consumables()
     recipes = write_items()
+    if recipes is None:
+        return
 
     write_quality_stages(recipes)
     write_level_sync(recipes)
-    write_job_quests()
+    if not write_job_quests():
+        return
     write_vendors(os.path.join(OUT, "job-quests.json"))
 
 

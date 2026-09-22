@@ -6,7 +6,7 @@ DRY 鐵則：禁自建技能對照表。
 """
 import json, os, sqlite3, sys
 
-from .common import GAME_REF, OUT
+from .common import GAME_REF, OUT, problem
 
 # raphael Action 變體 → FFXIV 英文名（對 game_ref name_en）
 VARIANT_EN = {
@@ -61,18 +61,22 @@ def write_craft_actions():
     con = sqlite3.connect(GAME_REF)
 
     actions = {}
-    miss = []
+    fallback_or_missing = []
+    missing_rows = []
     for variant, name_en in VARIANT_EN.items():
         r = lookup(con, name_en)
         if r:
             actions[variant] = {"nameTc": r[0], "icon": r[1], "id": r[2], "level": r[3] or 1}
         elif variant in FALLBACK_TC:
             actions[variant] = {"nameTc": FALLBACK_TC[variant], "icon": None, "id": None, "level": 100}
-            miss.append(variant + "(用 fallback)")
+            fallback_or_missing.append(variant + "(用 fallback)")
         else:
-            actions[variant] = {"nameTc": variant, "icon": None, "id": None, "level": 1}
-            miss.append(variant)
+            missing_rows.append(variant)
     con.close()
+    if missing_rows:
+        for variant in missing_rows:
+            problem("game_ref 查無普通 Action：%s" % variant)
+        return False
 
     # newline="\n"：本檔是 data/ 裡唯一有換行的輸出（indent=0）。text mode 在 Windows 會寫成 CRLF，
     # 而 core.autocrlf 全機已設 false（2026-09-07）⇒ 每跑一次 build-data.py 就留一筆 422 行的
@@ -80,5 +84,6 @@ def write_craft_actions():
     with open(os.path.join(OUT, "craft-actions.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(actions, f, ensure_ascii=False, indent=0, separators=(",", ":"))
     print("✓ craft-actions.json：%d/%d 對到 game_ref%s" % (
-        len(VARIANT_EN) - len(miss), len(VARIANT_EN),
-        ("（fallback/缺：%s）" % miss) if miss else ""))
+        len(VARIANT_EN) - len(fallback_or_missing), len(VARIANT_EN),
+        ("（fallback/缺：%s）" % fallback_or_missing) if fallback_or_missing else ""))
+    return True
