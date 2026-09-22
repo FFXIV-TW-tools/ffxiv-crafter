@@ -177,6 +177,10 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   const wrongType = mkGearLoadCtx(JSON.stringify('a string'));
   check('T6 sec-A2：非物件 JSON 也走重置與回報路徑',
     Object.keys(vm.runInContext('gearsets', wrongType.ctx)).length === 0 && wrongType.warnings.length > 0);
+  const oldLevel = mkGearLoadCtx(JSON.stringify({ 木工: { level: 150, cms: 4000, ctrl: 4000, cp: 600 } }));
+  eq('T6 保存的超界等級不得繞過輸入限制進入求解', oldLevel.ctx.gearFor('木工'), null);
+  const fractionalCp = mkGearLoadCtx(JSON.stringify({ 木工: { level: 100, cms: 4000, ctrl: 4000, cp: 600.5 } }));
+  eq('T6 保存的小數 CP 不得當成有效角色數值', fractionalCp.ctx.gearFor('木工'), null);
 }
 
 // ===== T30：專家之證＝逐職業的角色狀態（上限 3；2026-08-09 從「素材與加成」搬到「角色數值」）=====

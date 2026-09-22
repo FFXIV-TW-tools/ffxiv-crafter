@@ -38,3 +38,5 @@
 2026-09-06 健檢 R5 B-033（Owner 拍板 A＋C）→ **684 passed**：T65 新增 2 條——AGENTS.md 位元組數 ≤ 豁免當時的 31,248（超過＝搬敘事，不是改數字）、R7-exempt 戳仍在（撤銷豁免時上限改回 20KB）。同輪 AGENTS.md 38,974 → 30,895 B：已固化成測試的條目降成一行＋測試編號、9 段敘事搬 `docs/lessons.md`、豁免理由縮成一句、Git 邊界縮成指標。
 
 2026-09-06 B-039 拆測試檔 → **684 passed**（不變）：`tools/test-formulas.mjs` 3290 行 → 24 行入口（掃 `tools/tests/*.test.mjs` 依檔名序 import、檔數下限 13）；共用底座 `_harness.mjs`（計數器單例）＋ 13 支主題檔（10-formula／11-gear／12-recipe-sync／20-list／21-browse／30-solve／31-render／40-flow-consumable／41-stages-sync／50-quests／51-nextcraft／60-ui-sentinels／61-repo-sentinels，最大 351 行）。斷言名稱集合 before/after diff 為空；負向對照 683/1 exit 1。
+
+2026-09-22 全頁健檢 → **562 passed**（556 → 562）：新增 7 條行為斷言——裝備非法舊值（等級 150、小數 CP）不得當有效裝備、後續製作只從實際使用該素材的候選中依既有規則挑選並套能力門檻、Worker constructor 同步失敗可免 reload 恢復、食品資料恢復後標籤回來；移除 1 條只檢查函式存在的 `typeof` 斷言（非唯一行為覆蓋）。cargo 靜態斷言點 17 → 19：新增 `parse_actions` 遇未知技能必須回錯（原本 `filter_map` 靜默丟棄）。

@@ -5,7 +5,7 @@
 // 為什麼是彈出視窗不是就地展開（Owner 2026-08-17 拍板）：實測 975 件成品有下一階配方，
 // 消費者數中位 13、最多 234（綠金錠）⇒ 塞進配方詳情會把求解區推到天邊。
 (function () {
-  let deps = null;              // { $, esc, iconUrl, JOB_ICON, getItems, getIngredients, getRecipesById, gearOkFor, onPick }
+  let deps = null;              // { $, esc, iconUrl, JOB_ICON, getItems, getIngredients, getRecipesById, canCraftRecipe, pickRecipeForItem, onPick }
   let index = null;             // itemId → [[recipeId, amount]]（用到該素材的配方）；資料載完後建一次
   let cur = null;               // 目前開著的視窗狀態 { itemId, rows }
   let releaseTrap = null;       // FFXIVA11y.trapFocus 的 release（**函式本身**，見設計系統 modal a11y 契約）
@@ -28,7 +28,7 @@
 
   /**
    * 「用 itemId 還能做什麼」——回傳去重、排序好的下一階清單（純函式，golden 測試面）。
-   * ctx = { index, recipesById, items, gearOk }
+   * ctx = { index, recipesById, items, canCraftRecipe, pickRecipeForItem }
    *
    * **一個成品只佔一列**：同一件東西常常好幾個職業都做得出來（特製酵母＝鍊金／烹調），
    * 一物多列會讓 31 筆看起來像 40 幾筆。挑法與詳情頁同一條規則（玩家有填數值的職業優先），
@@ -37,7 +37,7 @@
    */
   function consumersOf(itemId, ctx) {
     const byId = ctx.recipesById || {}, items = ctx.items || {};
-    const gearOk = ctx.gearOk || (() => false);
+    const canCraftRecipe = ctx.canCraftRecipe;
     const groups = new Map();   // 成品 item_id → [{ recipe, amount }]
     for (const [rid, amount] of (ctx.index || {})[Number(itemId)] || []) {
       const r = byId[rid];
@@ -49,7 +49,10 @@
     }
     const rows = [];
     for (const [iid, list] of groups) {
-      const hit = list.find((e) => gearOk(e.recipe.job)) || list[0];
+      const eligible = list.filter((e) => canCraftRecipe(e.recipe));
+      const candidates = eligible.length ? eligible : list;
+      const picked = ctx.pickRecipeForItem(iid, candidates.map((e) => e.recipe));
+      const hit = candidates.find((e) => e.recipe.id === picked.id);
       rows.push({
         itemId: iid,
         name: hit.recipe.item_name || ('#' + iid),
@@ -59,7 +62,7 @@
         jobCount: new Set(list.map((e) => e.recipe.job)).size,   // 同職多張配方只算一職（健檢 R5 correctness-data A3）
         amount: hit.amount,                 // 這個配方做一次要用幾個當前成品
         rlv: Number(hit.recipe.rlv) || 0,
-        ok: !!gearOk(hit.recipe.job),
+        ok: !!canCraftRecipe(hit.recipe),
       });
     }
     return rows.sort((a, b) => (b.ok - a.ok) || (a.rlv - b.rlv) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -67,7 +70,8 @@
 
   function idx() { return index || (index = buildIndex(deps.getIngredients())); }
   function rowsFor(itemId) {
-    return consumersOf(itemId, { index: idx(), recipesById: deps.getRecipesById(), items: deps.getItems(), gearOk: deps.gearOkFor });
+    return consumersOf(itemId, { index: idx(), recipesById: deps.getRecipesById(), items: deps.getItems(),
+      canCraftRecipe: deps.canCraftRecipe, pickRecipeForItem: deps.pickRecipeForItem });
   }
   function countFor(itemId) { return itemId == null ? 0 : rowsFor(itemId).length; }
 
@@ -91,7 +95,7 @@
       const ico = r.icon ? `<img class="crafter-next-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : '<span class="crafter-next-ico"></span>';
       const jico = deps.JOB_ICON[r.job] ? `<img class="crafter-next-jico" src="${iconUrl(deps.JOB_ICON[r.job])}" alt="">` : '';
       const more = r.jobCount > 1 ? `<span class="codex-xs crafter-next-more">＋${r.jobCount - 1} 職</span>` : '';
-      const no = r.ok ? '' : '<span class="codex-xs crafter-next-no">未填</span>';
+      const no = r.ok ? '' : '<span class="codex-xs crafter-next-no">數值不足</span>';
       return `<button type="button" class="crafter-next-row" data-rid="${r.recipeId}"` +
         ` data-help="改做「${esc(r.name)}」（${esc(r.job)}）｜這個配方做一次要用 ${r.amount} 個${esc(cur.name)}">` +
         `${ico}<span class="crafter-next-name">${esc(r.name)}</span>` +
@@ -158,7 +162,7 @@
     }
   }
 
-  const REQUIRED = ['$', 'esc', 'iconUrl', 'JOB_ICON', 'getItems', 'getIngredients', 'getRecipesById', 'gearOkFor', 'onPick'];
+  const REQUIRED = ['$', 'esc', 'iconUrl', 'JOB_ICON', 'getItems', 'getIngredients', 'getRecipesById', 'canCraftRecipe', 'pickRecipeForItem', 'onPick'];
   globalThis.CraftNext = {
     buildIndex, consumersOf,      // 純函式，golden 測試面
     countFor, open, close,

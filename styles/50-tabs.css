@@ -50,7 +50,7 @@
 .cl-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }  /* 名稱 + 職業/rlv 吃剩餘寬、可縮（icon+文字並排鐵則）*/
 .cl-name { font-weight: var(--fw-semibold, 600); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 動作群：flex:0 0 auto 不縮 → 各列等寬（成品產量已移進資訊列）→ 前往求解/行情/次數/✕ 右側按鈕跨列垂直對齊 */
-.cl-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px); flex: 0 0 auto; }
+.cl-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px); flex: 0 0 auto; max-width: 100%; }
 .cl-qty { display: inline-flex; align-items: center; gap: var(--space-1, 4px); white-space: nowrap; }
 .cl-qty-in { width: 68px; text-align: center; }
 .cl-del { flex: 0 0 auto; }
@@ -67,7 +67,7 @@
 /* 組說明吃剩餘寬並靠右：長度差很多（三組文案不等長），靠左會讓三個標題右邊參差 */
 .cl-matgroup__hint { flex: 1; min-width: 0; text-align: right; }
 /* 220→320px：列內多了商人徽章與「加進清單」鈕，220px 欄會被擠到換行 */
-.cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+.cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: var(--space-1, 4px) var(--space-4, 16px); padding: var(--space-2, 8px) var(--space-3, 12px); }
 .cl-mat { display: flex; align-items: center; gap: var(--space-2, 8px); min-height: 34px; }
 .cl-mat-ico { width: 22px; height: 22px; flex: 0 0 auto; }

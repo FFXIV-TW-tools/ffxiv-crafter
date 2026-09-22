@@ -28,6 +28,7 @@ import { fs, vm, path, ROOT, T, check, eq, eqObj } from './_harness.mjs';
   vm.createContext(nctx);
   vm.runInContext(NEXT_SRC, nctx, { filename: 'app-nextcraft.js' });
   const N = nctx.CraftNext;
+  const pickRecipeForItem = (_itemId, candidates) => candidates[0];
 
   // (a) 索引反轉：配方→素材 倒成 素材→配方，用量要跟著
   const idx = N.buildIndex({ 10: [[1, 2], [2, 1]], 11: [[1, 3]] });
@@ -40,7 +41,7 @@ import { fs, vm, path, ROOT, T, check, eq, eqObj } from './_harness.mjs';
   const rlist = Array.isArray(RECIPES_ALL) ? RECIPES_ALL : Object.values(RECIPES_ALL);
   const byId = Object.fromEntries(rlist.map((r) => [r.id, r]));
   const realIdx = N.buildIndex(ING);
-  const noGear = N.consumersOf(36080, { index: realIdx, recipesById: byId, items: {}, gearOk: () => false });
+  const noGear = N.consumersOf(36080, { index: realIdx, recipesById: byId, items: {}, canCraftRecipe: () => false, pickRecipeForItem });
   eq('T56 棕櫚糖的下一階＝30 件成品（31 個配方裡有一件是雙職業）', noGear.length, 30);
   const yeast = noGear.find((r) => r.name === '特製酵母');
   eq('T56 一件東西只佔一列（特製酵母不因鍊金/烹調各做一份而列兩次）',
@@ -51,25 +52,25 @@ import { fs, vm, path, ROOT, T, check, eq, eqObj } from './_harness.mjs';
   check('T56 都沒填數值時按 rlv 由低到高（先做得動的在前）',
     noGear.every((r, i, a) => i === 0 || a[i - 1].rlv <= r.rlv), noGear.slice(0, 3).map((r) => r.name + ':' + r.rlv).join(','));
   // 有填數值的職業要排到最前面——玩家點進去卻被擋在「請先設定角色數值」是這條動線最沒意義的結局
-  const cookOnly = N.consumersOf(36080, { index: realIdx, recipesById: byId, items: {}, gearOk: (j) => j === '鍊金' });
+  const cookOnly = N.consumersOf(36080, { index: realIdx, recipesById: byId, items: {}, canCraftRecipe: (r) => r.job === '鍊金', pickRecipeForItem });
   eq('T56 做得起的排最前面（只有鍊金有數值 → 特製酵母第一列）', cookOnly[0].name, '特製酵母');
   eq('T56 做得起的那列挑的是「有數值」的職業，不是先出現的那個', cookOnly[0].job, '鍊金');
   eq('T56 做不起的仍然列出來（只是排後面、標未填）', cookOnly.length, 30);
   eq('T56 做不起的標記為未填', cookOnly[1].ok, false);
   // 自環（配方用到自己的產物）不列：點進去等於原地踏步
-  const loop = N.consumersOf(7, { index: { 7: [[1, 1], [2, 1]] }, recipesById: { 1: { id: 1, item_id: 7, item_name: '自己', job: '木工' }, 2: { id: 2, item_id: 8, item_name: '別的', job: '木工' } }, items: {}, gearOk: () => false });
+  const loop = N.consumersOf(7, { index: { 7: [[1, 1], [2, 1]] }, recipesById: { 1: { id: 1, item_id: 7, item_name: '自己', job: '木工' }, 2: { id: 2, item_id: 8, item_name: '別的', job: '木工' } }, items: {}, canCraftRecipe: () => false, pickRecipeForItem });
   eq('T56 用到自己的配方不列（避免原地踏步）', loop.length, 1);
   eq('T56 自環過濾掉的是自己那筆', loop[0].name, '別的');
   const sameJob = N.consumersOf(7, { index: { 7: [[1, 1], [2, 1]] }, recipesById: {
     1: { id: 1, item_id: 8, item_name: '同一件', job: '木工' }, 2: { id: 2, item_id: 8, item_name: '同一件', job: '木工' } },
-    items: {}, gearOk: () => false });
+    items: {}, canCraftRecipe: () => false, pickRecipeForItem });
   eq('T56 同一件成品、同職兩張配方 → jobCount 是 1 不是 2（健檢 R5 correctness-data A3）', sameJob[0].jobCount, 1);
 
   // (c) 視窗：篩選、fail-safe、點列交出配方 id
   N.init({
     $: $n, esc: T.esc, iconUrl: (p) => p, JOB_ICON: {},
     getItems: () => ({}), getIngredients: () => ING, getRecipesById: () => byId,
-    gearOkFor: (j) => j === '鍊金', statGate: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
+    canCraftRecipe: (r) => r.job === '鍊金', pickRecipeForItem,
     onPick: (rid) => picked.push(rid),
   });
   eq('T56 countFor＝下一階件數（詳情頁的鈕要不要出、標幾件都靠它）', N.countFor(36080), 30);
@@ -134,7 +135,7 @@ import { fs, vm, path, ROOT, T, check, eq, eqObj } from './_harness.mjs';
   N.init({
     $: $n, esc: T.esc, iconUrl: (p) => p, JOB_ICON: {},
     getItems: () => ({}), getIngredients: () => ING, getRecipesById: () => byId,
-    gearOkFor: () => false, statGate: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }), onPick: (rid) => picked.push(rid),
+    canCraftRecipe: () => false, pickRecipeForItem, onPick: (rid) => picked.push(rid),
   });
   N.open(36080, '棕櫚糖', null);
   eq('T56 重開窗要清掉上次的職業篩選（否則這次少列一半而看起來像資料就這麼少）', $n('next-job').value, '');

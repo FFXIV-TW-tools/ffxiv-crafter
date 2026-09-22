@@ -2,9 +2,10 @@
 /* ---- 設定/結果 兩欄 ---- */
 /* 左右兩欄：設定（左）＋ 結果/巨集（右）。align-items:stretch → 兩欄等高（消「左高右矮」長短混亂）*/
 .work { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4, 16px); align-items: stretch; }
+.work { scroll-margin-top: 64px; } /* 對齊頁首預留高度，選配方後標題與焦點不被 fixed 導覽遮住 */
 .work[hidden] { display: none; }  /* grid 會蓋掉 hidden 屬性，須補回 */
 .work .panel { margin-bottom: 0; }
-@media (max-width: 760px) { .work { grid-template-columns: 1fr; } }  /* 窄屏單欄堆疊，等高失效無妨 */
+@media (max-width: 760px) { .work { grid-template-columns: minmax(0, 1fr); } }  /* 窄屏單欄堆疊，不讓表單的 intrinsic width 撐出頁面 */
 /* 尚無結果（is-idle，app-flow 驅動）→ 結果欄不與設定欄等高：否則右半邊是一整片只有兩行字的空面板。
    有結果／求解中才恢復 stretch 拉齊兩欄。 */
 .work.is-idle #results-col { align-self: start; }
@@ -227,6 +228,7 @@
    門檻原值要看得見——玩家對不上遊戲畫面時，才分得出是資料錯還是換算錯。
    **刻意不降色**：它已是 codex-small，再疊 muted 就撞上灰字鐵則（最小字級不與 muted 併用）。 */
 .crafter-stage-hint { line-height: var(--lh-snug, 1.3); }
+#target-stage-field[hidden] { display: none; } /* 共用 .codex-field 的 flex 不得蓋過無分階狀態 */
 /* 「為什麼現在不能用」——控制停用時必寫原因，不隱藏控制 */
 .crafter-why { color: var(--color-warn); font-weight: var(--fw-semibold, 600); }
 .crafter-why[hidden] { display: none; }

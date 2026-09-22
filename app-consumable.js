@@ -191,6 +191,6 @@
   globalThis.CraftConsumable = {
     init, setData, build, effText, names,
     get: (kind) => (state[kind] ? entryOf(kind, state[kind], isHq(kind)) : null),
-    label: (kind) => state[kind] || '',
+    label: (kind) => entryOf(kind, state[kind], isHq(kind)) ? state[kind] : '',
   };
 })();

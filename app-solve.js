@@ -12,16 +12,26 @@
   // early return（求解中正是 hidden）→ 舊配方的手法會渲染在新配方的標題下，玩家可能複製到錯綁巨集。
   let solveGen = 0;
 
+  function failWorker(error) {
+    if (worker) worker.terminate();
+    worker = null;
+    stopSolveClock();
+    setSolving(false);
+    console.warn('[crafter] 求解引擎初始化失敗:', error);
+    showEngineInitFailure();
+  }
   function newWorker() {
     if (worker) worker.terminate();
-    worker = new Worker('worker.js', { type: 'module' });
-    worker.onmessage = onWorkerMsg;
-    worker.onerror = () => {                    // module/worker 載入失敗
-      worker = null;                            // 設 null → 下次 doSolve 的 if(!worker) 重建，不卡在壞掉的 worker
-      stopSolveClock();
-      setSolving(false);
-      showEngineInitFailure();
-    };
+    worker = null;
+    try {
+      worker = new Worker('worker.js', { type: 'module' });
+      worker.onmessage = onWorkerMsg;
+      worker.onerror = failWorker;
+      return true;
+    } catch (error) {
+      failWorker(error);
+      return false;
+    }
   }
   function doSolve() {
     const { toast, getSelected, gearFor, computeSettings, switchTab } = deps;
@@ -43,10 +53,14 @@
     const settings = computeSettings(selected.recipe, selected.rlv, gear);
     if (settings.base_progress <= 0 || settings.base_quality <= 0) { toast('作業/加工數值過低', 'error'); return; }
     setSolving(true);
-    if (!worker) newWorker();
+    if (!worker && !newWorker()) return;
     // gen 是這次求解的身分；worker 原樣回傳，onWorkerMsg 據此丟棄過期結果
-    worker.postMessage({ input: settings, gen: ++solveGen }); // worker 只跑 solve（simulate 尚未接 UI），無需 cmd dispatch 欄
-    startSolveClock();
+    try {
+      worker.postMessage({ input: settings, gen: ++solveGen }); // worker 只跑 solve，無需 cmd dispatch 欄
+      startSolveClock();
+    } catch (error) {
+      failWorker(error);
+    }
   }
   // 求解計時：每秒更新已耗時（求解跑在 worker，主執行緒空閒故計數不凍結）；≥60s 升級為可取消軟提示。
   // 軟提示不殺 worker（正常長求解仍在跑）；成功/取消/載入失敗三路徑均 stopSolveClock（別讓計數殘留）。
@@ -132,7 +146,7 @@
   // reason='user'（按取消鈕）才 toast + 移焦回求解鈕；reason='invalidated'（換配方／改設定自動作廢）
   // **刻意不移焦**——使用者可能正在打字改目標品質，搶焦點會直接打斷輸入。
   function abortSolve(reason) {
-    solveGen++; stopSolveClock(); newWorker(); setSolving(false);
+    solveGen++; stopSolveClock(); setSolving(false); newWorker();
     if (reason === 'user') { deps.toast('已取消求解', 'warn'); deps.$('solve-btn').focus(); }
   }
   function cancelSolve() { abortSolve('user'); }

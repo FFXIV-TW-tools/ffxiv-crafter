@@ -270,9 +270,15 @@ pub fn simulate(input: JsValue) -> Result<JsValue, JsValue> {
     let inp: Input =
         serde_wasm_bindgen::from_value(input).map_err(|e| JsValue::from_str(&e.to_string()))?;
     let settings = build_settings(&inp);
-    let actions: Vec<Action> = inp.actions.iter().filter_map(|s| parse_action(s)).collect();
+    let actions = parse_actions(&inp.actions).map_err(|e| JsValue::from_str(&e))?;
     let out = replay(&settings, &actions, inp.initial_quality, inp.max_progress, inp.max_quality);
     serde_wasm_bindgen::to_value(&out).map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+fn parse_actions(names: &[String]) -> Result<Vec<Action>, String> {
+    names.iter().enumerate().map(|(i, name)| {
+        parse_action(name).ok_or_else(|| format!("Unknown action at step {}: {}", i + 1, name))
+    }).collect()
 }
 
 fn parse_action(s: &str) -> Option<Action> {
@@ -352,6 +358,12 @@ mod tests {
         for (i, n) in names.iter().enumerate() {
             assert!(!names[..i].contains(n), "action_name 重複產出「{n}」");
         }
+    }
+
+    #[test]
+    fn simulation_rejects_unknown_action_instead_of_skipping_it() {
+        let names = vec!["BasicTouch".into(), "NOT_AN_ACTION".into(), "BasicSynthesis".into()];
+        assert!(parse_actions(&names).is_err());
     }
 
     // 實測用的緊繃配方：rlv640 系（cjl90・難度4488・耐久35）、Lv100 角色、作業 2280 / 加工 3600 / CP 450。

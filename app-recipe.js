@@ -25,6 +25,7 @@
     deps.$('results-placeholder').innerHTML = deps.PH_HTML;
     refreshSelectedGear();
     globalThis.CraftFlow?.update?.();   // 流程軸推進到 ②（含 pick-panel 收合成摘要條）
+    deps.$('config-title').focus({ preventScroll: true }); // 配方列已收起，把鍵盤起點移到新內容
     deps.$('work').scrollIntoView({ behavior: 'smooth', block: 'start' });
     return true;
   }
@@ -72,8 +73,8 @@
     const row = deps.getRlvTable()[String(r.rlv)];
     return row ? deps.recipeMaxes(r, row) : null;
   }
-  function pickRecipeForItem(itemId) {
-    const list = distinctRecipesForItem(itemId);
+  function pickRecipeForItem(itemId, candidates) {
+    const list = candidates || distinctRecipesForItem(itemId);
     const pool = list.filter((r) => deps.gearOkFor(r.job));
     const first = pool[0] || list[0];
     if (!first) return null;

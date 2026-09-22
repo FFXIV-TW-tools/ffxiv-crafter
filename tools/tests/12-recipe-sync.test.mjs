@@ -177,6 +177,21 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
       RECIPES_BY_ITEM = { 778: [20, 21, 22, 23] };
       INGREDIENTS = { 20: [[42, 2]], 21: [[42, 1]], 22: [[42, 1]], 23: [[42, 2]] };`, c.ctx);
     eq('T52 同職多張 → 取難度最低那張（不是先出現的）', CRr.pickRecipeForItem(778).id, 21);
+    const previousNext = c.ctx.CraftNext;
+    vm.runInContext(fs.readFileSync(path.join(ROOT, 'app-nextcraft.js'), 'utf8'), c.ctx);
+    const nextRecipes = Object.fromEntries(Object.entries(vm.runInContext('RECIPE_BY_ID', c.ctx)).map(([id, r]) => [id, { ...r }]));
+    const nextContext = {
+      index: { 42: [[20, 2], [22, 3]] }, recipesById: nextRecipes, items: {},
+      canCraftRecipe: (r) => { const g = c.ctx.gearFor(r.job); return !!g && c.ctx.statShortfall(r, g).ok; },
+      pickRecipeForItem: CRr.pickRecipeForItem,
+    };
+    const nextRow = c.ctx.CraftNext.consumersOf(42, nextContext)[0];
+    eq('T52 繼續做在使用此素材的候選中取最低難度，且用量對應該配方',
+      JSON.stringify([nextRow.recipeId, nextRow.amount]), JSON.stringify([22, 3]));
+    nextRecipes[20].required_craftsmanship = nextRecipes[22].required_craftsmanship = 9000;
+    eq('T52 有角色數值但未達最低能力，不列為我能做的',
+      c.ctx.CraftNext.consumersOf(42, nextContext)[0].ok, false);
+    c.ctx.CraftNext = previousNext;
     c.ctx.selectRecipe(20);
     const infoHtml = () => c.ctx.document.getElementById('recipe-info').innerHTML;
     const btnTexts = () => [...infoHtml().matchAll(/<button[^>]*class="[^"]*ri-job-btn[^"]*"[^>]*>([\s\S]*?)<\/button>/g)]

@@ -147,7 +147,9 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
   const CS3 = cs3.CraftConsumable;
   CS3.init(DEP);
   CS3.setData(null, null);
-  eq('T15 兩份都載入失敗（null）→ 保存的選擇原封不動', JSON.stringify([CS3.label('food'), CS3.label('potion')]), JSON.stringify(['高品級料理', '強化藥']));
+  eq('T15 冷啟動未載到資料，不宣稱已套用食藥', JSON.stringify([CS3.label('food'), CS3.label('potion'), CS3.get('food')]), JSON.stringify(['', '', null]));
   CS3.setData(MEALS, null);
-  eq('T15 只有食物載到 → 食物建表、藥水維持保存值', JSON.stringify([!!CS3.get('food'), CS3.label('potion')]), JSON.stringify([true, '強化藥']));
+  eq('T15 只有食物載到，只回復食物的有效加成', JSON.stringify([!!CS3.get('food'), CS3.label('potion')]), JSON.stringify([true, '']));
+  CS3.setData(MEALS, MEDS);
+  eq('T15 網路恢復後仍能套回兩份保存偏好', JSON.stringify([CS3.label('food'), CS3.label('potion')]), JSON.stringify(['高品級料理', '強化藥']));
 }

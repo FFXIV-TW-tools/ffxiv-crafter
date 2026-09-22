@@ -148,7 +148,6 @@ import { fs, vm, path, ROOT, makeEl, check, eq } from './_harness.mjs';
     switchTab: () => {},
   });
 
-  check('T27 solveErrorMessage 已匯出供分類測試', typeof sb.CraftSolve.solveErrorMessage === 'function');
   for (const raw of ['Failed to fetch', 'expected magic word', 'WebAssembly.instantiate']) {
     const msg = sb.CraftSolve.solveErrorMessage(raw);
     check(`T27 ${raw} → 引擎/網路訊息且不導向調整設定`, /引擎|網路/.test(msg) && !/調整設定/.test(msg), `msg=${msg}`);
@@ -179,6 +178,16 @@ import { fs, vm, path, ROOT, makeEl, check, eq } from './_harness.mjs';
 
   onmsg({ data: { ok: true, gen: failedGen, result: { steps: ['舊結果'] } } });
   eq('T27 重試後舊世代結果不得渲染', rendered.length, 0);
+  const healthyWorker = sb.Worker;
+  sb.Worker = function () { throw new Error('fixture: Worker construction denied'); };
+  sb.CraftSolve.newWorker();
+  sb.CraftSolve.doSolve();
+  check('T27 Worker 同步建立失敗後可重新操作與重試',
+    !sbEl('solve-btn').hidden && sbEl('cancel-btn').hidden && !sbEl('solve-retry-btn').hidden);
+  sb.Worker = healthyWorker;
+  sbEl('solve-retry-btn').onclick();
+  onmsg({ data: { ok: true, gen: sent.at(-1).gen, result: { steps: ['恢復結果'] } } });
+  eq('T27 同步建立失敗解除後可重新取得求解結果', rendered.at(-1).steps[0], '恢復結果');
 }
 
 // ===== T28：求解計時不應每秒重建 aria-live 節點 + listbox 焦點不可消失（B-014）=====

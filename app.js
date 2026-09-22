@@ -321,7 +321,8 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   if (!globalThis.CraftNext) throw new Error('app-nextcraft.js 未載入（部署不完整）');
   globalThis.CraftNext.init({ $, esc, iconUrl, JOB_ICON,
     getItems: () => ITEMS, getIngredients: () => INGREDIENTS, getRecipesById: () => RECIPE_BY_ID,
-    gearOkFor: (job) => !!gearFor(job),
+    canCraftRecipe: (recipe) => { const gear = gearFor(recipe.job); return !!gear && statShortfall(recipe, gear).ok; },
+    pickRecipeForItem: (itemId, candidates) => globalThis.CraftRecipe.pickRecipeForItem(itemId, candidates),
     onPick: (rid) => globalThis.CraftRecipe.continueWith(rid) });
   // 食物/藥水選擇層（app-consumable.js classic script）：**必須早於 loadData**——loadData 尾端會 setData 繪按鈕，
   // 且本層 init 才會把保存值套回 HQ / 專家之證 checkbox（保存值要先就位，後續公式與摘要才讀得到）

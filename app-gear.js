@@ -36,7 +36,13 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
     }
   }
 
-  function gearValid(g) { return !!(g && g.cms > 0 && g.ctrl > 0 && g.cp > 0); }
+  function validGearValue(field, value) {
+    return Number.isInteger(value) && value >= 0 && value <= (field === 'level' ? 100 : 65535);
+  }
+  function gearValid(g) {
+    return !!(g && (g.level == null || validGearValue('level', g.level)) &&
+      ['cms', 'ctrl', 'cp'].every((field) => validGearValue(field, g[field]) && g[field] > 0));
+  }
   // 專家之證＝角色狀態（每職一份，遊戲上限 3），不是消耗品也不是數值：
   // 故**獨立於數值的 fallback 來源**——用「預設」數值的職業照樣算自己的專家之證。
   function specialistFor(job) { return !!(gearsets[job] && gearsets[job].specialist); }
@@ -51,9 +57,11 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
   function renderGearsets() {
     const { $, esc, iconUrl, DOH, JOB_ICON } = deps;
     const rows = ['預設', ...DOH];
+    const labels = { level: '等級', cms: '作業精度', ctrl: '加工精度', cp: 'CP' };
     const cell = (job, f, ph) => {
       const v = (gearsets[job] && gearsets[job][f] != null) ? (Number(gearsets[job][f]) || '') : ''; // 強制數字 → 堵 localStorage 竄改的 self-XSS sink（非數字/0 → 空，顯示 placeholder）
-      return `<td><input class="codex-input gear-in" data-job="${esc(job)}" data-f="${f}" type="number" min="0" inputmode="numeric" value="${v}" placeholder="${ph || ''}"></td>`;
+      const invalid = gearsets[job]?.[f] != null && !validGearValue(f, gearsets[job][f]);
+      return `<td><input class="codex-input gear-in" data-job="${esc(job)}" data-f="${f}" aria-label="${esc(job)}：${labels[f]}" aria-invalid="${invalid}" type="number" min="0" max="${f === 'level' ? 100 : 65535}" step="1" inputmode="numeric" value="${v}" placeholder="${ph || ''}"></td>`;
     };
     const jico = (job) => JOB_ICON[job]
       ? `<img class="gj-ico" src="${iconUrl(JOB_ICON[job])}" alt="" loading="lazy">`
@@ -108,6 +116,10 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
       if (clamped !== value || (clamped === 0 && String(raw).trim() !== '')) e.target.value = clamped || '';
       value = clamped;
     }
+    const valid = validGearValue(f, value);
+    e.target.setAttribute?.('aria-invalid', String(!valid));
+    e.target.setCustomValidity?.(valid ? '' : `請輸入 0–${f === 'level' ? 100 : 65535} 的整數`);
+    if (!valid) e.target.reportValidity?.();
     (gearsets[job] = gearsets[job] || {})[f] = value;
     saveGear();
     deps.afterInput();
