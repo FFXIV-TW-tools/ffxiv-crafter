@@ -2,9 +2,8 @@
 /* ---- 選配方 ---- */
 .pick-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3, 12px);
   flex-wrap: wrap; margin-bottom: var(--space-3, 12px); }
-.pick-head .codex-h2 { margin: 0; }
+.pick-head .codex-view-title { margin: 0; }
 .crafter-pick-title { min-width: 0; }
-.crafter-pick-hint { margin: var(--space-1, 4px) 0 0; }
 /* 選定配方後：整張 codex-tablet 卡（JS 卸下 tablet class）收合成一行摘要 —— 驗收線 4「版面還給主內容」。
    HUD 角標僅屬 tablet 外觀，收合態一併隱藏（contextual override，非覆寫 .codex-hud 根 selector）。 */
 .crafter-picked { display: flex; align-items: center; gap: var(--space-3, 12px); flex-wrap: wrap;
@@ -29,7 +28,8 @@
 .job-chips .job-btn img { width: 18px; height: 18px; }   /* 求解分頁與職業任務分頁共用（原本只綁 #job-chips，新分頁的 icon 會變原尺寸大圖）*/
 .filter-row { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); align-items: center; }
 .filter-row .codex-input, .filter-row .codex-select { width: auto; }
-.filter-row .grow { flex: 1; min-width: 150px; }
+.crafter-recipe-search { flex: 1 1 150px; min-width: min(150px, 100%); }
+.filter-row .crafter-recipe-search .codex-input { width: 100%; }
 .filter-row .codex-select { flex: 0 0 auto; min-width: 130px; }
 .filter-row .rlv-in { flex: 0 0 130px; width: 130px; }
 /* ⚠️ **版本篩選要給明確寬度，`min-width` 擋不住**（2026-08-25，CLS 密集掃 800px 0.1973）：
@@ -201,7 +201,10 @@
 .rt-jico { width: 18px; height: 18px; vertical-align: middle; margin-right: 2px; }
 /* 當前位置狀態列（目前配方：X）；返回控件＝右上「← 返回配方列表」鈕。不做「配方瀏覽›」假 nav 麵包屑（死 span 會誤導可點）。*/
 .selected-bar { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-1, 4px) var(--space-2, 8px);
-  font-size: var(--fs-body); flex: 1; min-width: 0; }
-.selected-bar[hidden] { display: none; }   /* display:flex 蓋 UA [hidden] → 補守衛（showPicker 靠 hidden 收合）*/
+  font-size: var(--fs-body); flex: 1 1 240px; min-width: min(240px, 100%); overflow-wrap: anywhere; }
+.selected-bar[hidden] { display: none; }
 .sb-cur { color: var(--accent); font-weight: var(--fw-bold, 700); }
-
+@media (max-width: 700px) {
+  .crafter-picked .pick-head { flex: 1 1 100%; }
+  .selected-bar { flex: 1 1 100%; min-width: min(240px, 100%); }
+}

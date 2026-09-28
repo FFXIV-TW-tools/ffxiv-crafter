@@ -99,7 +99,7 @@
     $('macro').innerHTML = saveLink + macros.map((m, i) =>
       `<div class="macro-block">
          <div class="macro-head"><span class="codex-small">巨集 ${i + 1} / ${macros.length}（${m.length} 行）</span>
-           <button class="codex-btn codex-btn--ghost copy-btn" data-i="${i}">複製</button></div>
+           <button class="codex-btn codex-btn--ghost copy-btn" data-i="${i}">${globalThis.CrafterVisual?.iconSVG?.('copy') || ''}複製</button></div>
          <textarea class="macro-text codex-textarea" rows="${m.length}" readonly>${esc(m.join('\n'))}</textarea>
        </div>`).join('');
     $('macro').querySelectorAll('.copy-btn').forEach(b => b.onclick = () => copyText(macros[+b.dataset.i].join('\n'), '✓ 已複製巨集'));
@@ -133,18 +133,38 @@
     // 壞的是這條接線）。停用與否的唯一決定者＝CraftFlow.setTargetMode，故以它為準、不再判一次模式。
     const targetEl = $('opt-target');
     const shortLine = shortfallHtml(targetEl.disabled ? 0 : Number(targetEl.value) || 0, r.final_quality);
+    const qualityPct = pct(r.final_quality, r.max_quality);
+    const kpi = globalThis.CrafterVisual?.kpi || ((_, label, value) =>
+      `<div class="codex-kpi"><span class="codex-kpi__label">${label}</span><span class="codex-kpi__value">${value}</span></div>`);
+    const copyIcon = globalThis.CrafterVisual?.iconSVG?.('copy') || '';
+    const resultText = [
+      `配方：${selected.recipe.item_name}`,
+      `職業：${selected.recipe.job}`,
+      `結果：${r.complete ? (isExpert ? '試算完成（僅供參考）' : '可完成') : '未完成'}`,
+      `進展：${r.final_progress}/${r.max_progress}`,
+      `品質：${r.final_quality}/${r.max_quality}（${qualityPct}%）`,
+      `手法：${r.step_count} 步／${r.total_time} 秒`,
+      ...(shortLine ? ['未達目標品質：請依畫面提示調整。'] : []),
+      ...(expertWarn ? ['高難度配方：靜態巨集僅供參考，無法保證遊戲內完成。'] : []),
+    ].join('\n');
     $('result-summary').innerHTML = `
       <div class="sum-row">
         ${completeBadge}
-        <span class="codex-badge ${hq ? 'codex-badge--gold' : ''}">品質 ${pct(r.final_quality, r.max_quality)}%${hq ? ' · 滿' : ''}</span>
         ${hqp != null ? `<span class="codex-badge codex-badge--gold codex-badge--code" data-help="成品為高品質（HQ）的機率">HQ ${hqp}%</span>` : ''}
-        <span class="sum-meta"><span class="sum-metric"><b>${r.step_count}</b><span class="codex-small">步</span></span><span class="sum-metric"><b>${r.total_time}</b><span class="codex-small">秒</span></span></span>
+        <button type="button" class="codex-btn codex-btn--ghost crafter-copy-summary">${copyIcon}複製結果摘要</button>
+      </div>
+      <div class="codex-kpis codex-kpis--compact">
+        ${kpi('target', '品質', qualityPct + '%')}
+        ${kpi('list-checks', '手法步數', r.step_count)}
+        ${kpi('clock', '預估時間', r.total_time + ' 秒')}
       </div>
       ${expertWarn}
       ${shortLine}
       ${errLine}
       ${bar('進展', r.final_progress, r.max_progress, pct)}
       ${bar('品質', r.final_quality, r.max_quality, pct)}`;
+    const copyBtn = $('result-summary').querySelector('.crafter-copy-summary');
+    if (copyBtn) copyBtn.onclick = () => deps.copyText(resultText, '✓ 已複製結果摘要', '結果摘要');
     $('rotation').innerHTML = r.steps.map(actionChip).join('');
     $('walkthrough').innerHTML = `
       <table class="codex-table wt-table">

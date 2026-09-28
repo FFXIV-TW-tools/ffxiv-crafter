@@ -1,6 +1,7 @@
 .adversarial-reviews
 .agents
 .claude
+.gitattributes
 .gitignore
 .pytest_cache
 .rgignore

@@ -1,0 +1,6 @@
+{
+  "out": "crafter-icons.js",
+  "format": "global",
+  "global": "CrafterIcons",
+  "used": ["hammer", "clipboard-text", "user-circle", "scroll", "magnifying-glass", "gear", "chart-bar", "flask", "package", "list-checks", "copy", "check-circle", "warning", "arrow-right", "shopping-cart", "target", "clock", "stack"]
+}

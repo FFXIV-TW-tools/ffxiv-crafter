@@ -131,21 +131,36 @@
 
   function renderTabCount() {
     const tab = document.querySelector('#main-tabs .codex-tab[data-tab="list"]');
-    if (tab) tab.textContent = `📋 製造清單${list.length ? `（${list.length}）` : ''}`;
+    if (!tab) return;
+    const count = tab.querySelector('.crafter-tab-count');
+    if (count) {
+      count.textContent = list.length > 99 ? '99+' : String(list.length);
+      count.style.visibility = list.length ? 'visible' : 'hidden';
+    }
+    tab.setAttribute('aria-label', `製造清單，${list.length} 筆`);
   }
 
   function render() {
     renderTabCount();
     const { $, esc, iconUrl, ITEMS } = deps;
     const box = $('craft-list');
-    if (!list.length) {   // 空狀態＝設計系統 .codex-empty（給下一步 CTA，非只寫「無資料」）
-      box.innerHTML = `<div class="codex-empty">
-        <div class="codex-empty__icon" aria-hidden="true">📋</div>
-        <div>清單是空的 — 到「<b>配方求解</b>」瀏覽表按每列的「<b>＋</b>」，或選配方後按「<b>📋 加入清單</b>」收集配方。</div>
-        <button class="cl-empty-cta codex-btn codex-btn--ghost" type="button">前往配方瀏覽 →</button>
+    const summary = $('list-summary');
+    const setSummary = (recipes, runs, materials) => {
+      if (!summary) return;
+      for (const [key, value] of Object.entries({ recipes, runs, materials })) {
+        const target = summary.querySelector(`[data-list-kpi="${key}"]`);
+        if (target) target.textContent = String(value);
+      }
+    };
+    if (!list.length) {
+      setSummary(0, 0, 0);
+      box.innerHTML = `<div class="codex-empty codex-empty--bare">
+        <span class="codex-empty__icon" aria-hidden="true">${globalThis.CrafterVisual?.iconSVG?.('clipboard-text') || ''}</span>
+        <span>清單還沒有配方。到「配方求解」選成品，按「加入清單」即可彙總素材。</span>
+        <button class="cl-empty-cta codex-btn codex-btn--ghost" type="button">前往配方瀏覽</button>
       </div>`;
       const cta = box.querySelector('.cl-empty-cta');
-      if (cta) cta.onclick = () => { deps.showPicker(); deps.switchTab('solve', true); }; // 先 showPicker 確保落在瀏覽表（非殘留的配方詳情）+ 移焦
+      if (cta) cta.onclick = () => { deps.showPicker(); deps.switchTab('solve', true); };
       return;
     }
     const totalRuns = list.reduce((s, e) => s + e.qty, 0);   // 總製作次數（≠配方種數；語意分清）
@@ -156,12 +171,12 @@
       // 成品產量放進左邊資訊列（不進動作群）→ 動作群 [前往求解][行情][次數][✕] 各列等寬、右側按鈕垂直對齊
       const yields = (r.item_amount || 1) > 1 ? ` · 成品 ×${e.qty * r.item_amount}` : '';
       // 配方成品 → marketboard #/craft（BOM 樹/利潤）；只在有 item_id 時出（防壞連結）
-      const mb = r.item_id ? `<a class="cl-mb codex-btn codex-btn--ghost" href="${deps.mbCraft(r.item_id)}" target="ffxiv-marketboard" data-help="到市場板看材料樹｜各材料價｜利潤試算。共用同一分頁。">💰 行情</a>` : '';
+      const mb = r.item_id ? `<a class="cl-mb codex-btn codex-btn--ghost" href="${deps.mbCraft(r.item_id)}" target="ffxiv-marketboard" data-help="到市場板看材料樹｜各材料價｜利潤試算。共用同一分頁。">${globalThis.CrafterVisual?.iconSVG?.('shopping-cart') || ''}行情</a>` : '';
       return `<div class="cl-row" data-id="${r.id}">
         ${ico}
         <div class="cl-info"><span class="cl-name">${esc(r.item_name)}</span><span class="cl-sub codex-small">${esc(r.job)} · rlv ${r.rlv}${yields}</span></div>
         <div class="cl-actions">
-          <button class="cl-go codex-btn codex-btn--ghost" type="button" data-help="選定此配方並切到求解分頁">前往求解 →</button>
+          <button class="cl-go codex-btn codex-btn--ghost" type="button" data-help="選定此配方並切到求解分頁">${globalThis.CrafterVisual?.iconSVG?.('arrow-right') || ''}前往求解</button>
           ${mb}
           <span class="cl-qty codex-small">次數 <input class="cl-qty-in codex-input" type="number" min="${QTY_MIN}" max="${QTY_MAX}" inputmode="numeric" value="${e.qty}" aria-label="「${esc(r.item_name)}」製作次數"></span>
           ${delBtn(r.item_name)}
@@ -184,11 +199,11 @@
       return { iid, total, name, icon: it.icon || null, crystal, child, times };
     });
     const GROUPS = [
-      { title: '⚒ 可自製中間材', pick: (m) => !m.crystal && !!m.child,
-        hint: '這些素材本身也有配方 — 按「加進清單」會把它排進上面的配方清單，次數已按產量算好' },
-      { title: '🛒 採集／購買', pick: (m) => !m.crystal && !m.child,
-        hint: '做不出來的東西 — NPC 商人有賣的會標出價格，其餘靠採集或市場板' },
-      { title: '💠 晶體', pick: (m) => m.crystal, hint: '以太之光兌換或上市場板買' },
+      { title: '可自製中間材', pick: (m) => !m.crystal && !!m.child,
+        hint: '這些素材本身也有配方；按「加進清單」會把它排進上方配方清單，次數已按產量算好。' },
+      { title: '採集與購買', pick: (m) => !m.crystal && !m.child,
+        hint: 'NPC 商人有賣的會標出價格，其餘可採集或到市場板購買。' },
+      { title: '晶體', pick: (m) => m.crystal, hint: '以太之光兌換或到市場板購買。' },
     ];
     const matRow = (m) => {
       const ico = m.icon ? `<img class="cl-mat-ico" src="${iconUrl(m.icon)}" alt="" loading="lazy">` : '<span class="cl-mat-ico" aria-hidden="true"></span>';
@@ -200,7 +215,7 @@
       // 「加進清單」＝列級重複性動作（設計系統 §按鈕選型 列級豁免）→ ghost，不參賽 primary
       const go = m.child
         ? `<button type="button" class="codex-btn codex-btn--ghost cl-mat-go" data-rid="${m.child.id}" data-times="${m.times}"` +
-          ` data-help="把「${esc(m.name)}」的配方加進上面的製造清單（${esc(m.child.job)}，要做 ${m.times} 次）">⚒ 加進清單${m.times > 1 ? ' ×' + m.times : ''}</button>`
+          ` data-help="把「${esc(m.name)}」的配方加進上面的製造清單（${esc(m.child.job)}，要做 ${m.times} 次）">${globalThis.CrafterVisual?.iconSVG?.('hammer') || ''}加進清單${m.times > 1 ? ' ×' + m.times : ''}</button>`
         : '';
       return `<div class="cl-mat">${ico}${nameHtml}<span class="cl-mat-amt">×${m.total}</span>${vendor}${go}</div>`;
     };
@@ -209,35 +224,29 @@
       const rows = mats.filter(g.pick);
       if (!rows.length) return '';   // 空組整段不出（不留一個寫著「0 種」的空標題）
       return `<div class="cl-matgroup">
-        <div class="cl-matgroup__head"><h4 class="codex-h4">${g.title} <span class="cl-matgroup__n codex-small">${rows.length} 種</span></h4>` +
-        `<span class="cl-matgroup__hint codex-small">${g.hint}</span></div>
+        <div class="codex-group-head"><span class="codex-group-head__title">${g.title}</span><span class="codex-group-head__meta">${rows.length} 種</span></div>
+        <p class="crafter-mat-hint codex-small">${g.hint}</p>
         <div class="cl-mats crafter-well">${rows.map(matRow).join('')}</div>
       </div>`;
     }).join('');
     const matTotal = ordered.reduce((n, m) => n + m.total, 0);
+    setSummary(list.length, totalRuns, ordered.length);
     const matText = ordered.map((m) => `${m.name} ×${m.total}`).join('\n');   // 純文字採買清單（每行「名稱 ×數量」，貼遊戲/記事本）
     const copyBtn = ordered.length
-      ? `<button class="cl-copy-mats codex-btn codex-btn--ghost" type="button" data-help="複製素材總需求為純文字。每行「名稱 ×數量」，可貼進遊戲或記事本。">📋 複製清單</button>`
+      ? `<button class="cl-copy-mats codex-btn codex-btn--ghost" type="button" data-help="複製素材總需求為純文字。每行「名稱 ×數量」，可貼進遊戲或記事本。">${globalThis.CrafterVisual?.iconSVG?.('copy') || ''}複製清單</button>`
       : '';
     const shoplist = buildShoplistCsv(list, byId);
     const shopBtn = shoplist.count
-      ? `<button class="cl-shoplist codex-btn codex-btn--ghost" type="button" data-help="把成品數量交棒到市場板採購清單">🛒 在市場板開採購清單</button>`
+      ? `<button class="cl-shoplist codex-btn codex-btn--ghost" type="button" data-help="把成品數量交棒到市場板採購清單">${globalThis.CrafterVisual?.iconSVG?.('shopping-cart') || ''}在市場板開採購清單</button>`
       : '';
     // 上下兩張獨立卡片：配方清單卡 / 素材總需求卡（Owner：兩者不要混在一起、上下分開）
     box.innerHTML = `
       <section class="codex-tint-panel codex-tint-panel--neutral cl-card">
-        <div class="cl-card-head">
-          <h3 class="codex-h3">配方清單</h3>
-          <span class="cl-count codex-small">${list.length} 種 · 製作 ${totalRuns} 次</span>
-        </div>
+        <h3 class="codex-h3 codex-h3--section">配方清單<span class="codex-h3__sub">${list.length} 種 · 製作 ${totalRuns} 次</span></h3>
         <div class="cl-rows crafter-well">${rows}</div>
       </section>
       <section class="codex-tint-panel codex-tint-panel--neutral cl-card">
-        <div class="cl-card-head">
-          <h3 class="codex-h3">素材總需求</h3>
-          <span class="cl-count codex-small">${ordered.length} 種 · 合計 ${matTotal} 個</span>
-          <div class="cl-card-actions">${copyBtn}${shopBtn}</div>
-        </div>
+        <h3 class="codex-h3 codex-h3--section">素材總需求<span class="codex-h3__sub">${ordered.length} 種 · 合計 ${matTotal} 個</span><span class="codex-h3__aside">${copyBtn}${shopBtn}</span></h3>
         ${matRows || '<span class="codex-small">（無素材資料）</span>'}
       </section>`;
     const cm = box.querySelector('.cl-copy-mats');

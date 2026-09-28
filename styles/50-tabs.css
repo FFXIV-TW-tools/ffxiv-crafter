@@ -2,6 +2,9 @@
 /* ---- 角色數值表 ---- */
 /* 三分頁 panel 一律吃滿 .codex-container（切頁不跳寬，痛點5）；此表於面板內以內容寬水平置中，左右留白對稱 */
 .hint { margin-bottom: var(--space-4, 16px); }
+#gear-summary, #list-summary { margin: var(--space-3, 12px) 0; }
+.crafter-gear-swipe { display: none; }
+@media (max-width: 700px) { .crafter-gear-swipe { display: block; margin: 0 0 var(--space-2, 8px); } }
 .gearsets { overflow-x: auto; }  /* 窄螢幕表格內部橫捲，不撐破頁面 */
 /* 撐滿面板（原本 width:auto + margin auto 置中 → 寬螢幕下左右各留一大片空白、表格孤懸中間）*/
 /* 基底走共用 .codex-table（+ --fixed）：寬度／collapse／th·td padding（8/12 與共用版相同）／
@@ -38,10 +41,10 @@
 /* 幾何走共用 .codex-tint-panel--neutral（底色即共用預設 --color-surface，故不傳 --panel-bg）*/
 .cl-card { padding: var(--space-4, 16px); margin-bottom: var(--space-4, 16px); }
 .cl-card:last-child { margin-bottom: 0; }
-.cl-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 8px); flex-wrap: wrap; margin-bottom: var(--space-3, 12px); }
-.cl-card-head > .codex-h3 { margin: 0; }
-.cl-card-actions { display: flex; align-items: center; gap: var(--space-2, 8px); flex-wrap: wrap; }  /* 複製 / 開採購清單 按鈕組 → 卡頭右側對齊 */
-.cl-count { color: var(--color-text); }
+/* 卡頭標題、副標、右側動作群使用共用 .codex-h3--section；不重刻幾何。 */
+@media (max-width: 700px) {
+  .cl-card .codex-h3__aside { flex: 0 1 100%; flex-wrap: wrap; margin-left: 0; }
+}
 .cl-empty-cta { margin-top: var(--space-2, 8px); }
 /* 配方列：icon + 名稱資訊（吃剩餘寬）+ 動作群（前往求解 / 行情 / 次數 / 刪除）*/
 .cl-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px); min-height: 44px;
@@ -60,12 +63,7 @@
 /* 素材依「接下來要做什麼」分三組（可自製 / 採集購買 / 晶體）：每組一個標題 + 一句該怎麼處理 */
 .cl-matgroup { margin-bottom: var(--space-4, 16px); }
 .cl-matgroup:last-child { margin-bottom: 0; }
-.cl-matgroup__head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-1, 4px) var(--space-3, 12px);
-  margin-bottom: var(--space-2, 8px); border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-1, 4px); }
-.cl-matgroup__head > .codex-h4 { margin: 0; }
-.cl-matgroup__n { color: var(--accent); font-variant-numeric: tabular-nums; }
-/* 組說明吃剩餘寬並靠右：長度差很多（三組文案不等長），靠左會讓三個標題右邊參差 */
-.cl-matgroup__hint { flex: 1; min-width: 0; text-align: right; }
+.crafter-mat-hint { margin: var(--space-1, 4px) 0 var(--space-2, 8px); }
 /* 220→320px：列內多了商人徽章與「加進清單」鈕，220px 欄會被擠到換行 */
 .cl-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: var(--space-1, 4px) var(--space-4, 16px); padding: var(--space-2, 8px) var(--space-3, 12px); }
@@ -88,7 +86,6 @@
 .crafter-qt-progress b { color: var(--accent); font-variant-numeric: tabular-nums; }
 .crafter-qt-cols { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: var(--space-4, 16px);
   align-items: start; }
-@media (max-width: 900px) { .crafter-qt-cols { grid-template-columns: 1fr; } }
 .crafter-qt-list { display: flex; flex-direction: column; gap: var(--space-2, 8px);
   max-height: 70vh; overflow-y: auto; padding-right: var(--space-1, 4px); }
 .crafter-qt-quest { padding: var(--space-2, 8px) var(--space-3, 12px); background: var(--color-surface);
@@ -125,9 +122,12 @@
    ——不重刻底色與圓角，那正是 2026-08-13 那輪在中性面板上收掉的同一種第二份事實源。*/
 .crafter-qt-tag { padding-top: 1px; padding-bottom: 1px; font-size: var(--fs-xs, .6875rem); white-space: nowrap; }
 .crafter-qt-mats { position: sticky; top: 80px; }   /* 捲任務清單時素材彙總跟著（兩邊要對照著看）*/
+@media (max-width: 900px) {
+  .crafter-qt-cols { grid-template-columns: 1fr; }
+  .crafter-qt-mats { position: static; }
+}
 .crafter-qt-mats__group { margin-bottom: var(--space-3, 12px); }
-.crafter-qt-mats__group .codex-h4 { display: flex; align-items: baseline; justify-content: space-between;
-  gap: var(--space-2, 8px); margin: 0 0 var(--space-2, 8px); }
+.crafter-qt-mats__group .codex-group-head { margin-bottom: var(--space-2, 8px); }
 .crafter-qt-mats__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-1, 4px); }
 /* 容器只負責框與排列；可點去查價的是內層 <a>，複製鈕與它同層（<a> 內不得放 <button>）*/
 .crafter-qt-mat { display: flex; align-items: center; gap: var(--space-1, 4px); min-height: 32px;

@@ -74,42 +74,36 @@
   </header>
 
   <main class="codex-container">
-    <nav id="main-tabs" class="codex-tabs" role="tablist">
-      <button class="codex-tab is-active" data-tab="solve" role="tab" aria-selected="true" aria-controls="tab-solve">🔨 配方求解</button>
-      <button class="codex-tab" data-tab="list" role="tab" aria-selected="false" aria-controls="tab-list">📋 製造清單</button>
-      <button class="codex-tab" data-tab="stats" role="tab" aria-selected="false" aria-controls="tab-stats">🧑‍🔧 角色數值</button>
-      <button class="codex-tab" data-tab="quests" role="tab" aria-selected="false" aria-controls="tab-quests">📜 職業任務</button>
+    <nav id="main-tabs" class="codex-tabs codex-tabs--boxed" role="tablist">
+      <button class="codex-tab codex-tab--boxed is-active" data-tab="solve" role="tab" aria-selected="true" aria-controls="tab-solve"><!-- crafter-icon:hammer --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M245.66,129,217,157.66a8,8,0,0,1-11.3,0L168.1,120l-28,28-32-32,28-28L80,31.78a87.81,87.81,0,0,1,98.31,18l67.35,67.89A8,8,0,0,1,245.66,129Z" opacity="0.2"/><path d="M251.34,112,183.88,44.08a96.1,96.1,0,0,0-135.77,0l-.09.09L34.25,58.4A8,8,0,0,0,45.74,69.53L59.47,55.35a79.92,79.92,0,0,1,18.71-13.9L124.68,88l-96,96a16,16,0,0,0,0,22.63l20.69,20.69a16,16,0,0,0,22.63,0l96-96,14.34,14.34h0L200,163.3a16,16,0,0,0,22.63,0l28.69-28.69A16,16,0,0,0,251.34,112ZM60.68,216,40,195.31l68-68L128.68,148ZM162.34,114.32,140,136.67,119.31,116l22.35-22.35a8,8,0,0,0,0-11.32L94.32,35a80,80,0,0,1,78.23,20.41l44.22,44.51L188,128.66l-14.34-14.34A8,8,0,0,0,162.34,114.32Zm49,37.66-12-12L228,111.25l12,12Z"/></svg><!-- /crafter-icon -->配方求解</button>
+      <button class="codex-tab codex-tab--boxed" data-tab="list" role="tab" aria-selected="false" aria-controls="tab-list" aria-label="製造清單，0 筆"><!-- crafter-icon:clipboard-text --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M208,48V216a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8V48a8,8,0,0,1,8-8H96a39.83,39.83,0,0,0-8,24v8h80V64a39.83,39.83,0,0,0-8-24h40A8,8,0,0,1,208,48Z" opacity="0.2"/><path d="M168,152a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,152Zm-8-40H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm56-64V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V48A16,16,0,0,1,56,32H92.26a47.92,47.92,0,0,1,71.48,0H200A16,16,0,0,1,216,48ZM96,64h64a32,32,0,0,0-64,0ZM200,48H173.25A47.93,47.93,0,0,1,176,64v8a8,8,0,0,1-8,8H88a8,8,0,0,1-8-8V64a47.93,47.93,0,0,1,2.75-16H56V216H200Z"/></svg><!-- /crafter-icon -->製造清單<span class="codex-count crafter-tab-count" aria-hidden="true" style="visibility:hidden">0</span></button>
+      <button class="codex-tab codex-tab--boxed" data-tab="stats" role="tab" aria-selected="false" aria-controls="tab-stats"><!-- crafter-icon:user-circle --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,128a95.76,95.76,0,0,1-31.8,71.37A72,72,0,0,0,128,160a40,40,0,1,0-40-40,40,40,0,0,0,40,40,72,72,0,0,0-64.2,39.37h0A96,96,0,1,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24ZM74.08,197.5a64,64,0,0,1,107.84,0,87.83,87.83,0,0,1-107.84,0ZM96,120a32,32,0,1,1,32,32A32,32,0,0,1,96,120Zm97.76,66.41a79.66,79.66,0,0,0-36.06-28.75,48,48,0,1,0-59.4,0,79.66,79.66,0,0,0-36.06,28.75,88,88,0,1,1,131.52,0Z"/></svg><!-- /crafter-icon -->角色數值</button>
+      <button class="codex-tab codex-tab--boxed" data-tab="quests" role="tab" aria-selected="false" aria-controls="tab-quests"><!-- crafter-icon:scroll --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M200,176H104s8,6,8,16a24,24,0,0,1-48,0V64A24,24,0,0,0,40,40H176a24,24,0,0,1,24,24Z" opacity="0.2"/><path d="M96,104a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H104A8,8,0,0,1,96,104Zm8,40h64a8,8,0,0,0,0-16H104a8,8,0,0,0,0,16Zm128,48a32,32,0,0,1-32,32H88a32,32,0,0,1-32-32V64a16,16,0,0,0-32,0c0,5.74,4.83,9.62,4.88,9.66h0A8,8,0,0,1,24,88a7.89,7.89,0,0,1-4.79-1.61h0C18.05,85.54,8,77.61,8,64A32,32,0,0,1,40,32H176a32,32,0,0,1,32,32V168h8a8,8,0,0,1,4.8,1.6C222,170.46,232,178.39,232,192ZM96.26,173.48A8.07,8.07,0,0,1,104,168h88V64a16,16,0,0,0-16-16H67.69A31.71,31.71,0,0,1,72,64V192a16,16,0,0,0,32,0c0-5.74-4.83-9.62-4.88-9.66A7.82,7.82,0,0,1,96.26,173.48ZM216,192a12.58,12.58,0,0,0-3.23-8h-94a26.92,26.92,0,0,1,1.21,8,31.82,31.82,0,0,1-4.29,16H200A16,16,0,0,0,216,192Z"/></svg><!-- /crafter-icon -->職業任務</button>
     </nav>
 
     <!-- ===== 配方求解 ===== -->
     <div id="tab-solve" class="tabpanel" role="tabpanel">
-      <div id="first-run-hint" class="run-hint" hidden>
-        <span>👉 首次使用：先到「<b>角色數值</b>」分頁填各職裝備數值，再回來選配方求解。</span>
-        <button id="goto-stats-hint" class="codex-btn codex-btn--ghost" type="button">前往角色數值 →</button>
-      </div>
-      <!-- 提示的顯隱只看 localStorage，是同步就能決定的事，但原本要等 app.js（type=module ⇒ defer）
-           才決定 ⇒ 首次繪製之後才長出 80px，把流程軸與整個求解面板往下推（CLS）。這支是
-           **parser-blocking 的外部 classic script**，跑在解析階段、早於首次繪製 —— 刻意不用
-           inline：那會擴大 CSP unsafe-inline 的依賴面（T53 哨兵當場擋下，它是對的）。 -->
-      <script src="first-run-hint.js"></script>
+      <!-- 首次提示由解析期 classic script 同步決定，不等待資料 fetch。 -->
 
-      <!-- 流程軸（設計系統 §功能頁引導標準）：三步狀態 + 固定位置的「下一步」。內容由 app-flow.js 依 live 狀態重繪 -->
+
       <nav class="crafter-flow-wrap" aria-label="製作求解流程">
-        <!-- ⚠ 以下兩塊靜態標記＝CraftFlow.flowHtml({}) 的冷啟動輸出，逐字複製（首屏零版面位移／CLS）。
-             改 app-flow.js 文案後 test-formulas T17 會紅 → 用 `node -e` 重印 flowHtml({}) 貼回這裡，勿手改。 -->
-        <ol id="flow-steps" class="crafter-flow"><li class="crafter-flow__step" data-state="current" aria-current="step"><span class="crafter-flow__n" aria-hidden="true">1</span><span class="crafter-flow__body"><span class="crafter-flow__t">選配方<span class="crafter-sr">（進行中）</span></span><span class="crafter-flow__note codex-small">從下方列表挑一個要做的成品</span></span></li><li class="crafter-flow__step" data-state="todo"><span class="crafter-flow__n" aria-hidden="true">2</span><span class="crafter-flow__body"><span class="crafter-flow__t">設定條件<span class="crafter-sr">（待辦）</span></span><span class="crafter-flow__note codex-small">選好配方後在左欄設定</span></span></li><li class="crafter-flow__step" data-state="todo"><span class="crafter-flow__n" aria-hidden="true">3</span><span class="crafter-flow__body"><span class="crafter-flow__t">求解取巨集<span class="crafter-sr">（待辦）</span></span><span class="crafter-flow__note codex-small">產出遊戲巨集與逐步走查</span></span></li></ol>
-        <!-- role="status"（隱含 aria-live=polite）只掛「下一步」這一行：步驟推進/退回會被播報，
-             但不會像整條步驟軸那樣一次唸三個 li（外審 a11y 建議） -->
-        <p id="flow-next" class="crafter-flow__next" role="status"><span class="crafter-flow__next-label">下一步</span><span>① 從下方列表挑一個配方 — 可用職業、等級或名稱搜尋縮小範圍。</span></p>
+        <ol id="flow-steps" class="codex-steps"><!-- crafter-flow-steps:start --><li class="codex-step is-current" aria-current="step"><span class="codex-step__mark" aria-hidden="true"></span><span class="codex-step__body"><span class="codex-step__title">選配方<span class="codex-sr-only">（進行中）</span></span><span class="codex-step__hint">從下方挑一個成品</span></span></li><li class="codex-step"><span class="codex-step__mark" aria-hidden="true"></span><span class="codex-step__body"><span class="codex-step__title">設定條件<span class="codex-sr-only">（待辦）</span></span><span class="codex-step__hint">選好配方後設定素材與數值</span></span></li><li class="codex-step"><span class="codex-step__mark" aria-hidden="true"></span><span class="codex-step__body"><span class="codex-step__title">求解取巨集<span class="codex-sr-only">（待辦）</span></span><span class="codex-step__hint">取得巨集與逐步走查</span></span></li><!-- crafter-flow-steps:end --></ol>
+        <div class="crafter-flow-footer">
+          <p id="flow-next" class="crafter-flow__next" role="status"><!-- crafter-flow-next:start -->下一步：從下方列表選一個配方<!-- crafter-flow-next:end --></p>
+          <div id="first-run-hint" class="crafter-run-hint" hidden>
+            <span>尚未設定角色數值；選好配方後，需要該職業的數值才能求解。</span>
+            <button id="goto-stats-hint" class="codex-btn codex-btn--ghost" type="button">前往角色數值</button>
+          </div>
+      <script src="first-run-hint.js"></script>
+        </div>
       </nav>
 
       <!-- ① 選配方（選定後整張卡收合成一行摘要，版面還給主內容）-->
-      <section class="codex-tablet codex-tablet--cyan panel" id="pick-panel">
+      <section class="codex-tablet codex-tablet--cyan codex-glow panel" id="pick-panel">
         <span class="codex-hud"></span>
         <div class="pick-head">
           <div class="crafter-pick-title">
-            <h2 class="codex-h2" id="pick-title">① 選配方</h2>
-            <p class="crafter-pick-hint codex-small">先選製作職業，再用等級或名稱縮小範圍；點列即進入設定。</p>
+            <h2 class="codex-view-title" id="pick-title"><span class="codex-view-title__ico" aria-hidden="true"><!-- crafter-icon:hammer --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M245.66,129,217,157.66a8,8,0,0,1-11.3,0L168.1,120l-28,28-32-32,28-28L80,31.78a87.81,87.81,0,0,1,98.31,18l67.35,67.89A8,8,0,0,1,245.66,129Z" opacity="0.2"/><path d="M251.34,112,183.88,44.08a96.1,96.1,0,0,0-135.77,0l-.09.09L34.25,58.4A8,8,0,0,0,45.74,69.53L59.47,55.35a79.92,79.92,0,0,1,18.71-13.9L124.68,88l-96,96a16,16,0,0,0,0,22.63l20.69,20.69a16,16,0,0,0,22.63,0l96-96,14.34,14.34h0L200,163.3a16,16,0,0,0,22.63,0l28.69-28.69A16,16,0,0,0,251.34,112ZM60.68,216,40,195.31l68-68L128.68,148ZM162.34,114.32,140,136.67,119.31,116l22.35-22.35a8,8,0,0,0,0-11.32L94.32,35a80,80,0,0,1,78.23,20.41l44.22,44.51L188,128.66l-14.34-14.34A8,8,0,0,0,162.34,114.32Zm49,37.66-12-12L228,111.25l12,12Z"/></svg><!-- /crafter-icon --></span>選配方</h2>
           </div>
           <div id="selected-bar" class="selected-bar" hidden></div>
           <!-- 「繼續做」放這一列而不是配方詳情動作列：這裡本來就有整片空白 ⇒ 不佔任何新高度，
@@ -125,7 +119,7 @@
           <div class="codex-tint-panel codex-tint-panel--neutral filter-group">
           <div class="job-chips" id="job-chips" role="group" aria-label="依製作職業篩選配方"></div>
           <div class="filter-row">
-            <input id="recipe-search" class="codex-input grow" type="text" placeholder="搜尋配方名稱…" aria-label="搜尋配方名稱" autocomplete="off">
+            <span class="codex-search crafter-recipe-search"><!-- crafter-icon:magnifying-glass --><svg class="codex-search__icon" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M192,112a80,80,0,1,1-80-80A80,80,0,0,1,192,112Z" opacity="0.2"/><path d="M229.66,218.34,179.6,168.28a88.21,88.21,0,1,0-11.32,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></svg><!-- /crafter-icon --><input id="recipe-search" class="codex-input" type="text" placeholder="搜尋配方名稱…" aria-label="搜尋配方名稱" autocomplete="off"><kbd class="codex-kbd codex-search__kbd" aria-hidden="true">/</kbd></span>
             <select id="level-filter" class="codex-select" aria-label="等級">
               <option value="">全部等級</option>
               <option value="1-10">Lv 1–10</option><option value="11-20">Lv 11–20</option>
@@ -157,7 +151,7 @@
       <div id="work" class="work" hidden>
         <section class="codex-tablet codex-tablet--cyan panel" id="config-panel">
           <span class="codex-hud"></span>
-          <h2 id="config-title" class="codex-h2 crafter-col-title" tabindex="-1">② 設定條件</h2>
+          <h2 id="config-title" class="codex-view-title crafter-col-title" tabindex="-1"><span class="codex-view-title__ico" aria-hidden="true"><!-- crafter-icon:gear --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M230.1,108.76,198.25,90.62c-.64-1.16-1.31-2.29-2-3.41l-.12-36A104.61,104.61,0,0,0,162,32L130,49.89c-1.34,0-2.69,0-4,0L94,32A104.58,104.58,0,0,0,59.89,51.25l-.16,36c-.7,1.12-1.37,2.26-2,3.41l-31.84,18.1a99.15,99.15,0,0,0,0,38.46l31.85,18.14c.64,1.16,1.31,2.29,2,3.41l.12,36A104.61,104.61,0,0,0,94,224l32-17.87c1.34,0,2.69,0,4,0L162,224a104.58,104.58,0,0,0,34.08-19.25l.16-36c.7-1.12,1.37-2.26,2-3.41l31.84-18.1A99.15,99.15,0,0,0,230.1,108.76ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" opacity="0.2"/><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm109.94-52.79a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A111.92,111.92,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.63a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21Zm-15,34.91-28.57,16.25a8,8,0,0,0-3,3c-.58,1-1.19,2.06-1.81,3.06a7.94,7.94,0,0,0-1.22,4.21l-.15,32.25a95.89,95.89,0,0,1-25.37,14.3L134,199.13a8,8,0,0,0-3.91-1h-.19c-1.21,0-2.43,0-3.64,0a8.1,8.1,0,0,0-4.1,1l-28.84,16.1A96,96,0,0,1,67.88,201l-.11-32.2a8,8,0,0,0-1.22-4.22c-.62-1-1.23-2-1.8-3.06a8.09,8.09,0,0,0-3-3.06l-28.6-16.29a90.49,90.49,0,0,1,0-28.26L61.67,97.63a8,8,0,0,0,3-3c.58-1,1.19-2.06,1.81-3.06a7.94,7.94,0,0,0,1.22-4.21l.15-32.25a95.89,95.89,0,0,1,25.37-14.3L122,56.87a8,8,0,0,0,4.1,1c1.21,0,2.43,0,3.64,0a8,8,0,0,0,4.1-1l28.84-16.1A96,96,0,0,1,188.12,55l.11,32.2a8,8,0,0,0,1.22,4.22c.62,1,1.23,2,1.8,3.06a8.09,8.09,0,0,0,3,3.06l28.6,16.29A90.49,90.49,0,0,1,222.9,142.12Z"/></svg><!-- /crafter-icon --></span>設定條件</h2>
           <div id="recipe-info" class="recipe-info"></div>
 
           <!-- 等級同步（宇宙探索配方）：靜態骨架，CraftSync 只改 value/文字，不重建 DOM
@@ -175,8 +169,7 @@
           </div>
 
           <div class="codex-tint-panel codex-tint-panel--neutral cfg-card">
-          <h3 class="codex-h3 cfg-card__title">素材與加成</h3>
-          <p class="cfg-card__desc codex-small">HQ 素材、食物與藥水會提高起始品質與數值 — 不確定就保持預設。</p>
+          <h3 class="codex-h3 codex-h3--section">素材與加成<span class="codex-h3__sub">HQ 素材與食藥會提升起始品質與數值</span></h3>
           <details class="consumable-block" id="consumable-block" open>
             <summary>
               <span class="codex-small">🍖 食物 / 藥水</span>
@@ -202,8 +195,7 @@
           </div>
 
           <div class="codex-tint-panel codex-tint-panel--neutral cfg-card">
-          <h3 class="codex-h3 cfg-card__title">求解設定</h3>
-          <p class="cfg-card__desc codex-small">預設值適用多數配方；要壓縮步數或指定品質再調整。</p>
+          <h3 class="codex-h3 codex-h3--section">求解設定<span class="codex-h3__sub">預設適用多數配方，可調整步數與品質目標</span></h3>
 
           <div class="crafter-fields">
             <div class="codex-field">
@@ -269,8 +261,8 @@
 
         <section class="codex-tablet panel" id="results-col">
           <span class="codex-hud"></span>
-          <h2 class="codex-h2 crafter-col-title">③ 求解結果</h2>
-          <div id="results-placeholder" class="codex-empty results-ph"></div>
+          <h2 class="codex-view-title crafter-col-title"><span class="codex-view-title__ico" aria-hidden="true"><!-- crafter-icon:chart-bar --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M208,40V208H152V40Z" opacity="0.2"/><path d="M224,200h-8V40a8,8,0,0,0-8-8H152a8,8,0,0,0-8,8V80H96a8,8,0,0,0-8,8v40H48a8,8,0,0,0-8,8v64H32a8,8,0,0,0,0,16H224a8,8,0,0,0,0-16ZM160,48h40V200H160ZM104,96h40V200H104ZM56,144H88v56H56Z"/></svg><!-- /crafter-icon --></span>求解結果</h2>
+          <div id="results-placeholder" class="codex-empty codex-empty--bare results-ph"></div>
           <div id="results" tabindex="-1" hidden>
             <div id="result-summary" class="codex-tint-panel codex-tint-panel--neutral result-summary"></div>
             <details class="res-block" id="macro-block" open>
@@ -297,8 +289,14 @@
     <div id="tab-stats" class="tabpanel" role="tabpanel" hidden>
       <section class="codex-tablet codex-tablet--cyan panel">
         <span class="codex-hud"></span>
-        <h2 class="codex-h2">角色數值 — 各製作職業裝備</h2>
+        <h2 class="codex-view-title"><span class="codex-view-title__ico" aria-hidden="true"><!-- crafter-icon:user-circle --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,128a95.76,95.76,0,0,1-31.8,71.37A72,72,0,0,0,128,160a40,40,0,1,0-40-40,40,40,0,0,0,40,40,72,72,0,0,0-64.2,39.37h0A96,96,0,1,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24ZM74.08,197.5a64,64,0,0,1,107.84,0,87.83,87.83,0,0,1-107.84,0ZM96,120a32,32,0,1,1,32,32A32,32,0,0,1,96,120Zm97.76,66.41a79.66,79.66,0,0,0-36.06-28.75,48,48,0,1,0-59.4,0,79.66,79.66,0,0,0-36.06,28.75,88,88,0,1,1,131.52,0Z"/></svg><!-- /crafter-icon --></span>角色數值</h2>
+        <div id="gear-summary" class="codex-kpis codex-kpis--compact">
+          <div class="codex-kpi"><span class="codex-kpi__icon" aria-hidden="true"><!-- crafter-icon:user-circle --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,128a95.76,95.76,0,0,1-31.8,71.37A72,72,0,0,0,128,160a40,40,0,1,0-40-40,40,40,0,0,0,40,40,72,72,0,0,0-64.2,39.37h0A96,96,0,1,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24ZM74.08,197.5a64,64,0,0,1,107.84,0,87.83,87.83,0,0,1-107.84,0ZM96,120a32,32,0,1,1,32,32A32,32,0,0,1,96,120Zm97.76,66.41a79.66,79.66,0,0,0-36.06-28.75,48,48,0,1,0-59.4,0,79.66,79.66,0,0,0-36.06,28.75,88,88,0,1,1,131.52,0Z"/></svg><!-- /crafter-icon --></span><span class="codex-kpi__label">已填職業</span><span class="codex-kpi__value" data-gear-kpi="jobs">0 / 8</span></div>
+          <div class="codex-kpi"><span class="codex-kpi__icon" aria-hidden="true"><!-- crafter-icon:gear --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M230.1,108.76,198.25,90.62c-.64-1.16-1.31-2.29-2-3.41l-.12-36A104.61,104.61,0,0,0,162,32L130,49.89c-1.34,0-2.69,0-4,0L94,32A104.58,104.58,0,0,0,59.89,51.25l-.16,36c-.7,1.12-1.37,2.26-2,3.41l-31.84,18.1a99.15,99.15,0,0,0,0,38.46l31.85,18.14c.64,1.16,1.31,2.29,2,3.41l.12,36A104.61,104.61,0,0,0,94,224l32-17.87c1.34,0,2.69,0,4,0L162,224a104.58,104.58,0,0,0,34.08-19.25l.16-36c.7-1.12,1.37-2.26,2-3.41l31.84-18.1A99.15,99.15,0,0,0,230.1,108.76ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" opacity="0.2"/><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm109.94-52.79a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A111.92,111.92,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.63a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21Zm-15,34.91-28.57,16.25a8,8,0,0,0-3,3c-.58,1-1.19,2.06-1.81,3.06a7.94,7.94,0,0,0-1.22,4.21l-.15,32.25a95.89,95.89,0,0,1-25.37,14.3L134,199.13a8,8,0,0,0-3.91-1h-.19c-1.21,0-2.43,0-3.64,0a8.1,8.1,0,0,0-4.1,1l-28.84,16.1A96,96,0,0,1,67.88,201l-.11-32.2a8,8,0,0,0-1.22-4.22c-.62-1-1.23-2-1.8-3.06a8.09,8.09,0,0,0-3-3.06l-28.6-16.29a90.49,90.49,0,0,1,0-28.26L61.67,97.63a8,8,0,0,0,3-3c.58-1,1.19-2.06,1.81-3.06a7.94,7.94,0,0,0,1.22-4.21l.15-32.25a95.89,95.89,0,0,1,25.37-14.3L122,56.87a8,8,0,0,0,4.1,1c1.21,0,2.43,0,3.64,0a8,8,0,0,0,4.1-1l28.84-16.1A96,96,0,0,1,188.12,55l.11,32.2a8,8,0,0,0,1.22,4.22c.62,1,1.23,2,1.8,3.06a8.09,8.09,0,0,0,3,3.06l28.6,16.29A90.49,90.49,0,0,1,222.9,142.12Z"/></svg><!-- /crafter-icon --></span><span class="codex-kpi__label">預設數值</span><span class="codex-kpi__value" data-gear-kpi="default">未填</span></div>
+          <div class="codex-kpi"><span class="codex-kpi__icon" aria-hidden="true"><!-- crafter-icon:check-circle --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/></svg><!-- /crafter-icon --></span><span class="codex-kpi__label">專家之證</span><span class="codex-kpi__value" data-gear-kpi="specialist">0 / 3</span></div>
+        </div>
         <p class="codex-body hint">填每個職業的 <b>作業精度 / 加工精度 / CP / 等級</b>。求解時依配方職業<b>自動套用</b>；某職留空用「<b>預設</b>」。右欄勾<b>專家之證</b>（遊戲上限 3 個）會一併加成作業 +20・加工 +20・CP +15 並解鎖專心致志／快速改革。資料只存本機。</p>
+        <p class="crafter-gear-swipe codex-small">左右滑動表格，可查看 CP 與專家之證。</p>
         <div class="gearsets" id="gearsets"></div>
       </section>
     </div>
@@ -307,7 +305,7 @@
     <div id="tab-quests" class="tabpanel" role="tabpanel" hidden>
       <section class="codex-tablet codex-tablet--cyan panel">
         <span class="codex-hud"></span>
-        <h2 class="codex-h2">職業任務 — 要交什麼</h2>
+        <h2 class="codex-view-title"><span class="codex-view-title__ico" aria-hidden="true"><!-- crafter-icon:scroll --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M200,176H104s8,6,8,16a24,24,0,0,1-48,0V64A24,24,0,0,0,40,40H176a24,24,0,0,1,24,24Z" opacity="0.2"/><path d="M96,104a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H104A8,8,0,0,1,96,104Zm8,40h64a8,8,0,0,0,0-16H104a8,8,0,0,0,0,16Zm128,48a32,32,0,0,1-32,32H88a32,32,0,0,1-32-32V64a16,16,0,0,0-32,0c0,5.74,4.83,9.62,4.88,9.66h0A8,8,0,0,1,24,88a7.89,7.89,0,0,1-4.79-1.61h0C18.05,85.54,8,77.61,8,64A32,32,0,0,1,40,32H176a32,32,0,0,1,32,32V168h8a8,8,0,0,1,4.8,1.6C222,170.46,232,178.39,232,192ZM96.26,173.48A8.07,8.07,0,0,1,104,168h88V64a16,16,0,0,0-16-16H67.69A31.71,31.71,0,0,1,72,64V192a16,16,0,0,0,32,0c0-5.74-4.83-9.62-4.88-9.66A7.82,7.82,0,0,1,96.26,173.48ZM216,192a12.58,12.58,0,0,0-3.23-8h-94a26.92,26.92,0,0,1,1.21,8,31.82,31.82,0,0,1-4.29,16H200A16,16,0,0,0,216,192Z"/></svg><!-- /crafter-icon --></span>職業任務</h2>
         <p class="codex-body hint">11 個製作／採集職業的職業任務與<b>交付物品</b>（台服官方資料）。勾起完成的任務，下方<b>只彙總還沒完成的</b>素材，並展開到<b>要去買／採的底層素材</b>。進度只存本機。
           交件數量取自社群試算表（<b>只在名稱完全對得上時採用</b>）；對不上的標<b>數量未知</b>並以 1 份估算，彙總區會寫出有幾件是估的。</p>
         <div class="job-chips" id="quest-jobs" role="group" aria-label="選擇職業任務的職業"></div>
@@ -316,9 +314,12 @@
           <label class="opt"><input type="checkbox" id="quest-hide-done"> 只顯示未完成</label>
         </div>
         <div class="crafter-qt-cols">
-          <div id="quest-body" class="crafter-qt-list"></div>
+          <div class="crafter-qt-main">
+            <h3 class="codex-h3 codex-h3--section">任務列表</h3>
+            <div id="quest-body" class="crafter-qt-list"></div>
+          </div>
           <div class="crafter-qt-mats">
-            <h3 class="codex-h3">還要準備的素材</h3>
+            <h3 class="codex-h3 codex-h3--section">還要準備的素材</h3>
             <div id="quest-mats"></div>
           </div>
         </div>
@@ -329,8 +330,13 @@
     <div id="tab-list" class="tabpanel" role="tabpanel" hidden>
       <section class="codex-tablet codex-tablet--cyan panel">
         <span class="codex-hud"></span>
-        <h2 class="codex-h2">製造清單</h2>
+        <h2 class="codex-view-title"><span class="codex-view-title__ico" aria-hidden="true"><!-- crafter-icon:clipboard-text --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M208,48V216a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8V48a8,8,0,0,1,8-8H96a39.83,39.83,0,0,0-8,24v8h80V64a39.83,39.83,0,0,0-8-24h40A8,8,0,0,1,208,48Z" opacity="0.2"/><path d="M168,152a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,152Zm-8-40H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm56-64V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V48A16,16,0,0,1,56,32H92.26a47.92,47.92,0,0,1,71.48,0H200A16,16,0,0,1,216,48ZM96,64h64a32,32,0,0,0-64,0ZM200,48H173.25A47.93,47.93,0,0,1,176,64v8a8,8,0,0,1-8,8H88a8,8,0,0,1-8-8V64a47.93,47.93,0,0,1,2.75-16H56V216H200Z"/></svg><!-- /crafter-icon --></span>製造清單</h2>
         <p class="codex-body hint">調整數量後自動彙總<b>素材總需求</b>；素材可一鍵到<b>市場板</b>查價，或整份成品開<b>採購清單</b>。資料只存本機。</p>
+        <div id="list-summary" class="codex-kpis codex-kpis--compact">
+          <div class="codex-kpi"><span class="codex-kpi__icon" aria-hidden="true"><!-- crafter-icon:package --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M128,129.09V232a8,8,0,0,1-3.84-1l-88-48.18a8,8,0,0,1-4.16-7V80.18a8,8,0,0,1,.7-3.25Z" opacity="0.2"/><path d="M223.68,66.15,135.68,18a15.88,15.88,0,0,0-15.36,0l-88,48.17a16,16,0,0,0-8.32,14v95.64a16,16,0,0,0,8.32,14l88,48.17a15.88,15.88,0,0,0,15.36,0l88-48.17a16,16,0,0,0,8.32-14V80.18A16,16,0,0,0,223.68,66.15ZM128,32l80.34,44-29.77,16.3-80.35-44ZM128,120,47.66,76l33.9-18.56,80.34,44ZM40,90l80,43.78v85.79L40,175.82Zm176,85.78h0l-80,43.79V133.82l32-17.51V152a8,8,0,0,0,16,0V107.55L216,90v85.77Z"/></svg><!-- /crafter-icon --></span><span class="codex-kpi__label">配方種類</span><span class="codex-kpi__value" data-list-kpi="recipes">0</span></div>
+          <div class="codex-kpi"><span class="codex-kpi__icon" aria-hidden="true"><!-- crafter-icon:clock --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></svg><!-- /crafter-icon --></span><span class="codex-kpi__label">製作次數</span><span class="codex-kpi__value" data-list-kpi="runs">0</span></div>
+          <div class="codex-kpi"><span class="codex-kpi__icon" aria-hidden="true"><!-- crafter-icon:stack --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,80l-96,56L32,80l96-56Z" opacity="0.2"/><path d="M230.91,172A8,8,0,0,1,228,182.91l-96,56a8,8,0,0,1-8.06,0l-96-56A8,8,0,0,1,36,169.09l92,53.65,92-53.65A8,8,0,0,1,230.91,172ZM220,121.09l-92,53.65L36,121.09A8,8,0,0,0,28,134.91l96,56a8,8,0,0,0,8.06,0l96-56A8,8,0,1,0,220,121.09ZM24,80a8,8,0,0,1,4-6.91l96-56a8,8,0,0,1,8.06,0l96,56a8,8,0,0,1,0,13.82l-96,56a8,8,0,0,1-8.06,0l-96-56A8,8,0,0,1,24,80Zm23.88,0L128,126.74,208.12,80,128,33.26Z"/></svg><!-- /crafter-icon --></span><span class="codex-kpi__label">素材種類</span><span class="codex-kpi__value" data-list-kpi="materials">0</span></div>
+        </div>
         <div id="craft-list"></div>
       </section>
     </div>
@@ -349,13 +355,13 @@
   <div class="codex-modal-overlay" id="next-modal" hidden>
     <div class="codex-modal crafter-next-modal" role="dialog" aria-modal="true" aria-labelledby="next-title">
       <div class="codex-modal__header">
-        <h3 class="codex-h3" id="next-title">還能做什麼</h3>
+        <h3 class="codex-h3" id="next-title"><!-- crafter-icon:package --><svg class="codex-ico" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M128,129.09V232a8,8,0,0,1-3.84-1l-88-48.18a8,8,0,0,1-4.16-7V80.18a8,8,0,0,1,.7-3.25Z" opacity="0.2"/><path d="M223.68,66.15,135.68,18a15.88,15.88,0,0,0-15.36,0l-88,48.17a16,16,0,0,0-8.32,14v95.64a16,16,0,0,0,8.32,14l88,48.17a15.88,15.88,0,0,0,15.36,0l88-48.17a16,16,0,0,0,8.32-14V80.18A16,16,0,0,0,223.68,66.15ZM128,32l80.34,44-29.77,16.3-80.35-44ZM128,120,47.66,76l33.9-18.56,80.34,44ZM40,90l80,43.78v85.79L40,175.82Zm176,85.78h0l-80,43.79V133.82l32-17.51V152a8,8,0,0,0,16,0V107.55L216,90v85.77Z"/></svg><!-- /crafter-icon -->還能做什麼</h3>
         <span id="next-count" class="codex-small crafter-next-count"></span>
         <button class="codex-modal__close" id="next-close" type="button" aria-label="關閉">×</button>
       </div>
       <div class="codex-modal__body">
         <div class="crafter-next-filters">
-          <input id="next-search" class="codex-input crafter-next-search" type="search" placeholder="搜尋品名" aria-label="搜尋下一階成品">
+          <span class="codex-search crafter-next-search"><!-- crafter-icon:magnifying-glass --><svg class="codex-search__icon" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M192,112a80,80,0,1,1-80-80A80,80,0,0,1,192,112Z" opacity="0.2"/><path d="M229.66,218.34,179.6,168.28a88.21,88.21,0,1,0-11.32,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></svg><!-- /crafter-icon --><input id="next-search" class="codex-input" type="search" placeholder="搜尋品名" aria-label="搜尋下一階成品"></span>
           <select id="next-job" class="codex-select" aria-label="只看某個職業"><option value="">全部職業</option></select>
           <label class="opt" data-help="只列出你已填角色數值的職業做得出來的東西。若一筆都不剩會自動改回顯示全部。"><input type="checkbox" id="next-only-mine" checked> 只顯示我能做的</label>
         </div>
@@ -364,6 +370,8 @@
     </div>
   </div>
 
+  <script src="crafter-icons.js"></script>
+  <script src="crafter-visual.js"></script>
   <script src="crafting-list.js"></script>
   <script src="app-formula.js"></script>
   <script src="app-data.js"></script>

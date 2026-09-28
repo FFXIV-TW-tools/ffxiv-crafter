@@ -53,6 +53,18 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
     return null;
   }
   function anyGear() { return deps.DOH.concat('預設').some(j => gearValid(gearsets[j])); }
+  function updateGearSummary() {
+    const box = deps.$('gear-summary');
+    if (!box) return;
+    const jobs = box.querySelector('[data-gear-kpi="jobs"]');
+    const defaultKpi = box.querySelector('[data-gear-kpi="default"]');
+    const specialist = box.querySelector('[data-gear-kpi="specialist"]');
+    if (!jobs || !defaultKpi || !specialist) return;
+    jobs.textContent = `${deps.DOH.filter(job => gearValid(gearsets[job])).length} / ${deps.DOH.length}`;
+    defaultKpi.textContent = gearValid(gearsets['預設']) ? '已填' : '未填';
+    specialist.textContent = `${specialistCount()} / ${SPEC_MAX}`;
+  }
+
 
   function renderGearsets() {
     const { $, esc, iconUrl, DOH, JOB_ICON } = deps;
@@ -80,6 +92,7 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
     $('gearsets').querySelectorAll('.gear-in').forEach(inp => inp.addEventListener('input', onGearInput));
     $('gearsets').querySelectorAll('.gear-spec').forEach(inp => inp.addEventListener('change', onSpecialistToggle));
     updateSpecCount();
+    updateGearSummary();
   }
 
   // 計數只改文字、不重繪整張表（重繪會吃掉勾選當下的焦點）
@@ -103,6 +116,7 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
     (gearsets[job] = gearsets[job] || {}).specialist = e.target.checked;
     saveGear();
     updateSpecCount();
+    updateGearSummary();
     deps.afterInput();
   }
 
@@ -122,6 +136,7 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
     if (!valid) e.target.reportValidity?.();
     (gearsets[job] = gearsets[job] || {})[f] = value;
     saveGear();
+    updateGearSummary();
     deps.afterInput();
   }
 

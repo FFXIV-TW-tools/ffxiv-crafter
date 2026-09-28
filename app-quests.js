@@ -137,9 +137,10 @@
   function questsHtml(v) {
     const { esc } = deps;
     if (!v.quests.length) {
-      return `<div class="codex-empty">${v.total && v.doneCount === v.total
-        ? '🎉 這個職業的任務都標記完成了'
-        : (state.hideDone ? '（未完成的都藏起來了 — 取消「只顯示未完成」看全部）' : '（沒有任務資料）')}</div>`;
+      const message = !v.total ? '這個職業暫無任務資料，請選其他職業。'
+        : v.doneCount === v.total ? '這個職業的任務都完成了。切換其他職業，或取消「只顯示未完成」回顧。'
+        : '目前沒有待辦任務；取消「只顯示未完成」查看全部。';
+      return `<div class="codex-empty codex-empty--bare">${message}</div>`;
     }
     return v.quests.map((q) => {
       const done = doneSet.has(q.id);
@@ -153,7 +154,7 @@
   function matsHtml(v) {
     const { esc, iconUrl, mbItem, getItems } = deps;
     const items = v.remaining.flatMap((q) => q.items);
-    if (!items.length) return '<div class="codex-empty">（沒有未完成的任務 — 這裡會列出還要準備的素材）</div>';
+    if (!items.length) return '<div class="codex-empty codex-empty--bare">目前沒有待準備的素材。</div>';
     const { base, inter } = expandMats(items, {
       recipesById: deps.getRecipesById(), recipeByItem: deps.getRecipeByItem(), ingredients: deps.getIngredients(),
     });
@@ -173,10 +174,10 @@
     const note = unknown
       ? `<div class="crafter-qt-mats__note codex-small">⚠ 其中 <b>${unknown}</b> 件交付物的數量未知，已以「1 份」估算 — 實際可能更多，請自行加量。</div>`
       : '';
-    return note + `<div class="crafter-qt-mats__group"><h4 class="codex-h4">要買／要採（底層素材）<span class="codex-small">${base.length} 種</span></h4>` +
+    return note + `<div class="crafter-qt-mats__group"><div class="codex-group-head"><span class="codex-group-head__title">要買／要採（底層素材）</span><span class="codex-group-head__meta">${base.length} 種</span></div>` +
       `<div class="crafter-qt-mats__grid">${base.map(row).join('') || '<span class="codex-small">（無）</span>'}</div></div>` +
       (inter.length
-        ? `<div class="crafter-qt-mats__group"><h4 class="codex-h4">過程中要先做出來的<span class="codex-small">${inter.length} 種</span></h4>` +
+        ? `<div class="crafter-qt-mats__group"><div class="codex-group-head"><span class="codex-group-head__title">過程中要先做出來的</span><span class="codex-group-head__meta">${inter.length} 種</span></div>` +
           `<div class="crafter-qt-mats__grid">${inter.map(row).join('')}</div></div>`
         : '');
   }
@@ -213,7 +214,7 @@
     const body = $('quest-body');
     if (!body) return;                 // 分頁骨架不在（測試 sandbox / 部署不完整）→ 靜靜不畫，不炸掉整個 init
     const cur = current();
-    if (!cur) { body.innerHTML = '<div class="codex-empty">（職業任務資料未載入）</div>'; return; }
+    if (!cur) { body.innerHTML = '<div class="codex-empty codex-empty--bare">這個職業暫無任務資料，請選其他職業。</div>'; return; }
     state.job = cur.job;
     $('quest-body').innerHTML = questsHtml(view(cur, doneSet, state.hideDone));
     refreshSummary();

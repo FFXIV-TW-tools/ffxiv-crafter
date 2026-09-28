@@ -1,17 +1,11 @@
 /* === 40-result.css — 求解頁結果側：結果摘要／手法卡／逐步走查表／巨集框／「繼續做」選取視窗 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */
 /* ---- 結果 + 摺疊 ---- */
-/* 結果摘要＝獨立的 inset 面板（徽章 + 步數/秒數 metric + 兩條進度條），與下方摺疊區塊分開。
-   幾何走共用 .codex-tint-panel--neutral（同 .cfg-card／.filter-group／.cl-card）；本地只留 padding 與外距。
-   2026-08-13 那輪遷了三個容器卻漏掉這一個——它的幾何與共用版**逐項相同**（8px 圓角／1px 中性邊／bg-deep 底），
-   純粹是當時沒掃到 ⇒ 遷移後畫面零變化，收掉的是第二份會漂移的事實源。*/
+/* 結果摘要仍是 inset 面板；KPI 數字磚由 portal .codex-kpis 提供。 */
 .result-summary { --panel-bg: var(--color-bg-deep, #03060c);
   padding: var(--space-3, 12px); margin-bottom: var(--space-3, 12px); }
 .sum-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-3, 12px); }
-.sum-meta { margin-left: auto; display: inline-flex; gap: var(--space-2, 8px); flex: 0 0 auto; }
-/* 步數 / 秒數：值大、單位小，與左側徽章群拉開重量差（原本是一行同字級小字）*/
-.sum-metric { display: inline-flex; align-items: baseline; gap: 2px; }
-.sum-metric b { color: var(--accent); font-size: var(--fs-h3); font-weight: var(--fw-bold, 700);
-  line-height: 1; font-variant-numeric: tabular-nums; }
+.crafter-copy-summary { margin-left: auto; }
+.result-summary .codex-kpis { margin-bottom: var(--space-3, 12px); }
 /* 數字欄定寬 + tabular → 兩條長條的右側數字對齊成一直行 */
 .bar-row { display: grid; grid-template-columns: 3em minmax(0, 1fr) 8.5em; align-items: center;
   gap: var(--space-2, 8px); margin: var(--space-1, 4px) 0; }
@@ -77,7 +71,8 @@
 .crafter-next-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); margin-bottom: var(--space-2, 8px); }
 /* 共用 .codex-input／.codex-select 預設 width:100% ⇒ 不覆寫的話三個篩選各佔一整行（實測 114px 高，
    清單被推到摺線下）。只改版面（寬度／收縮），視覺仍全走共用元件。*/
-.crafter-next-search { flex: 1 1 200px; width: auto; min-width: min(200px, 100%); }   /* 同 .ri-main 教訓：唯一能縮的那欄要有收縮下限 */
+.crafter-next-search { flex: 1 1 200px; min-width: min(200px, 100%); }
+.crafter-next-search .codex-input { width: 100%; }
 .crafter-next-filters .codex-select { flex: 0 1 160px; width: auto; }
 .crafter-next-filters .opt { flex: 0 0 auto; }
 .crafter-next-list { display: flex; flex-direction: column; gap: var(--space-1, 4px); }
@@ -94,4 +89,4 @@
 .crafter-next-amt { flex: 0 0 auto; min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
 .crafter-next-no { flex: 0 0 auto; color: var(--color-text-muted); }
 .crafter-next-note { margin-bottom: var(--space-2, 8px); color: var(--color-text-muted); }
-.crafter-next-empty { margin: var(--space-3, 12px) 0; }
+#next-title { display: inline-flex; align-items: center; gap: var(--space-2, 8px); }

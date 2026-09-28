@@ -1,4 +1,4 @@
-// app-flow.js — 流程引導層：常駐步驟軸（①選配方 →②設定條件 →③求解取巨集）＋「下一步」指示。
+// app-flow.js — 流程引導層：選配方 → 設定條件 → 求解取巨集；狀態由 flowState() 唯一決定。
 // classic script（同 app-render/app-solve/app-browse 手法）：發佈 globalThis.CraftFlow，app.js init 注入依賴。
 // 由來＝設計系統 §🧭 功能頁引導標準：「需要先做幾件事才會出東西」的功能頁，任何時刻都要看得出現在該做什麼。
 // flowState 為純函式（唯一狀態真相），render 只負責寫 DOM → 流程規則可在 node 端 golden 測（test-formulas T14）。
@@ -19,28 +19,28 @@
     const job = c.job || '該職業';
     const s1 = {
       n: 1, title: TITLES[0], state: c.hasRecipe ? 'done' : 'current',
-      note: c.hasRecipe ? (c.recipeName || '已選定') : '從下方列表挑一個要做的成品',
+      note: c.hasRecipe ? (c.recipeName || '已選定') : '從下方挑一個成品',
     };
-    const s2 = { n: 2, title: TITLES[1], state: 'todo', note: '選好配方後在左欄設定' };
-    const s3 = { n: 3, title: TITLES[2], state: 'todo', note: '產出遊戲巨集與逐步走查' };
+    const s2 = { n: 2, title: TITLES[1], state: 'todo', note: '選好配方後設定素材與數值' };
+    const s3 = { n: 3, title: TITLES[2], state: 'todo', note: '取得巨集與逐步走查' };
     let next;
     if (!c.hasRecipe) {
-      next = '① 從下方列表挑一個配方 — 可用職業、等級或名稱搜尋縮小範圍。';
+      next = '下一步：從下方列表選一個配方';
     } else if (!c.gearOk) {
       s2.state = 'blocked';
       s2.note = `缺「${job}」的角色數值`;
-      next = `② 先到「角色數值」分頁填「${job}」的作業精度／加工精度／CP — 沒有數值無法求解。`;
+      next = `下一步：到「角色數值」填「${job}」的作業精度、加工精度與 CP`;
     } else if (c.solving) {
       s2.state = 'done'; s2.note = '已套用角色數值與加成';
       s3.state = 'current'; s3.note = '求解中…';
-      next = '③ 求解中 — 高難度配方可能數十秒，也可按「取消」中止。';
+      next = '求解中：高難度配方可能需要較久，可隨時取消';
     } else if (c.hasResult) {
       s2.state = 'done'; s2.note = '已套用角色數值與加成';
       s3.state = 'done'; s3.note = '巨集已產生';
-      next = '完成 — 複製右側巨集貼進遊戲巨集欄。改動任一設定後需重新求解。';
+      next = '已完成：複製巨集，貼進遊戲巨集欄';
     } else {
-      s2.state = 'current'; s2.note = '確認 HQ 素材、食物藥水與求解選項';
-      next = '② 確認左欄「素材與加成」與「求解設定」，再按「求解最佳手法」。';
+      s2.state = 'current'; s2.note = '確認素材、食藥與求解選項';
+      next = '下一步：確認素材與設定，再按「求解最佳手法」';
     }
     return { steps: [s1, s2, s3], next };
   }
@@ -53,17 +53,17 @@
     return {
       st,
       steps: st.steps.map(s => stepHtml(s, esc)).join(''),
-      next: `<span class="crafter-flow__next-label">下一步</span><span>${esc(st.next)}</span>`,
+      next: esc(st.next),
     };
   }
 
   function stepHtml(s, esc) {
     const cur = s.state === 'current' || s.state === 'blocked';
-    return `<li class="crafter-flow__step" data-state="${s.state}"${cur ? ' aria-current="step"' : ''}>` +
-      `<span class="crafter-flow__n" aria-hidden="true">${s.state === 'done' ? '✓' : s.n}</span>` +
-      `<span class="crafter-flow__body">` +
-        `<span class="crafter-flow__t">${esc(s.title)}<span class="crafter-sr">（${STATE_TEXT[s.state]}）</span></span>` +
-        `<span class="crafter-flow__note codex-small">${esc(s.note)}</span>` +
+    return `<li class="codex-step${s.state === 'done' ? ' is-done' : ''}${cur ? ' is-current' : ''}"${cur ? ' aria-current="step"' : ''}>` +
+      `<span class="codex-step__mark" aria-hidden="true"></span>` +
+      `<span class="codex-step__body">` +
+        `<span class="codex-step__title">${esc(s.title)}<span class="codex-sr-only">（${STATE_TEXT[s.state]}）</span></span>` +
+        `<span class="codex-step__hint">${esc(s.note)}${s.state === 'blocked' ? ' <span class="codex-badge codex-badge--warn">需補數值</span>' : ''}</span>` +
       `</span></li>`;
   }
 
@@ -115,6 +115,7 @@
       pick.classList.toggle('codex-tablet', !hasRecipe);
       pick.classList.toggle('codex-tablet--cyan', !hasRecipe);
       pick.classList.toggle('panel', !hasRecipe);
+      pick.classList.toggle('codex-glow', !hasRecipe);
       pick.classList.toggle('crafter-picked', hasRecipe);
     }
     // 主 CTA 旁的一行狀態：就緒／停用原因（驗收線 3 — 控制不隱藏，寫清楚為什麼不能按）

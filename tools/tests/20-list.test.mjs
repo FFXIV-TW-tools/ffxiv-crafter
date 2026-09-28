@@ -102,12 +102,8 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
   }
 }
 
-// ===== T58：素材總需求分三組 + 「加進清單」一次加 N 次（Owner 2026-08-19：這區太陽春）=====
-// 三件事只有資料斷言擋得住（畫面全都「正常」）：
-//   ① 可自製／採買／晶體要分開 —— 混成一坨時玩家看不出哪些其實該自己做
-//   ② 傳下去的是「做幾次」不是「要幾個」（同 app-recipe「先做這個」的 times 鐵則）：一次產 3 個時要 4 個只需做 2 次，
-//      傳錯的話清單次數整批偏高，而畫面完全正常
-//   ③ 撞單筆上限要誠實（沿用 add() 的既有取捨，不謊報加了 N 次）
+// ===== T58：素材分類與「加進清單」一次加 N 次（Owner 2026-08-19）=====
+// 核心邊界：一次產 3 個時需求 4 個只需做 2 次；撞單筆上限不能謊報加了 N 次。
 {
   const CL_SRC = fs.readFileSync(path.join(ROOT, 'crafting-list.js'), 'utf8');
   const stubEl = () => ({ innerHTML: '', textContent: '', dataset: {},
@@ -130,7 +126,7 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
     ITEMS: { 5: { name: '中間材' }, 6: { name: '鐵礦' }, 7: { name: '火之晶' } },
     INGREDIENTS: { 100: [[5, 4], [6, 2], [7, 1]] },
     selectRecipe() {}, switchTab() {}, showPicker() {}, toast: (m, v) => toasts.push([m, v]),
-    copyText() {}, mbItem: () => '#', mbCraft: () => '#', MARKETBOARD_BASE: '#',
+    copyText() {}, mbItem: (iid) => `#/item/${iid}`, mbCraft: () => '#', MARKETBOARD_BASE: '#',
     isCrystal: (iid) => iid === 7,
     pickRecipeForItem: (iid) => (iid === 5 ? MID : null),
     vendorHtml: (iid) => (iid === 6 ? '<span class="codex-badge crafter-qt-tag--shop">🏪 100 G</span>' : ''),
@@ -139,8 +135,12 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
   box.store = JSON.stringify([{ id: 100, qty: 1 }]);
   CL.init(deps);
   const html = () => cell.innerHTML;
-  check('T58 三組都出（可自製／採集購買／晶體）',
-    /可自製中間材/.test(html()) && /採集／購買/.test(html()) && /晶體/.test(html()));
+  const groups = [...html().matchAll(/<div class="cl-matgroup">([\s\S]*?)<\/div>\s*<\/div>/g)].map(([, content]) => content);
+  const groupedIds = groups.map(g => [...g.matchAll(/#\/item\/(\d+)/g)].map(([, id]) => Number(id)));
+  check('T58 素材依可自製／採集購買／晶體分三組且不混組',
+    JSON.stringify(groupedIds) === JSON.stringify([[5], [6], [7]]) &&
+    groups[0].includes('data-rid="50"') && groups[1].includes('crafter-qt-tag--shop'),
+    JSON.stringify(groupedIds));
   check('T58 可自製的素材給「加進清單」入口', /cl-mat-go[^>]*data-rid="50"/.test(html()));
   check('T58 傳的是「做幾次」不是「要幾個」（要 4 個、一次產 3 → 做 2 次）',
     /data-times="2"/.test(html()) && !/data-times="4"/.test(html()), html());

@@ -17,6 +17,8 @@ app-solve.js
 app.js
 assets
 crafting-list.js
+crafter-icons.js
+crafter-visual.js
 data
 favicon-192.png
 favicon.ico

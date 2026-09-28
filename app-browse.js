@@ -143,10 +143,11 @@
         <thead><tr><th>名稱</th><th>種類</th><th>職業</th><th>Lv</th><th>配方等級</th><th>難度</th><th>品質</th><th>版本</th><th class="rt-actcol">加入</th></tr></thead>
         <tbody>${shown.map(r =>
           `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmline"><span class="rt-nm">${esc(r.name)}</span>${r.expert ? '<span class="codex-badge codex-badge--warn rt-expert" data-help="高難度（expert）配方：遊戲內的製作狀態是隨機的，本站算出的靜態巨集只能當參考、無法保證成功">高難度</span>' : ''}</span></span></td><td class="rt-cat">${esc(r.category || '—')}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td data-label="Lv">${r.level}</td><td data-label="配方等級">${r.rlv}</td><td data-label="難度">${r.diff == null ? '—' : r.diff}</td><td data-label="品質">${r.qual == null ? '—' : r.qual}</td><td class="rt-patch" data-label="版本">${esc(r.patch || '—')}</td><td class="rt-act">${addBtn(r)}</td></tr>`).join('')}</tbody>
-      </table>` : '';
+      </table>` : `<div class="codex-empty codex-empty--bare"><span class="codex-empty__icon" aria-hidden="true">${globalThis.CrafterVisual?.iconSVG?.('magnifying-glass') || ''}</span><b>找不到符合的配方</b><span>試試其他關鍵字，或清除所有篩選條件。</span><button type="button" class="codex-btn codex-btn--ghost crafter-clear-filters">清除篩選</button></div>`;
     // 事件委派（單一 handler，取代每列 2N listener → 篩選/搜尋重繪不重綁、行動裝置省 GC）；handler 綁在持久的 #recipe-table 上，innerHTML 換內容不掉線
     const table = $('recipe-table');
     table.onclick = (e) => {
+      if (e.target.closest('.crafter-clear-filters')) { clearFilters(); return; }
       const add = e.target.closest('.rt-add');
       if (add) {                               // ＋：只加清單、不進詳情
         if (typeof globalThis.CraftList?.add === 'function') globalThis.CraftList.add(+add.dataset.id);
@@ -167,6 +168,15 @@
     };
     markListState();  // 標記已在製造清單的列（換底色 + 徽章）
     fitHeight();      // 內容一換，下方的翻頁器可能出現/收起 → 重新量一次可用高度
+  }
+
+  function clearFilters() {
+    const { $ } = deps;
+    jobFilter = '';
+    for (const id of ['recipe-search', 'level-filter', 'rlv-filter', 'patch-filter', 'expert-filter']) $(id).value = '';
+    renderChips();
+    renderTable();
+    $('recipe-search').focus();
   }
 
   // 翻頁器：只有一頁時整條收起（不佔版面也不誤導「還有別頁」）。
@@ -233,6 +243,7 @@
     renderChips,
     renderPatchOptions,
     renderTable,
+    clearFilters,
     markListState,
     fitHeight,
   };

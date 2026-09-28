@@ -37,15 +37,11 @@ const JOB_ICON = {
   '金工': '/i/062000/062111.png', '皮革': '/i/062000/062112.png', '裁縫': '/i/062000/062113.png',
   '鍊金': '/i/062000/062114.png', '烹調': '/i/062000/062115.png',
 };
-// 結果欄空狀態（.codex-empty 內容）：說清楚「這裡會出現什麼」＋附一顆可直接按下去的 CTA
-// （設計系統 §功能頁引導標準 驗收線 1；主 CTA 仍是設定欄那顆 --primary，此處用 ghost 不搶主 CTA 唯一性）。
+// 結果欄空態保留可點的 ghost CTA；向量路徑只由生成的 CrafterVisual 提供。
 const PH_HTML =
-  '<div class="codex-empty__icon" aria-hidden="true">⚒</div>' +
-  '<div><b>求解後這裡會出現</b>' +
-  '<ul class="crafter-ph__list codex-small">' +
-  '<li>🎮 可直接貼進遊戲的巨集</li><li>📜 手法序列（每一步用什麼技能）</li><li>🔍 逐步走查（進展／品質／耐久／CP）</li>' +
-  '</ul>' +
-  '<button type="button" id="ph-solve" class="codex-btn codex-btn--ghost">求解最佳手法</button></div>';
+  `<span class="codex-empty__icon" aria-hidden="true">${globalThis.CrafterVisual?.iconSVG?.('hammer') || ''}</span>` +
+  '<b>求解結果</b><span>求解後這裡會有遊戲巨集、手法序列與逐步走查。</span>' +
+  '<button type="button" id="ph-solve" class="codex-btn codex-btn--ghost">求解最佳手法</button>';
 const NAME_COLLATOR = new Intl.Collator('zh-Hant'); // 預建 collator，避免每次比較重建（快於逐次 localeCompare(...,'zh-Hant')）
 
 let RECIPES = [], RLV = {}, ACTIONS = {}, RINDEX = [], ITEMS = {}, INGREDIENTS = {};
@@ -364,6 +360,16 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     t.onclick = () => switchTab(t.dataset.tab);
     t.onkeydown = onTabKey;
     t.tabIndex = t.classList.contains('is-active') ? 0 : -1; // 初始 roving tabindex（tablist a11y）
+  });
+  document.addEventListener?.('keydown', (e) => {
+    if (!$('tab-solve').hidden && !$('picker').hidden && $('next-modal').hidden) {
+      if (e.key === 'Escape' && document.activeElement === $('recipe-search')) { $('recipe-search').blur(); return; }
+      if (e.key !== '/' || e.ctrlKey || e.altKey || e.metaKey) return;
+      const target = document.activeElement;
+      if (target?.matches('input,textarea,select,[contenteditable]') || target?.isContentEditable) return;
+      e.preventDefault();
+      $('recipe-search').focus();
+    }
   });
   // 首次使用提示在解析階段就顯示（first-run-hint.js），它那顆「前往角色數值 →」與指向的面板也必須在 await 前就緒：
   // renderGearsets 只吃 DOH／JOB_ICON／localStorage、零資料相依（健檢 R5 M18；前輪 T42 修的是分頁鈕、漏了這顆）。

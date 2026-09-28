@@ -101,17 +101,19 @@
         `${ico}<span class="crafter-next-name">${esc(r.name)}</span>` +
         `<span class="crafter-next-job">${jico}${esc(r.job)}${more}</span>` +
         `<span class="crafter-next-amt codex-small">用 ×${r.amount}</span>${no}</button>`;
-    }).join('') : '<div class="codex-empty crafter-next-empty">沒有符合的配方 — 換個關鍵字或清掉篩選</div>');
+    }).join('') : `<div class="codex-empty codex-empty--bare"><span class="codex-empty__icon" aria-hidden="true">${globalThis.CrafterVisual?.iconSVG?.('magnifying-glass') || ''}</span><span>沒有符合的配方。請換個關鍵字，或清除搜尋與職業篩選。</span><button type="button" class="codex-btn codex-btn--ghost crafter-next-clear">清除篩選</button></div>`);
     $('next-list').querySelectorAll('.crafter-next-row').forEach((b) => {
       b.onclick = () => { const rid = Number(b.dataset.rid); close(); deps.onPick(rid); };
     });
+    const clear = $('next-list').querySelector('.crafter-next-clear');
+    if (clear) clear.onclick = () => { $('next-search').value = ''; $('next-job').value = ''; render(); $('next-search').focus(); };
   }
 
   function open(itemId, name, openerEl) {
     const { $, esc } = deps;
     cur = { itemId: Number(itemId), name: String(name || ''), rows: rowsFor(itemId) };
     opener = openerEl || null;
-    $('next-title').innerHTML = `用「${esc(cur.name)}」還能做什麼？`;
+    $('next-title').innerHTML = `${globalThis.CrafterVisual?.iconSVG?.('package') || ''}用「${esc(cur.name)}」還能做什麼？`;
     // 職業選單由**這批資料**產生（不是全 DoH 列表）——列出做不出任何一筆的職業等於給死選項
     const jobs = [...new Set(cur.rows.map((r) => r.job))].sort();
     $('next-job').innerHTML = '<option value="">全部職業</option>' + jobs.map((j) => `<option value="${esc(j)}">${esc(j)}</option>`).join('');

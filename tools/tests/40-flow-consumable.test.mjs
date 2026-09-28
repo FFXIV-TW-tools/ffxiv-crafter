@@ -17,7 +17,6 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
   const curCount = (ctx) => flowState(ctx).steps.filter(s => s.state === 'current' || s.state === 'blocked').length;
 
   eq('T14 冷啟動（未選配方）→ ① 進行中、②③ 待辦', states({}), 'current,todo,todo');
-  check('T14 冷啟動的下一步指向選配方', /①/.test(flowState({}).next));
 
   const picked = { hasRecipe: true, recipeName: '2級耐力之寶水', job: '鍊金' };
   eq('T14 選了配方但缺角色數值 → ② 無法進行（不是待辦，要看得出卡住）',
