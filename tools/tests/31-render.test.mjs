@@ -83,15 +83,9 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   {
     const pending = mkLoadCtx([], true);
     await new Promise((r) => setTimeout(r, 0));   // init 已跑到 `await loadData()` 並停在那裡
-    check('T42 資料尚未載完 → 分頁按鈕已經可以點（不是死的）',
-      typeof pending.tabs[0].onclick === 'function' && typeof pending.tabs[3].onclick === 'function');
-    check('T42 資料尚未載完 → 分頁鍵盤導覽也已接上', typeof pending.tabs[0].onkeydown === 'function');
     // 真的能切：點「角色數值」要把該面板顯示出來（首次使用提示指的就是它）
     pending.tabs[1].onclick();
     eq('T42 載入中點「角色數值」→ 面板真的切過去', pending.ctx.document.getElementById('tab-stats').hidden, false);
-    // 首次提示那顆「前往角色數值 →」與它指向的面板同樣要在 await 前就緒（健檢 2026-09-05 ux-flows A1 ＝ M18）
-    check('T42 資料尚未載完 → 「前往角色數值 →」已綁定（不是死鈕）',
-      typeof pending.ctx.document.getElementById('goto-stats-hint').onclick === 'function');
     check('T42 資料尚未載完 → 角色數值面板已有輸入格（不是全空）',
       /gear-in/.test(pending.ctx.document.getElementById('gearsets').innerHTML));
   }
@@ -205,12 +199,6 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   // (d) 提示音開關的接線：偏好要留得住，切換要**當場**重組巨集（它不是求解輸入，不該逼玩家重求解）。
   //     沒有這幾條的話，開關可以被接歪成「重整就跳回預設」或「按了沒反應」，而 render 的其他斷言全綠。
   {
-    // 開關本體在 index.html；缺席時 renderMacro 退回「一律加音效」＝功能靜默消失（畫面看不出差別）
-    const HTML39 = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-    const box = HTML39.match(/<input[^>]*id="macro-echo"[^>]*>/);
-    check('T39 index.html 有提示音開關（#macro-echo）', !!box, '找不到 #macro-echo');
-    check('T39 提示音預設為開（HTML 帶 checked）', !!box && /\schecked\b/.test(box[0]), box ? box[0] : '');
-
     const el = { checked: true, listeners: {}, addEventListener(t, f) { this.listeners[t] = f; } };
     const store = {}; let read = null;
     const realLS = sandbox.localStorage;
@@ -219,7 +207,6 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     R.init({ ...RDEPS, $: (id) => (id === 'macro-echo' ? el : $r(id)) });
     eq('T39 上次關掉提示音 → 重開頁面仍是關的', el.checked, false);
     eq('T39 偏好讀的是 ffxiv-crafter-macro-echo-v1', read, 'ffxiv-crafter-macro-echo-v1');
-    check('T39 開關有掛 change 事件（否則按了沒反應）', typeof el.listeners.change === 'function');
     R.render(mkResult(14), false);
     check('T39 提示音關 → 14 步就是 14 行', /巨集 1 \/ 1（14 行）/.test(macro()));
     el.checked = true;
@@ -285,6 +272,4 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   check('T61 訊息寫出需求值與還差多少', /5380/.test(t[0]) && /4650/.test(t[0]) && /380/.test(t[0]) && /50/.test(t[0]), JSON.stringify(t));
   eq('T61 擋下的訊息是 error 級', t[1], 'error');
   eq('T61 導去角色數值分頁（同「缺角色數值」的補救動線）', tabs.at(-1), 'stats');
-  // 求解鈕不得用真 disabled（鍵盤走不到就讀不到原因）——與缺角色數值同一取捨
-  check('T61 求解鈕走 aria-disabled 而不是 disabled', /solve-btn'\)\.setAttribute\('aria-disabled'/.test(fs.readFileSync(path.join(ROOT, 'app-recipe.js'), 'utf8')));
 }

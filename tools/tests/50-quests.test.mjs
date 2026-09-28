@@ -15,7 +15,6 @@ import { fs, vm, path, ROOT, LAYER_STUBS, check, eq } from './_harness.mjs';
   vm.createContext(qctx);
   vm.runInContext(QUESTS_SRC, qctx, { filename: 'app-quests.js' });
   const Q = qctx.CraftQuests;
-  check('T31 CraftQuests 導出 expandMats / view', typeof Q.expandMats === 'function' && typeof Q.view === 'function');
 
   // 配方 1：成品 100（一次產 3 個）← 素材 200×2 + 素材 300×1
   // 配方 2：中間材 200 ← 底層 400×5

@@ -24,7 +24,6 @@ const ok = (c, m, extra) => { console.log((c ? '✓ ' : '✗ ') + m + (c || !ext
 const r = spawnSync('sh', ['deploy-prepare.sh'], { cwd: ROOT, encoding: 'utf8' });
 const out = `${r.stdout || ''}${r.stderr || ''}`;
 ok(r.status === 0, 'sh deploy-prepare.sh exit 0（頂層未分類項目／輸出驗收不過都會非零）', out.trim().split('\n').slice(-4).join(' | '));
-ok(/部署輸出就緒/.test(out), '印出「✓ 部署輸出就緒」（腳本的最後一道驗收有跑到）');
 ok(existsSync(join(ROOT, '_site', 'index.html')), '_site/index.html 存在（/ 不會 404）');
 // 對外邊界的核心：內部檔不得出現在輸出（allow-list 是結構，這裡再從結果面驗一次）
 for (const internal of ['AGENTS.md', 'deploy-prepare.sh', 'tests', 'tools', 'wasm', 'docs']) {

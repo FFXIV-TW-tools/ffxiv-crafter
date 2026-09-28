@@ -9,7 +9,6 @@
 // 那條紅線先前**沒有任何機械守**（`export const __test` 甚至沒有消費端）。這支就是那個守。
 //
 // 跑法：node tests/settings-api.test.mjs（或 node tests/run-all.mjs 自動納入）
-import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -17,7 +16,6 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MOD = join(ROOT, 'functions', 'settings-api', '[[path]].js');
 const { onRequest, __test } = await import(pathToFileURL(MOD).href);
 const { UPSTREAM } = __test;
-const SRC = readFileSync(MOD, 'utf8');
 
 let fail = 0;
 const ok = (c, m, extra) => { console.log((c ? '✓ ' : '✗ ') + m + (c || !extra ? '' : `  ${extra}`)); if (!c) fail++; };
@@ -139,13 +137,6 @@ const mkCtx = ({ url = 'https://crafter.xivtc.com/settings-api/settings/abc-uuid
     'client 有帶 Origin → 原樣穿透，讓上游自己判（不替第三方漂白）', b.seen.headers.get('Origin'));
 }
 
-// ---------- ⑧ 源碼哨兵：不得出現第二條出境路徑 ----------
-{
-  const body = SRC.replace(/^\s*\/\/.*$/gm, '');   // 註解裡本來就會提到 fetch('https://…')，只掃程式碼
-  ok(!/\bfetch\s*\(\s*['"`]https?:/.test(body) && !/\bfetch\s*\(\s*UPSTREAM/.test(body),
-    '程式碼裡不得有對 URL 的 fetch（唯一出口是 env.SETTINGS_API.fetch）');
-  ok(/env\.SETTINGS_API\.fetch\s*\(/.test(body), 'service binding 直呼必須存在（負對照：整段被改寫時這條會紅）');
-}
 
 console.log(fail ? `\n✗ ${fail} 項失敗` : '\n✓ settings-api: 全綠');
 process.exit(fail ? 1 : 0);

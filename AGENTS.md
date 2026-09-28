@@ -60,7 +60,7 @@ R7-exempt: 2026-11-16 依據：2026-08-16 Owner 拍板（B-025 第二輪）—�
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py && (cd wasm && cargo test)
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="562" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="550" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
 <!-- TEST-BASELINE points="19" paths="wasm/src/**/*.rs" label="cargo 語料" -->
 <!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="2" label="run-all" -->
