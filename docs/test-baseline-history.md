@@ -40,3 +40,5 @@
 2026-09-06 B-039 拆測試檔 → **684 passed**（不變）：`tools/test-formulas.mjs` 3290 行 → 24 行入口（掃 `tools/tests/*.test.mjs` 依檔名序 import、檔數下限 13）；共用底座 `_harness.mjs`（計數器單例）＋ 13 支主題檔（10-formula／11-gear／12-recipe-sync／20-list／21-browse／30-solve／31-render／40-flow-consumable／41-stages-sync／50-quests／51-nextcraft／60-ui-sentinels／61-repo-sentinels，最大 351 行）。斷言名稱集合 before/after diff 為空；負向對照 683/1 exit 1。
 
 2026-09-22 全頁健檢 → **562 passed**（556 → 562）：新增 7 條行為斷言——裝備非法舊值（等級 150、小數 CP）不得當有效裝備、後續製作只從實際使用該素材的候選中依既有規則挑選並套能力門檻、Worker constructor 同步失敗可免 reload 恢復、食品資料恢復後標籤回來；移除 1 條只檢查函式存在的 `typeof` 斷言（非唯一行為覆蓋）。cargo 靜態斷言點 17 → 19：新增 `parse_actions` 遇未知技能必須回錯（原本 `filter_map` 靜默丟棄）。
+
+2026-09-29 raphael 升 v0.28.6＋SIMD 的後續 → **557 passed**（550 → 557）：T66 新增 7 條——WASM trap（記憶體用盡 abort）後丟掉中毒的 worker 並重建、下一次求解送進新 worker、中毒 worker 不再收到求解、一般求解失敗（NoSolution）不重建；瀏覽器不支援 WebAssembly SIMD 時明講最低版本、不說成網路問題、不給重試鈕。負向對照（換回舊 `app-solve.js`）551 passed／6 failed。

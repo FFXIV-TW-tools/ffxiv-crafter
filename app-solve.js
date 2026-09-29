@@ -88,9 +88,13 @@
     solveClock = setInterval(paint, 1000);
   }
   function stopSolveClock() { if (solveClock) { clearInterval(solveClock); solveClock = null; } }
-  // SolverException（raphael）3 變體 + serde 反序列化錯誤 → 繁中人話 + 下一步
+  // SolverException（raphael）3 變體 + serde 反序列化錯誤 + worker 的兩個哨兵字串 → 繁中人話 + 下一步
   function solveErrorMessage(raw) {
     const s = String(raw || '');
+    // 哨兵（worker.js 送的）：NO_WASM_SIMD＝瀏覽器不支援 WebAssembly SIMD；ENGINE_CRASH＝引擎 trap 後已重置。
+    // 放在引擎載入失敗的正則前面——那條會把一切 WebAssembly 字樣都說成「可能是網路問題」。
+    if (s === 'NO_WASM_SIMD') return '你的瀏覽器版本太舊，不支援求解引擎需要的 WebAssembly SIMD — 請更新到 Chrome 91、Firefox 89、Safari 16.4（iPhone 需 iOS 16.4）或更新的版本後再開本頁。';
+    if (s === 'ENGINE_CRASH') return '求解引擎中途異常終止（多半是記憶體不足），已自動重置，可以直接再按一次求解；若一再發生，試著關掉「確保品質可靠」或降低目標品質來減少計算量。';
     // 引擎載入失敗（不是玩家設定的問題）：訊息由各家瀏覽器與 wasm-bindgen 產生，字面差很多。
     // `HTTP status code is not ok` 是 2026-08-02 實測抽掉 pkg/*.wasm 時 Chrome 真的吐的那句
     // （只比對 `WebAssembly.instantiate` 會漏掉它）。這串是**唯一**的引擎失敗文案來源，
@@ -108,7 +112,7 @@
     const { $ } = deps;
     $('solve-status').textContent = solveErrorMessage(raw || 'Failed to fetch');
     const retry = $('solve-retry-btn');
-    if (retry) retry.hidden = false;
+    if (retry) retry.hidden = String(raw) === 'NO_WASM_SIMD';   // 瀏覽器不支援時重試也不會成功，不給假出口
   }
   function retrySolve() {
     abortSolve('retry');
@@ -125,6 +129,14 @@
       if (e.data.kind === 'init') {
         console.warn('[crafter] 求解引擎初始化失敗:', e.data.error);
         showEngineInitFailure(e.data.error);
+        return;
+      }
+      if (e.data.kind === 'crash') {
+        // trap 後這個 WASM instance 的狀態不可信（記憶體用盡那種實測之後每次呼叫都立即失敗）：丟掉整個 worker、
+        // 立刻預熱一個新的，否則玩家之後可能每次按求解都直接失敗，只能重新整理頁面。
+        console.warn('[crafter] 求解引擎異常終止，已重建:', e.data.error);
+        newWorker();
+        toast(solveErrorMessage('ENGINE_CRASH'), 'error');
         return;
       }
       console.warn('[crafter] 求解失敗:', e.data.error);   // 技術原文進主控台，不丟給玩家

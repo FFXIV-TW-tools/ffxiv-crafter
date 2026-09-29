@@ -2,6 +2,12 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-09-29 — 引擎崩潰自動重建 worker＋不支援 SIMD 時明講（cycle: 2026-09-29-worker-recovery）
+
+- **改動**：`worker.js` 把引擎 trap（`WebAssembly.RuntimeError`）回報為 `kind:'crash'`，`app-solve.js` 收到就換新 worker 並提示已重置；載入前先用 43 bytes 的 SIMD 模組探測，不支援就回報 `NO_WASM_SIMD`，畫面明講瀏覽器太舊與最低版本、不給重試鈕。
+- **理由**：記憶體用盡那種 trap 之後同一個引擎每次都失敗，原本只叫玩家「調整設定」直到重新整理；不支援 SIMD 原本被說成網路問題。
+- **影響**：一般求解失敗不重建 worker。T66 +7（550 → 557），換回舊 `app-solve.js` 時 6 條轉紅；瀏覽器實測 trap 與 `NO_WASM_SIMD` 兩路都正確回報。刪除 `tmp/solver-lab/`（Owner 授權）。
+
 ## 2026-09-29 — raphael 升 v0.28.6＋開 WebAssembly SIMD（cycle: 2026-09-29-raphael-v0286-simd）
 
 - **改動**：`wasm/` 與 `tools/sim-diff/` 升 v0.28.6（綁定在輸出邊界把 u16 轉 u32，JS 契約不變）；`build-wasm.ps1` 加 `+simd128` 並驗產物；`build-notices.py` 改從 `Cargo.lock` 取 raphael 版本與 checkout，授權清單重產（41 → 46 套件）。神速技巧耐久繞過保留，raphael 原始碼未修改。

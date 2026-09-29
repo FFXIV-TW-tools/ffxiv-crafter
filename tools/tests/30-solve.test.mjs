@@ -276,3 +276,68 @@ import { fs, vm, path, ROOT, makeEl, check, eq } from './_harness.mjs';
   eq('T28 ≥60 秒升級文案只寫一次', firstMessage.textWrites, overtimeWrites);
 
 }
+
+// ===== T66：引擎 trap 後重建 worker＋瀏覽器不支援 SIMD 要明講（2026-09-29）=====
+// trap（多半是 wasm32 記憶體 4 GB 用盡後 abort）之後該 WASM instance 狀態不可信——記憶體用盡那種實測之後同一個 worker 的
+// 每次 solve() 都立即失敗。舊行為只 toast「求解失敗，請調整設定」、不換 worker ⇒ 玩家怎麼改設定都失敗到重新整理為止。
+// SIMD：引擎以 +simd128 編譯，不支援的瀏覽器 init 就失敗；原本落到「可能是網路問題，請按重試」＝錯誤診斷＋假出口。
+{
+  const SOLVE_SRC = fs.readFileSync(path.join(ROOT, 'app-solve.js'), 'utf8');
+  const workers = [];         // 每個 Worker 實例：{ sent, terminated }
+  let onmsg = null;
+  const toasted = [];
+  const sbDom = {};
+  const sbEl = (id) => sbDom[id] || (sbDom[id] = makeEl());
+  const sb = {
+    console: { ...console, warn() {} },
+    document: { getElementById: sbEl, createElement() { return makeEl(); } },
+    setTimeout, clearTimeout, setInterval, clearInterval,
+    Worker: function () {
+      const rec = { sent: [], terminated: false };
+      workers.push(rec);
+      this.postMessage = (m) => rec.sent.push(m);
+      this.terminate = () => { rec.terminated = true; };
+      Object.defineProperty(this, 'onmessage', { set(fn) { onmsg = fn; }, get() { return onmsg; } });
+      Object.defineProperty(this, 'onerror', { set() {}, get() { return null; } });
+    },
+  };
+  sb.globalThis = sb;
+  sb.CraftRender = { render() {} };
+  vm.createContext(sb);
+  vm.runInContext(SOLVE_SRC, sb, { filename: 'app-solve.js' });
+  sb.CraftSolve.init({
+    statShortfall: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
+    $: sbEl,
+    toast: (msg) => toasted.push(msg),
+    PH_HTML: '',
+    getSelected: () => ({ recipe: { job: '木工' }, rlv: 700 }),
+    gearFor: () => ({ craftsmanship: 4000, control: 4000, cp: 600 }),
+    computeSettings: () => ({ base_progress: 100, base_quality: 100 }),
+    switchTab: () => {},
+  });
+
+  sb.CraftSolve.doSolve();
+  const crashed = workers.at(-1);
+  onmsg({ data: { ok: false, gen: crashed.sent.at(-1).gen, kind: 'crash', error: 'RuntimeError: unreachable' } });
+  check('T66 trap → 丟掉中毒的 worker 並換一個新的', crashed.terminated && workers.length === 2 && workers[1] !== crashed,
+    `workers=${workers.length} terminated=${crashed.terminated}`);
+  check('T66 trap 的訊息說明已重置、不叫玩家調整設定', /重置/.test(toasted.at(-1) || '') && !/調整設定/.test(toasted.at(-1) || ''),
+    `toast=${toasted.at(-1)}`);
+  sb.CraftSolve.doSolve();
+  const current = workers.at(-1);   // 回歸時仍是中毒那個 ⇒ 下面兩條會紅，而不是讓整份測試拋例外中斷
+  check('T66 trap 後的下一次求解送進新 worker（不是中毒那個）', current !== crashed && current.sent.length === 1,
+    `sameWorker=${current === crashed} sent=${current.sent.length}`);
+  eq('T66 中毒的 worker 不再收到求解', crashed.sent.length, 1);
+
+  // 一般求解失敗（Rust 回傳的錯誤）instance 仍可用：不該浪費一次重建
+  const before = workers.length;
+  onmsg({ data: { ok: false, gen: current.sent.at(-1).gen, kind: 'solve', error: 'NoSolution' } });
+  eq('T66 一般求解失敗不重建 worker', workers.length, before);
+
+  sb.CraftSolve.doSolve();
+  onmsg({ data: { ok: false, gen: workers.at(-1).sent.at(-1).gen, kind: 'init', error: 'NO_WASM_SIMD' } });
+  const status = sbEl('solve-status').textContent;
+  check('T66 不支援 SIMD → 明講瀏覽器太舊與最低版本，不說是網路問題',
+    /瀏覽器/.test(status) && /SIMD/.test(status) && /16\.4/.test(status) && !/網路/.test(status), `status=${status}`);
+  eq('T66 不支援 SIMD → 不顯示重試（重試不會成功）', sbEl('solve-retry-btn').hidden, true);
+}
