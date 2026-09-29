@@ -8,6 +8,7 @@
 .venv
 .wrangler
 AGENTS.md
+CHANGELOG-2026.md
 CHANGELOG.md
 CLAUDE.md
 README.md
