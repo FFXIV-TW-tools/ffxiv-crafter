@@ -3,6 +3,24 @@
 version = 4
 
 [[package]]
+name = "allocator-api2"
+version = "0.2.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
+
+[[package]]
+name = "allocator-api2"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c583acf993cf4245c4acb0a2cc2ab1f9cc097de73411bb6d3647ff6af2b1013d"
+
+[[package]]
+name = "allocator-api2"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c880a97d28a3681c0267bd29cff89621202715b065127cd445fa0f0fe0aa2880"
+
+[[package]]
 name = "bitfield-struct"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11,6 +29,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "bump-scope"
+version = "2.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4747cadbe8ffeff2a58cb86bcb35f9ec490f2329e12a88a696bccfd3dc97bf4d"
+dependencies = [
+ "allocator-api2 0.2.21",
+ "allocator-api2 0.3.1",
+ "allocator-api2 0.4.0",
 ]
 
 [[package]]
@@ -162,7 +191,7 @@ dependencies = [
 [[package]]
 name = "raphael-sim"
 version = "0.0.0"
-source = "git+https://github.com/KonaeAkira/raphael-rs.git?tag=v0.26.2#0e9240cf6a45aec2f6973f5d3e2abf5b7f9a706a"
+source = "git+https://github.com/KonaeAkira/raphael-rs.git?tag=v0.28.6#411168605989d573d89f2d71c01acac9f099e55a"
 dependencies = [
  "bitfield-struct",
  "log",
@@ -173,14 +202,16 @@ dependencies = [
 [[package]]
 name = "raphael-solver"
 version = "0.0.0"
-source = "git+https://github.com/KonaeAkira/raphael-rs.git?tag=v0.26.2#0e9240cf6a45aec2f6973f5d3e2abf5b7f9a706a"
+source = "git+https://github.com/KonaeAkira/raphael-rs.git?tag=v0.28.6#411168605989d573d89f2d71c01acac9f099e55a"
 dependencies = [
  "bitfield-struct",
+ "bump-scope",
  "log",
  "nunny",
  "raphael-sim",
  "rayon",
  "rustc-hash",
+ "smallvec",
  "strum",
  "web-time",
  "wide",
@@ -273,6 +304,12 @@ name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
+
+[[package]]
+name = "smallvec"
+version = "1.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9395f0f0eee849a9b707b2f06bb92a6a422090e2123bb2ef8e87a0e61892a8e"
 
 [[package]]
 name = "strum"

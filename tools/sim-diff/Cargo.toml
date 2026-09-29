@@ -13,5 +13,5 @@ default-run = "crafter-sim-diff"
 # ⚠ raphael 的 tag 必須與 ../../wasm/Cargo.toml 相同，否則這張網測的不是線上跑的那顆。
 #    此不變量由 tools/check-actions.py 機械守。
 [dependencies]
-raphael-sim = { git = "https://github.com/KonaeAkira/raphael-rs.git", package = "raphael-sim", tag = "v0.26.2" }
+raphael-sim = { git = "https://github.com/KonaeAkira/raphael-rs.git", package = "raphael-sim", tag = "v0.28.6" }
 ffxiv-crafting = "7.4.5"

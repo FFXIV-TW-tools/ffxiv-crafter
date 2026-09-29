@@ -60,7 +60,7 @@ dependencies = [
 [[package]]
 name = "raphael-sim"
 version = "0.0.0"
-source = "git+https://github.com/KonaeAkira/raphael-rs.git?tag=v0.26.2#0e9240cf6a45aec2f6973f5d3e2abf5b7f9a706a"
+source = "git+https://github.com/KonaeAkira/raphael-rs.git?tag=v0.28.6#411168605989d573d89f2d71c01acac9f099e55a"
 dependencies = [
  "bitfield-struct",
  "log",

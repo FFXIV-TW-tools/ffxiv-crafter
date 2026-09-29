@@ -1,6 +1,6 @@
 // 兩顆獨立實作的 FFXIV 製作模擬器差分測試。
 //
-//   A = raphael-sim v0.26.2  →  ffxiv-crafter 線上實際在跑的引擎
+//   A = raphael-sim v0.28.6  →  ffxiv-crafter 線上實際在跑的引擎
 //   B = ffxiv-crafting 7.4.5 →  BestCraft(Tnze) 用的引擎
 //
 // 隨機走訪合法技能序列，每一步比對 進展/品質/耐久/CP 與「這個技能可不可以放」。
@@ -200,9 +200,9 @@ fn run_config(seed: u64, iters: u32, stellar_charges: u8, diffs: &mut Diffs, sta
             b.cast_action(ta);
             stats.0 += 1;
 
-            let a_prog = (na.progress).min(u32::from(recipe.difficulty));
+            let a_prog = u32::from(na.progress).min(u32::from(recipe.difficulty));
             let b_prog = u32::from(b.progress);
-            let a_qual = (na.quality).min(recipe.quality);
+            let a_qual = u32::from(na.quality).min(recipe.quality);
             let b_qual = b.quality;
 
             let mut bad = false;

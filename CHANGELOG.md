@@ -2,6 +2,12 @@
 
 > 記 root 級 / 跨檔改動與「為什麼」。日常配方資料重建（`build-data.py` 產 data/）不入此檔。格式：新的在上。
 
+## 2026-09-29 — raphael 升 v0.28.6＋開 WebAssembly SIMD（cycle: 2026-09-29-raphael-v0286-simd）
+
+- **改動**：`wasm/` 與 `tools/sim-diff/` 升 v0.28.6（綁定在輸出邊界把 u16 轉 u32，JS 契約不變）；`build-wasm.ps1` 加 `+simd128` 並驗產物；`build-notices.py` 改從 `Cargo.lock` 取 raphael 版本與 checkout，授權清單重產（41 → 46 套件）。神速技巧耐久繞過保留，raphael 原始碼未修改。
+- **理由**：B-019 以單題單次（300／346 ms，差距在雜訊內）判「沒變快」；重量 31 情境：小題持平、重題 1.04–3.4 倍、極端 4–7 倍，舊版遇重型專家配方會記憶體滿 4 GB 崩潰。
+- **影響**：WASM brotli 83.4 → 92.1 KB；瀏覽器需 Chrome 91／Firefox 89／Safari 16.4。差分閘、js-golden、canonicalTest 全綠。明細見[驗證紀錄](docs/verification/2026-09-29-raphael-v0286-simd.md)。
+
 ## 2026-09-28 — 整站改版（對齊 portal v2.0）
 
 - 測試精簡（Owner 2026-09-28）：刪 16 項〔source-text／函式或事件存在、mock 回聲／純轉發、bare not-throw、輸出文案〕，基線 563→550。API／部署測試檔維持 2/2。

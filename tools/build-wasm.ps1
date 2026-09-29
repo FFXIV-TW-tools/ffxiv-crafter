@@ -36,6 +36,10 @@ function Get-NormalizedSha256([string]$Path) {
 # 家目錄 → ~；cargo home 若被搬到別處（CARGO_HOME）也一併改寫
 $flags = @("--remap-path-prefix=$env:USERPROFILE=~")
 if ($env:CARGO_HOME) { $flags += "--remap-path-prefix=$env:CARGO_HOME=~/.cargo" }
+# WebAssembly SIMD：raphael 的支配比較用 wide::u32x4（一次比 4 個值），不開這個旗標就退化成逐一比較。
+# raphael 官網自己的建置也開著（上游 .cargo/config_wasm.toml 的 +simd128）。瀏覽器門檻：
+# Chrome 91／Firefox 89／Safari 16.4（MDN BCD webassembly.fixed-width-SIMD），更舊的載入引擎即失敗。
+$flags += '-C', 'target-feature=+simd128'
 $env:RUSTFLAGS = $flags -join ' '
 Write-Host "RUSTFLAGS = $env:RUSTFLAGS"
 
@@ -62,6 +66,9 @@ $text = [System.Text.Encoding]::ASCII.GetString($bytes)
 $leaks = ([regex]::Matches($text, [regex]::Escape($env:USERPROFILE))).Count
 if ($leaks -gt 0) { throw "✗ 產物仍含 $leaks 處建置者路徑（$env:USERPROFILE）— remap 未生效" }
 Write-Host "✓ pkg/ 重建完成，無建置者路徑外洩（$($bytes.Length) bytes）"
+# 驗收：SIMD 真的有進產物（rustc 會把啟用的 target feature 寫進 target_features 自訂段；RUSTFLAGS 被外部覆寫時這裡會抓到）
+if (-not $text.Contains('simd128')) { throw "✗ 產物沒有宣告 simd128 — RUSTFLAGS 的 target-feature 未生效" }
+Write-Host "✓ 產物已啟用 WebAssembly SIMD（simd128）"
 
 $stamp = [ordered]@{
   lib_rs = Get-NormalizedSha256 (Join-Path $wasmDir 'src\lib.rs')

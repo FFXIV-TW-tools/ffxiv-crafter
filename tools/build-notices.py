@@ -18,17 +18,17 @@ for _s in (sys.stdout, sys.stderr):
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 REG = glob.glob(os.path.expanduser("~/.cargo/registry/src/*"))
-GIT = glob.glob(os.path.expanduser("~/.cargo/git/checkouts/raphael-rs-*/*"))
+GIT = glob.glob(os.path.expanduser("~/.cargo/git/checkouts/raphael-rs-*/*"))   # 每個 raphael 版本一個子目錄（名稱＝commit 前 7 碼）
 SELF = "crafter-wasm"          # 本 repo 自己的 crate，不列第三方
 
 
-def crate_dir(name, version):
+def crate_dir(name, version, raphael_dir):
     for s in REG:
         p = os.path.join(s, "%s-%s" % (name, version))
         if os.path.isdir(p):
             return p
-    if name.startswith("raphael-") and GIT:
-        return GIT[0]
+    if name.startswith("raphael-"):
+        return raphael_dir
     return None
 
 
@@ -52,12 +52,21 @@ def copyrights(d):
 
 def main():
     lock = open(os.path.join(ROOT, "wasm", "Cargo.lock"), encoding="utf-8").read()
+    # raphael 的版本與原始碼目錄一律取自 Cargo.lock 實際鎖定的 commit：本機可能同時有多個版本的 checkout，
+    # 隨手取第一個會拿到別版的授權檔、聲明也會寫錯版本（升版時就發生過寫死的版本號沒跟上）。
+    pin = re.search(r'raphael-rs\.git\?tag=(v[^#"]+)#([0-9a-f]{7})', lock)
+    if not pin:
+        sys.exit("✗ wasm/Cargo.lock 找不到 raphael-rs 的 git tag")
+    raphael_tag, raphael_rev = pin.group(1), pin.group(2)
+    raphael_dir = next((g for g in GIT if os.path.basename(g) == raphael_rev), None)
+    if not raphael_dir:
+        sys.exit("✗ 找不到 raphael-rs %s（%s）的 cargo git checkout：先在 wasm/ 跑一次 cargo fetch" % (raphael_tag, raphael_rev))
     pkgs = re.findall(r'\[\[package\]\]\nname = "([^"]+)"\nversion = "([^"]+)"', lock)
     rows, unknown = [], []
     for name, version in pkgs:
         if name == SELF:
             continue
-        d = crate_dir(name, version)
+        d = crate_dir(name, version, raphael_dir)
         lic = "?"
         if d and os.path.exists(os.path.join(d, "Cargo.toml")):
             m = re.search(r'^license\s*=\s*"([^"]+)"',
@@ -86,11 +95,11 @@ def main():
     for name, version, lic, cps in rows:
         lines.append("| `%s` | %s | %s | %s |" % (name, version, lic, "<br>".join(cps) or "—"))
     lines.append("")
-    lines.append("求解引擎 [raphael-rs](https://github.com/KonaeAkira/raphael-rs) v0.26.2（`raphael-solver` / `raphael-sim`，作者 KonaeAkira）"
-                 "以**未修改**的原始碼編譯連結；本專案僅另寫 WASM 薄綁定（`wasm/src/lib.rs`）與全部 UI。")
+    lines.append("求解引擎 [raphael-rs](https://github.com/KonaeAkira/raphael-rs) %s（`raphael-solver` / `raphael-sim`，作者 KonaeAkira）"
+                 "以**未修改**的原始碼編譯連結；本專案僅另寫 WASM 薄綁定（`wasm/src/lib.rs`）與全部 UI。" % raphael_tag)
     lines.append("")
     out = os.path.join(ROOT, "LICENSE-THIRD-PARTY.txt")   # 檔名走 LICENSE*.txt：deploy-prepare.sh 二次清理與出貨白名單對它已有例外，不必動 12 repo 共用腳本（健檢 R5 M4）
-    with open(out, "w", encoding="utf-8") as f:
+    with open(out, "w", encoding="utf-8", newline="") as f:   # newline=""：Windows 上照寫 LF，不讓 Python 轉成 CRLF
         f.write("\n".join(lines))
     print("✓ THIRD-PARTY-NOTICES.md：%d 個套件%s" % (
         len(rows), ("（授權未知：%s）" % unknown) if unknown else ""))

@@ -118,13 +118,13 @@ fn build_settings(inp: &Input) -> Settings {
     }
 }
 
-// 「工匠的神速技巧」在遊戲裡**不消耗耐久**，raphael v0.26.2 卻把它寫死成 10：
+// 「工匠的神速技巧」在遊戲裡**不消耗耐久**，raphael（v0.26.2 起、v0.28.6 仍是）卻把它寫死成 10：
 //   raphael-sim/src/actions.rs  impl ActionImpl for TrainedEye { fn base_durability_cost(..) -> u16 { 10 } }
 // 判準是日文客戶端文案（en_CraftAction 只標非預設值故無法判別，ja 則是**每個**會消耗耐久的技能
 // 都寫「耐久を消費して」——連預設 10 的「加工」也寫，而「匠の早業」整段沒有任何耐久字眼；
 // 對照組「匠の神業」(Trained Finesse, 0) 寫的是「耐久を消費せず」）。Teamcraft 的
 // trained-eye.ts `getDurabilityCost() { return 0 }` 與 Tnze ffxiv-crafting 亦為 0。
-// 上游 main 分支至今仍是 10，升版救不了。
+// 上游 main 分支至今仍是 10（2026-09-29 查），升版救不了。
 //
 // **我們不改 raphael 的原始碼**（頁尾與 THIRD-PARTY-NOTICES 聲明「以未修改原始碼編譯」，
 // 一改就觸發 Apache-2.0 §4(b) 修改標示義務）——改用它的公開 API 在重放時把這 10 點補回來，
@@ -159,8 +159,8 @@ fn replay(settings: &Settings, actions: &[Action], initial_quality: u16, max_pro
             action: action_name(*a).to_string(),
             action_id: a.action_id(),
             time: t,
-            progress: state.progress,
-            quality: state.quality + initial_quality as u32,
+            progress: u32::from(state.progress),
+            quality: u32::from(state.quality) + u32::from(initial_quality),
             durability: state.durability,
             cp: state.cp,
         });
@@ -168,13 +168,13 @@ fn replay(settings: &Settings, actions: &[Action], initial_quality: u16, max_pro
     Output {
         step_count: steps.len(),
         total_time,
-        final_progress: state.progress,
-        final_quality: state.quality + initial_quality as u32,
+        final_progress: u32::from(state.progress),
+        final_quality: u32::from(state.quality) + u32::from(initial_quality),
         final_durability: state.durability,
         final_cp: state.cp,
         max_progress: max_progress as u32,
         max_quality: max_quality as u32,
-        complete: state.progress >= max_progress as u32,
+        complete: state.progress >= max_progress,
         steps,
         error,
         error_step,
