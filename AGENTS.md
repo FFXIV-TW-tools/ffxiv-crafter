@@ -117,4 +117,4 @@ CF Pages 部署**不是「發佈 repo 根目錄」**，而是由 `deploy-prepare
 - **允許清單而非排除清單**：頂層出現任何未列入 `deploy-allow.txt`／`deploy-deny.txt` 的項目 → **build 直接失敗**。分類閘另有兩條靜默放行（CF 容器 npm 產物 skip 清單、`git check-ignore`），它只是提醒層；**真正的邊界是第 2 段複製迴圈的 allow-list 比對**，該比對不可動、skip 清單不得用來繞分類。
 - **新增站台資產** → 加 `deploy-allow.txt`；**新增內部資產** → 加 `deploy-deny.txt`。改完跑一次 `sh deploy-prepare.sh` 確認印出「✓ 部署輸出就緒」。
 - **腳本改動禁忌**：① 只能用 POSIX 語法（CF 容器的 `sh` 是 dash，bashism 靜默失敗 ⇒ 整站 404）② 根層檔名不可無條件 `mkdir "$OUT/${f%/*}"` ③ 不得移除出貨前驗收閘（輸出 <3 檔／缺 index.html／內部檔混入 → 非零 exit，CF 保留前一版）④ **產物路徑不得假設獨佔**：建到 `_site.tmp.$$`、清單走 `mktemp`（repo 外）、換名段用 `mkdir "$_site.lock"` 序列化，哨兵＝`test_deploy_prepare_is_concurrency_safe`。
-- **部署後驗（務必帶 cache-bust）**：`curl -sI "https://<repo>.pages.dev/AGENTS.md?cb=$(date +%s)"` → 回 `text/html` 正常；回 `text/markdown` ＝紅燈。⚠️ 不帶 cache-bust 會得到**假紅燈**（邊緣殘留 `CF-Cache-Status: HIT`＋大 `Age`）。
+- **部署後驗（務必帶 cache-bust、一定要 `-L`）**：`curl -sL -o /dev/null -w '%{http_code} %{content_type} %{url_effective}\n' "https://<repo>.pages.dev/AGENTS.md?cb=$(date +%s)"` → 回 `text/html` 正常；回 `text/markdown` ＝紅燈。少一項就會誤判（假紅燈／假綠燈，見 rationale）。

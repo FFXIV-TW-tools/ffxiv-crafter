@@ -108,6 +108,7 @@ CF Pages 的 Git 整合在沒有 build 步驟時，把 repo 根整棵目錄當�
 - **根層檔名的 `${f%/*}`** 會回傳檔名本身，無條件 mkdir 會建出「叫 index.html 的目錄」⇒ `/` 404。
 - **產物路徑並行安全**：ranking B-117（2026-08-15）實證，只做「逐次專屬」而不加鎖仍然兩份都 exit 1（撞在 `rm -rf _site`）。兩次實際故障的訊息（「頂層出現未分類項目」「輸出缺 index.html」）都指向錯的方向，看起來像漏加允許清單。本 repo 目前無排程／並行寫入者，`tests/deploy-prepare.test.mjs` 檔頭有相同提醒。
 - **cache-bust 假紅燈**：舊部署（發佈 repo 根的那版）留在 CF 邊緣的物件帶 `s-maxage=604800`，命中時回 `text/markdown` 但 header 有 `CF-Cache-Status: HIT` ＋大 `Age`。那是快取殘留不是外洩，最長 7 天自癒（pages.dev 非自有 zone，dashboard 沒有 Purge Everything）。2026-08-01 R3 健檢實測：帶 cache-bust 的 `/AGENTS.md`、`/worker/src/index.js`、`/deploy-allow.txt` 全回 SPA fallback＝現行部署乾淨。
+- **部署後驗要跟轉址（2026-09-29）**：B-048 退役後 pages.dev 由帳號層 Bulk Redirects 301 到正式網域，`curl -sI` 只拿到轉址頁本身的 `301`＋`text/html`，不論站上有沒有外洩都判綠（12 站實測全是 301）。改 `-sL` 看最後一跳：同日 12 站全部落在 `*.xivtc.com` 回 `404 text/html`。
 - **本段是共用副本**：2026-08-15 統一為 12 個 external repo 的共用權威版本，三條原本只寫在單一 repo 的教訓（cache-bust 假紅燈／分類閘的靜默放行／產物路徑並行安全）已回填到所有副本。R7-exempt 戳明列本段「不得單邊移出」。
 
 ## 規則檔三層分工（2026-09-07，root B-077）
