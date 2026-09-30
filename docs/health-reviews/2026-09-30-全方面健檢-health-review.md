@@ -1,6 +1,6 @@
 ---
 cycle: 2026-09-30-health-review
-status: in_progress
+status: done
 date: 2026-09-30
 ---
 
