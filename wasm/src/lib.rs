@@ -5,6 +5,8 @@ use raphael_solvers::{AtomicFlag, MacroSolver, SolverSettings};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
+mod candidate;
+
 #[derive(Deserialize)]
 struct Input {
     // 由 JS 依 FFXIV 公式（static-data + 角色數值）算好
@@ -56,6 +58,20 @@ struct Output {
     error: Option<String>, // simulate：某步失敗（CP/耐久不足等）
     error_step: i32,       // 失敗的步索引，-1=無
 }
+
+// 全 35 個 Action 變體（單步窮舉與名稱 round-trip 共用）。
+// 新增 raphael Action 變體時，action_name 的 exhaustive match 會先編譯報錯 → 提醒同步此陣列。
+const ALL_ACTIONS: [Action; 35] = [
+    Action::BasicSynthesis, Action::BasicTouch, Action::MasterMend, Action::Observe,
+    Action::TricksOfTheTrade, Action::WasteNot, Action::Veneration, Action::StandardTouch,
+    Action::GreatStrides, Action::Innovation, Action::WasteNot2, Action::ByregotsBlessing,
+    Action::PreciseTouch, Action::MuscleMemory, Action::CarefulSynthesis, Action::Manipulation,
+    Action::PrudentTouch, Action::AdvancedTouch, Action::Reflect, Action::PreparatoryTouch,
+    Action::Groundwork, Action::DelicateSynthesis, Action::IntensiveSynthesis, Action::TrainedEye,
+    Action::HeartAndSoul, Action::PrudentSynthesis, Action::TrainedFinesse, Action::RefinedTouch,
+    Action::QuickInnovation, Action::ImmaculateMend, Action::TrainedPerfection, Action::StellarSteadyHand,
+    Action::RapidSynthesis, Action::HastyTouch, Action::DaringTouch,
+];
 
 fn action_name(a: Action) -> &'static str {
     match a {
@@ -192,11 +208,31 @@ fn run_solver(s: &Settings) -> Result<Vec<Action>, String> {
     .map_err(|e| format!("{:?}", e))
 }
 
-// 兩個候選手法誰比較好：先要做得完、再要品質高、再要步數少、最後看剩餘 CP。
-// （步數少＝巨集段數少；15 行是遊戲上限，14 步與 17 步的差別就是貼一段還是兩段。）
-fn better(a: &Output, b: &Output) -> bool {
-    (a.complete, a.final_quality, std::cmp::Reverse(a.step_count), a.final_cp)
-        > (b.complete, b.final_quality, std::cmp::Reverse(b.step_count), b.final_cp)
+// 神速技巧候選獨立保留：B-017 哨兵直接比較此子問題與上游 naive solve，
+// 不依賴最終是否選到神速技巧。
+fn trained_eye_candidate(inp: &Input, settings: &Settings) -> Option<Output> {
+    // 神速技巧只能在第 1 步用，且直接把品質補到目標，所以最佳開局拆為：
+    // 神速技巧＋「耐久滿、CP−250、只需衝進展」的子問題，繞開上游多扣 10 耐久。
+    // 子問題移除同為僅第 1 步可用的堅信／閒靜，避免把子問題開局誤認為製作開局。
+    if !inp.use_trained_eye || settings.max_cp < TRAINED_EYE_CP || settings.max_quality == 0 {
+        return None;
+    }
+    let mut b_settings = *settings;
+    b_settings.max_cp = settings.max_cp - TRAINED_EYE_CP;
+    b_settings.max_quality = 0; // 神速技巧已補到目標，子問題只剩進展
+    b_settings.adversarial = false;
+    b_settings.backload_progress = false;
+    b_settings.allowed_actions = settings
+        .allowed_actions
+        .remove(Action::TrainedEye)
+        .remove(Action::MuscleMemory)
+        .remove(Action::Reflect);
+    run_solver(&b_settings).ok().map(|sub| {
+        let mut acts = Vec::with_capacity(sub.len() + 1);
+        acts.push(Action::TrainedEye);
+        acts.extend(sub);
+        replay(settings, &acts, inp.initial_quality, inp.max_progress, inp.max_quality)
+    })
 }
 
 #[wasm_bindgen]
@@ -210,59 +246,33 @@ pub fn solve(input: JsValue) -> Result<JsValue, JsValue> {
 // 求解本體（與 wasm 邊界脫鉤，供 cargo test 直接呼叫）
 fn solve_input(inp: &Input) -> Result<Output, String> {
     let settings = build_settings(inp);
-    let target_total = u32::from(inp.target_quality);
-
-    // 神速技巧開局。**不能直接讓 raphael 自己選它**——它會多扣 10 點耐久（見上方常數註解），
-    // 預算變少 → 手法無謂變長（實測 1260 組配置有 365 組偏長，最壞 17 步 vs 14 步＝多貼一段巨集）。
-    // 拆解的正當性：神速技巧只能在第 1 步用，且直接把品質補到目標，所以
-    //   「神速技巧開局的最佳解」＝ 神速技巧 ＋「耐久滿、CP−250、只需衝進展」的最佳解，
-    // 而那個子問題用**真實耐久**求解即可，繞開上游的錯又不必改它一行原始碼。
-    // 子問題必須拿掉同為「僅第 1 步可用」的堅信／閒靜，否則子求解器會以為自己在第 1 步而誤用。
-    // NQ 模式（target_quality == initial_quality）用神速技巧只是白花 250 CP，直接跳過。
-    let plan_b = if inp.use_trained_eye
-        && settings.max_cp >= TRAINED_EYE_CP
-        && settings.max_quality > 0
-    {
-        let mut b_settings = settings;
-        b_settings.max_cp = settings.max_cp - TRAINED_EYE_CP;
-        b_settings.max_quality = 0; // 神速技巧已把品質補到目標，子問題只剩進展
-        b_settings.adversarial = false; // 品質已定，球色風險不再適用
-        b_settings.backload_progress = false; // 沒有品質可以後置
-        b_settings.allowed_actions = settings
-            .allowed_actions
-            .remove(Action::TrainedEye)
-            .remove(Action::MuscleMemory)
-            .remove(Action::Reflect);
-        run_solver(&b_settings).ok().map(|sub| {
-            let mut acts = Vec::with_capacity(sub.len() + 1);
-            acts.push(Action::TrainedEye);
-            acts.extend(sub);
-            replay(&settings, &acts, inp.initial_quality, inp.max_progress, inp.max_quality)
-        })
-    } else {
-        None
-    };
-
-    // 神速技巧那條路做得完就直接採用：它必然把品質補到目標，不可能被別的手法在品質上超越。
-    // 刻意**不**順便算一份「停用神速技巧」的對照解——那條路要求解器不准用神速技巧、還得靠加工把
-    // 品質堆到滿，在神速技巧本來就適用的低階配方上純屬白花求解時間（實測慢 1–2 秒，不致命但無意義）。
-    if let Some(ob) = plan_b {
-        if ob.complete && ob.final_quality >= target_total {
-            return Ok(ob);
-        }
-        // B 沒做完（CP 扣掉 250 後衝不完進展等）→ 退回原本的單次求解，兩者取優。
-        let fallback = run_solver(&settings)
-            .ok()
-            .map(|acts| replay(&settings, &acts, inp.initial_quality, inp.max_progress, inp.max_quality));
-        return Ok(match fallback {
-            Some(oa) => if better(&ob, &oa) { ob } else { oa },
-            None => ob,
-        });
+    let q = candidate::quality_cap(inp);
+    if let Some(out) = candidate::single_step_optimum(&settings, inp, q) {
+        return Ok(out);
     }
 
-    // 不適用神速技巧：維持原本的單次求解路徑。
-    let actions = run_solver(&settings)?;
-    Ok(replay(&settings, &actions, inp.initial_quality, inp.max_progress, inp.max_quality))
+    let plan_b = trained_eye_candidate(inp, &settings);
+    // 神速技巧候選做完且品質達標就直接採用（B-053，Owner 2026-09-30 拍板）：
+    // 唯一實測到更短的情況是「一步就做完」，上面的單步窮舉已涵蓋；再多跑一次普通候選
+    // 在代表語料上慢 3–13 倍（rlv640 0.44→5.8 秒），產出手法全同，不值得。
+    if let Some(te) = plan_b.as_ref() {
+        if te.complete && te.final_quality >= q {
+            return Ok(plan_b.unwrap());
+        }
+    }
+    // 神速技巧不可行或未達標才求普通候選；只在此副本禁用神速技巧，simulate、replay 與 B-017 補償路徑仍允許它。
+    let mut normal_settings = settings;
+    normal_settings.allowed_actions = normal_settings.allowed_actions.remove(Action::TrainedEye);
+    let normal = run_solver(&normal_settings).map(|actions| {
+        replay(&settings, &actions, inp.initial_quality, inp.max_progress, inp.max_quality)
+    });
+    match (plan_b, normal) {
+        (Some(te), Ok(normal)) => {
+            Ok(if candidate::better(&normal, &te, q) { normal } else { te })
+        }
+        (Some(te), Err(_)) => Ok(te), // 普通候選無解時，保留已求得的神速技巧候選
+        (None, normal) => normal,
+    }
 }
 
 #[wasm_bindgen]
@@ -326,24 +336,10 @@ fn parse_action(s: &str) -> Option<Action> {
 mod tests {
     use super::*;
 
-    // 全 35 個 Action 變體（對齊 action_name / parse_action 兩份 match）。
-    // 新增 raphael Action 變體時，action_name 的 exhaustive match 會先編譯報錯 → 提醒同步此陣列。
-    const ALL: [Action; 35] = [
-        Action::BasicSynthesis, Action::BasicTouch, Action::MasterMend, Action::Observe,
-        Action::TricksOfTheTrade, Action::WasteNot, Action::Veneration, Action::StandardTouch,
-        Action::GreatStrides, Action::Innovation, Action::WasteNot2, Action::ByregotsBlessing,
-        Action::PreciseTouch, Action::MuscleMemory, Action::CarefulSynthesis, Action::Manipulation,
-        Action::PrudentTouch, Action::AdvancedTouch, Action::Reflect, Action::PreparatoryTouch,
-        Action::Groundwork, Action::DelicateSynthesis, Action::IntensiveSynthesis, Action::TrainedEye,
-        Action::HeartAndSoul, Action::PrudentSynthesis, Action::TrainedFinesse, Action::RefinedTouch,
-        Action::QuickInnovation, Action::ImmaculateMend, Action::TrainedPerfection, Action::StellarSteadyHand,
-        Action::RapidSynthesis, Action::HastyTouch, Action::DaringTouch,
-    ];
-
     // parse_action ∘ action_name == identity：防兩份平行 35 列舉拼寫分歧（不會編譯報錯）。
     #[test]
     fn action_name_parse_round_trip() {
-        for a in ALL {
+        for a in ALL_ACTIONS {
             let name = action_name(a);
             let parsed = parse_action(name)
                 .unwrap_or_else(|| panic!("parse_action 不認得 action_name 產出的「{name}」"));
@@ -354,7 +350,7 @@ mod tests {
     // action_name 產出的名稱須唯一：否則 round-trip 假性通過、JS 端會拿錯 icon／繁中名。
     #[test]
     fn action_names_unique() {
-        let names: Vec<&str> = ALL.iter().map(|&a| action_name(a)).collect();
+        let names: Vec<&str> = ALL_ACTIONS.iter().map(|&a| action_name(a)).collect();
         for (i, n) in names.iter().enumerate() {
             assert!(!names[..i].contains(n), "action_name 重複產出「{n}」");
         }
@@ -406,9 +402,9 @@ mod tests {
         assert_eq!(out.steps[0].quality, u32::from(inp.target_quality), "品質應被拉滿");
     }
 
-    // 神速技巧適用時，走查第一步就該是它，且品質直接補到目標（研究者手斧 rlv620 ＋ Lv100 標準數值）。
+    // 研究者手斧 rlv620＋Lv100：無論選哪個候選，都要完成達標且成本不劣於神速技巧。
     #[test]
-    fn trained_eye_path_is_taken_and_fills_quality() {
+    fn selected_candidate_meets_quality_without_worsening_trained_eye_cost() {
         let inp = Input {
             max_cp: 689,
             max_durability: 70,
@@ -428,10 +424,14 @@ mod tests {
             initial_quality: 0,
             actions: vec![],
         };
+        let te = trained_eye_candidate(&inp, &build_settings(&inp)).expect("神速技巧候選應可行");
         let out = solve_input(&inp).expect("求解應成功");
-        assert!(out.complete && out.final_quality == 12900);
-        assert_eq!(out.steps[0].action, "TrainedEye", "應走神速技巧那條路");
-        assert_eq!(out.steps[0].durability, 70, "神速技巧不耗耐久");
+        let q = candidate::quality_cap(&inp);
+        assert!(out.complete && out.final_quality.min(q) == q, "應完成且封頂品質達標");
+        assert!(
+            (out.total_time, out.step_count) <= (te.total_time, te.step_count),
+            "時間優先、同時間比步數：結果不應劣於神速技巧候選"
+        );
     }
 
     // 求解端：直接交給 raphael 選神速技巧會少 10 點耐久預算 → 手法無謂變長。
@@ -440,7 +440,7 @@ mod tests {
     #[test]
     fn trained_eye_plan_is_not_padded_by_upstream_durability_bug() {
         let inp = tight_te_input();
-        let ours = solve_input(&inp).expect("求解應成功");
+        let ours = trained_eye_candidate(&inp, &build_settings(&inp)).expect("神速技巧子問題應可行");
         assert!(ours.complete, "應做得完");
         assert_eq!(ours.final_quality, u32::from(inp.target_quality), "神速技巧應把品質補滿");
 

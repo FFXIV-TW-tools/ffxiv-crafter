@@ -31,7 +31,14 @@ py -3.11 tools/build-data.py
 ```bash
 powershell -ExecutionPolicy Bypass -File tools/build-wasm.ps1   # 從 repo 根執行；內含 --remap-path-prefix，勿跑裸 wasm-pack
 ```
-需 `wasm/rust-toolchain` 釘的那個日期 nightly（rustup 會自動讀；缺的話 `rustup toolchain install <channel> --target wasm32-unknown-unknown`）+ wasm-pack。`pkg/` 要 commit（CF Pages 不編 Rust）；實際用的 rustc／wasm-pack 版本記在 `wasm/BUILD-STAMP.json`。
+需 `wasm/rust-toolchain` 釘的日期 nightly（rustup 會自動讀；缺的話 `rustup toolchain install <channel> --target wasm32-unknown-unknown`），以及 `tools/wasm-tool-pins.json` 釘的 **wasm-pack 0.13.1／wasm-opt 117**：
+
+- wasm-pack：`cargo install wasm-pack --version 0.13.1 --locked`。
+- wasm-opt：下載 [Binaryen version_117 Windows release](https://github.com/WebAssembly/binaryen/releases/tag/version_117)，解壓並把 bin 放到 PATH；也可使用 `WASM_PACK_CACHE`（未設定則 `%LOCALAPPDATA%\.wasm-pack`）下 `wasm-opt-*\bin\wasm-opt.exe` 的相符版本。
+
+建置前只認 PATH 第一筆 Application（忽略 alias／function／.ps1），版本不符即失敗；只有 PATH 沒有 wasm-opt 才查快取。腳本暫時前置已驗證 optimizer 的目錄、完成或失敗都還原 PATH／Rust flags／工作目錄，維持上游 optimizer 預設 `-O`。
+
+`pkg/` 要 commit（CF Pages 不編 Rust）；`wasm/BUILD-STAMP.json` 記錄實際 rustc／wasm-pack／wasm-opt 版本，以及所有 `wasm/src/**/*.rs`、工具釘選、manifest／lockfile／建置腳本與產物 hash。升級工具鏈＝改 channel／pin 後**真實重建**，`pkg/`＋戳記一起 commit，不能只改戳記；`py -3.11 tools/check-actions.py` 會拒收不同步產物。
 
 ## 本地預覽
 

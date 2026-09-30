@@ -23,6 +23,8 @@ for _s in (sys.stdout, sys.stderr):
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 LIB_RS = os.path.join(ROOT, "wasm", "src", "lib.rs")
+WASM_SRC = os.path.join(ROOT, "wasm", "src")
+TOOL_PINS = os.path.join(HERE, "wasm-tool-pins.json")
 CARGO_TOML = os.path.join(ROOT, "wasm", "Cargo.toml")
 Cargo_LOCK = os.path.join(ROOT, "wasm", "Cargo.lock")
 BUILD_SCRIPT = os.path.join(ROOT, "tools", "build-wasm.ps1")
@@ -52,6 +54,39 @@ def normalized_sha256(path):
     return hashlib.sha256(normalized).hexdigest()
 
 
+def wasm_src_sha256():
+    """與 build-wasm.ps1 共用契約：Ordinal 路徑排序，UTF-8 路徑＋NUL＋內容 hash＋LF。"""
+    paths = [
+        os.path.relpath(os.path.join(directory, filename), WASM_SRC).replace(os.sep, "/")
+        for directory, _, filenames in os.walk(WASM_SRC)
+        for filename in filenames if filename.endswith(".rs")
+    ]
+    # .NET StringComparer.Ordinal 依 UTF-16 code unit 排序，含非 BMP 檔名時也要一致。
+    paths.sort(key=lambda path: path.encode("utf-16-be", errors="surrogatepass"))
+    digest = hashlib.sha256()
+    for relative in paths:
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(normalized_sha256(os.path.join(WASM_SRC, relative)).encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def load_tool_pins():
+    """版本契約只讀一份釘選檔；遺失或格式錯誤不得放行舊產物。"""
+    try:
+        with open(TOOL_PINS, encoding="utf-8") as f:
+            pins = json.load(f)
+        if not isinstance(pins, dict) or not all(
+                isinstance(pins.get(key), str) and pins[key] for key in ("wasm_pack", "wasm_opt")):
+            raise ValueError("必須含 wasm_pack／wasm_opt 非空字串")
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        print("✗ 無法讀取 tools/wasm-tool-pins.json：%s；請修正釘選檔並用 tools\\build-wasm.ps1 重建" % exc,
+              file=sys.stderr)
+        return None
+    return pins
+
+
 def check_build_stamp():
     """確認 pkg/ 的建置戳記仍對應目前 WASM 原始碼、manifest、依賴鎖檔與建置腳本。"""
     sync_error = "✗ pkg/ 與 WASM 建置輸入不同步，請跑 tools\\build-wasm.ps1"
@@ -73,16 +108,28 @@ def check_build_stamp():
         print("→ wasm/BUILD-STAMP.json 格式無效", file=sys.stderr)
         return False
 
-    # 產物也要對（健檢 R5 M16）：戳記要證明的是「這份 pkg 由這份 lib.rs 產出」，只雜湊來源抓不到「忘了一起 commit pkg/」
-    expected = {
-        "lib_rs": normalized_sha256(LIB_RS),
-        "cargo_toml": normalized_sha256(CARGO_TOML),
-        "cargo_lock": normalized_sha256(Cargo_LOCK),
-        "build_script": normalized_sha256(BUILD_SCRIPT),
-        "pkg_wasm": normalized_sha256(PKG_WASM),
-        "pkg_js": normalized_sha256(PKG_JS),
-    }
-    labels = {"lib_rs": "lib.rs", "cargo_toml": "wasm/Cargo.toml", "cargo_lock": "Cargo.lock", "build_script": "tools/build-wasm.ps1", "pkg_wasm": "pkg/crafter_wasm_bg.wasm", "pkg_js": "pkg/crafter_wasm.js"}
+    pins = load_tool_pins()
+    if pins is None:
+        return False
+    # 產物也要對（健檢 R5 M16）：戳記要證明「這份 pkg 由這份 wasm/src 產出」，只雜湊來源抓不到「忘了一起 commit pkg/」。
+    try:
+        expected = {
+            "wasm_src": wasm_src_sha256(),
+            "tool_pins": normalized_sha256(TOOL_PINS),
+            "cargo_toml": normalized_sha256(CARGO_TOML),
+            "cargo_lock": normalized_sha256(Cargo_LOCK),
+            "build_script": normalized_sha256(BUILD_SCRIPT),
+            "pkg_wasm": normalized_sha256(PKG_WASM),
+            "pkg_js": normalized_sha256(PKG_JS),
+        }
+    except OSError as exc:
+        print(sync_error, file=sys.stderr)
+        print("→ 無法讀取建置輸入或產物：%s" % exc, file=sys.stderr)
+        return False
+    labels = {"wasm_src": "wasm/src/**/*.rs", "tool_pins": "tools/wasm-tool-pins.json",
+              "cargo_toml": "wasm/Cargo.toml", "cargo_lock": "Cargo.lock",
+              "build_script": "tools/build-wasm.ps1", "pkg_wasm": "pkg/crafter_wasm_bg.wasm",
+              "pkg_js": "pkg/crafter_wasm.js"}
     mismatches = []
     for field, expected_hash in expected.items():
         actual_hash = stamp.get(field)
@@ -104,18 +151,16 @@ def check_build_stamp():
         if needle in blob:
             print("✗ pkg/crafter_wasm_bg.wasm 含建置者路徑片段 %r（裸 wasm-pack 產物？請走 tools\\build-wasm.ps1）" % needle, file=sys.stderr)
             return False
-    print("✓ pkg/ 與 WASM 建置輸入同步：BUILD-STAMP.json 的 lib.rs / Cargo.toml / Cargo.lock / build-wasm.ps1 / pkg 產物 hash 一致，且產物無建置者路徑")
-    return check_toolchain_pin(stamp)
+    print("✓ pkg/ 與 WASM 建置輸入同步：BUILD-STAMP.json 的 wasm/src/**/*.rs / 工具釘選 / Cargo.toml / Cargo.lock / build-wasm.ps1 / pkg 產物 hash 一致，且產物無建置者路徑")
+    return check_toolchain_pin(stamp, pins)
 
 
 TOOLCHAIN_FILE = os.path.join(ROOT, "wasm", "rust-toolchain")
 PINNED_CHANNEL = re.compile(r"^nightly-\d{4}-\d{2}-\d{2}$")
 
 
-def check_toolchain_pin(stamp):
-    """引擎重現性要釘的不只依賴（B-038）：rust-toolchain 必須是帶日期的 nightly，
-    且 BUILD-STAMP 記的「實際編這份 pkg 的工具鏈」要與它一致——否則某天 nightly 變了就是一次建置事故，
-    而且回不到當初可編過的那一天。裸 `nightly` 即紅。"""
+def check_toolchain_pin(stamp, pins):
+    """nightly 釘日期，wasm-pack／wasm-opt 版本與 pins 精確相等；戳記缺欄位即要求重建。"""
     try:
         src = open(TOOLCHAIN_FILE, encoding="utf-8").read()
     except OSError as exc:
@@ -127,13 +172,21 @@ def check_toolchain_pin(stamp):
         print("✗ wasm/rust-toolchain 的 channel 是 %r，必須釘日期（nightly-YYYY-MM-DD）" % channel, file=sys.stderr)
         return False
     tc = stamp.get("toolchain")
-    if not isinstance(tc, dict) or not all(tc.get(k) for k in ("channel", "rustc", "rustc_commit", "wasm_pack")):
-        print("✗ BUILD-STAMP.json 缺 toolchain 欄（channel／rustc／rustc_commit／wasm_pack）——請用 tools\\build-wasm.ps1 重建", file=sys.stderr)
+    if not isinstance(tc, dict) or not all(
+            isinstance(tc.get(k), str) and tc[k]
+            for k in ("channel", "rustc", "rustc_commit", "wasm_pack", "wasm_opt")):
+        print("✗ BUILD-STAMP.json 缺 toolchain 欄（channel／rustc／rustc_commit／wasm_pack／wasm_opt）——請用 tools\\build-wasm.ps1 重建", file=sys.stderr)
         return False
     if tc["channel"] != channel:
         print("✗ pkg/ 是用 %s 編的，而 rust-toolchain 現在釘 %s——改了 channel 就要重建 pkg/" % (tc["channel"], channel), file=sys.stderr)
         return False
-    print("✓ 工具鏈已釘：%s（rustc %s @%s，wasm-pack %s）" % (channel, tc["rustc"], tc["rustc_commit"][:9], tc["wasm_pack"]))
+    for key in ("wasm_pack", "wasm_opt"):
+        if tc[key] != pins[key]:
+            print("✗ pkg/ 的 %s 版本 %s 不符 tools/wasm-tool-pins.json 釘選 %s——請用 tools\\build-wasm.ps1 重建" %
+                  (key, tc[key], pins[key]), file=sys.stderr)
+            return False
+    print("✓ 工具鏈已釘：%s（rustc %s @%s，wasm-pack %s，wasm-opt %s）" %
+          (channel, tc["rustc"], tc["rustc_commit"][:9], tc["wasm_pack"], tc["wasm_opt"]))
     return True
 
 
