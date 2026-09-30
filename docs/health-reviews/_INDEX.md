@@ -4,7 +4,7 @@
 
 | 日期 | 範圍 | 體質分 | 使用者分 | 維度產值 | 報告 | 計畫 | 狀態 |
 |------|------|:---:|:---:|------|------|------|------|
-| 2026-09-30 | 全方面16維；41次有效原生呼叫；31 findings＝28 confirmed／3 partial／0 refuted，合併11須修改 | 8.3 | 7.9 | 入庫11／收官8；零產出：sec-backend,quality,tests-ci,docs-drift,perf-data,deps-supply-chain,data-lifecycle,design-system（跨維合併票見報告） | [報告](2026-09-30-全方面健檢-health-review.md) | [計畫](2026-09-30-全方面健檢-fix-plan.md) | 8須修改＋8建議已修並驗收；M1/B041、M3/B043、M11/B051及4可選項待拍板；未commit／push／部署 |
+| 2026-09-30 | 全方面16維；41次有效原生呼叫；31 findings＝28 confirmed／3 partial／0 refuted，合併11須修改 | 8.3 | 7.9 | 入庫11／收官11；零產出：sec-backend,quality,tests-ci,docs-drift,perf-data,deps-supply-chain,data-lifecycle,design-system（跨維合併票見報告） | [報告](2026-09-30-全方面健檢-health-review.md) | [計畫](2026-09-30-全方面健檢-fix-plan.md) | 11須修改＋12建議已修並驗收（第二輪含 M1/M3/M11、S5/S8/S10/S11；B-053 選 C）；B-052 fleet 漂移待平行 session 收尾；未commit／push／部署 |
 | 2026-09-22 | 全頁與建置鏈；原生分工與Main核驗，未自動評分 | — | — | —（本欄2026-09-30起記錄，不回溯補算）；收官7組修復與4項決策 | [報告](2026-09-22-全頁健檢-health-review.md) | 報告內嵌 | 已收官 2026-09-30 → f6599fe |
 | 2026-09-05 | R5全維12維；45 agents；67 findings＝55 confirmed／11 partial／1 refuted | 7.5 | 7.5 | —（本欄2026-09-30起記錄，不回溯補算）；收官 B-032〜B-039 | [報告](2026-09-05-R5全維健檢-health-review.md) | [計畫](2026-09-05-R5全維健檢-fix-plan.md) | 已收官 2026-09-30 → B-032〜B-039 |
 | 2026-08-15 | 全維11維；31 agents；59 confirmed／10 partial／2 refuted | 7.5 | 7.2 | —（本欄2026-09-30起記錄，不回溯補算） | [報告](2026-08-15-全維健檢-health-review.md) | [計畫](2026-08-15-全維健檢-fix-plan.md) | 已收官 2026-09-30 → B-025〜B-031 |

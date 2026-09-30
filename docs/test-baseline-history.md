@@ -42,3 +42,5 @@
 2026-09-22 全頁健檢 → **562 passed**（556 → 562）：新增 7 條行為斷言——裝備非法舊值（等級 150、小數 CP）不得當有效裝備、後續製作只從實際使用該素材的候選中依既有規則挑選並套能力門檻、Worker constructor 同步失敗可免 reload 恢復、食品資料恢復後標籤回來；移除 1 條只檢查函式存在的 `typeof` 斷言（非唯一行為覆蓋）。cargo 靜態斷言點 17 → 19：新增 `parse_actions` 遇未知技能必須回錯（原本 `filter_map` 靜默丟棄）。
 
 2026-09-29 raphael 升 v0.28.6＋SIMD 的後續 → **557 passed**（550 → 557）：T66 新增 7 條——WASM trap（記憶體用盡 abort）後丟掉中毒的 worker 並重建、下一次求解送進新 worker、中毒 worker 不再收到求解、一般求解失敗（NoSolution）不重建；瀏覽器不支援 WebAssembly SIMD 時明講最低版本、不說成網路問題、不給重試鈕。負向對照（換回舊 `app-solve.js`）551 passed／6 failed。
+
+2026-09-30 健檢第二輪（Owner 決策 M1/M3/M11＋S5/S8/S10/S11）→ **653 passed**（557 → 653，+96）、cargo 靜態斷言點 **19 → 47**（6 → 13 tests）、run-all 維持 2 檔。① M1 新 `09-storage.test.mjs` 95 條：雙 VM 共用 storage＋可控 Web Lock——不同欄位／ID 並存、清單 delta 累加、同欄 LWW＋提示、專家之證第 3／4 同搶回滾、自己 op 排隊時收到他 tab 事件、離頁 flush、無鎖同步 fallback、儲存被封鎖時本次瀏覽仍保留且恢復後合併（含恢復時對他 tab 較新同欄寫入的衝突提示）、聚焦未編輯欄位跟上他 tab；既有 8 支測試改載真 `app-storage.js`，未刪斷言。② S10 `63-offline-css.test.mjs` 1 條：portal 在場時跑 generator `--check`。③ M3 cargo：拿掉「第一步必為神速技巧」的分支釘選，改驗完成＋封頂品質＋成本不劣；B-017 哨兵改直接比 plan_b 與 naive；新增 recipe1008 單步、target 超上限、NQ／初期品質已達標、溢出品質不勝出、同時間比步數、時間優先於步數、扣 CP 後神速技巧不可行退回普通候選。

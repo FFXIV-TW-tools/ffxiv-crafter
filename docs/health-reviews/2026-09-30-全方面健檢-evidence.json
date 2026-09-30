@@ -2304,5 +2304,716 @@
       "reusedEvidence": "docs/verification/2026-09-29-raphael-v0286-simd.md",
       "diffAndJsGoldenRerun": false
     }
+  },
+  "round2": {
+    "ownerInstruction": "M1/M3/M11請按建議方案解決；可選的四項全部做掉",
+    "planGate2": {
+      "model": "anthropic/claude-opus-5-5",
+      "toolCalls": "approximately 57",
+      "duration": "10m46s",
+      "effort": null,
+      "accountChannel": null,
+      "sha256": "3c097250fda2fc01aa3c162ad792fd7c70e22d797dd2303b51109cd4a56bafbb",
+      "original": {
+        "findings": [
+          {
+            "title": "TE mask 移除須限定在普通候選的 settings 副本，不可改 build_settings",
+            "body": "批次6寫「普通候選 mask 移除 TrainedEye」，但沒講清楚改在哪一層。raphael v0.28.6（鎖定 commit 4111686）的 `raphael-sim/src/state.rs:67` 會對 mask 外的 action 回 `ActionError::Disabled`。`build_settings()`（wasm/src/lib.rs:100-105）同時被三條路徑共用：plan_b 用同一份 `settings` 重放 `[TrainedEye, …]`（lib.rs:241 附近）、手動沙盒 `simulate()`（lib.rs:290 附近）、哨兵測試 `trained_eye_plan_is_not_padded_by_upstream_durability_bug` 的 naive 對照組（lib.rs:448）。如果把 TE 從 build_settings 拿掉，TE 候選重放和沙盒裡的神速技巧都會報錯。哨兵的 naive 解也不可能再含 TE，於是這條「轉紅＝上游修好、該移除 workaround」的信號會被誤觸發。另外，改成時間優先後，最終選中的 `ours` 可能是步數更多的普通候選，`naive.step_count > ours.step_count` 就不再測子問題拆解本身。修法：只在呼叫普通候選 `run_solver` 前建一份 `normal = settings; normal.allowed_actions = settings.allowed_actions.remove(Action::TrainedEye)`，build_settings、simulate、replay 一律不動；哨兵改成直接拿 plan_b 和 naive（含 TE）比步數，不經過候選挑選。",
+            "priority": 1,
+            "confidence": 0.85,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 91,
+            "line_end": 93
+          },
+          {
+            "title": "S8 改腳本／戳記要排在 M3 重建之前，Main 只重建一次",
+            "body": "批次8會改 `tools/build-wasm.ps1`、stamp schema（新增 `toolchain.wasm_opt`、pin hash、`wasm/src/**/*.rs`），也會改 check-actions；而且明說 rs glob 擴充是「供 M3 可能拆出的 module」用，所以 M3 其實依賴 S8。按目前順序，批次6先「真重建」；批次8一改 build-wasm.ps1，stamp 的 build_script hash 就對不上，只能再重建一次，M3 的差分閘和 browser 驗收也要重跑。更糟的情況是 M3 已經拆出第二個 .rs 檔，而 S8 還沒擴 hash，那段期間 check-actions 驗不到新模組。修法：先做批次8的腳本、pin 檔和 check-actions（不重建），再改批次6的 lib.rs，最後由 Main 用新腳本重建一次，差分閘、cargo test 和 browser 驗收都跑在這份最終 pkg 上。",
+            "priority": 2,
+            "confidence": 0.8,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 89,
+            "line_end": 99
+          },
+          {
+            "title": "補上 async lock 下 in-memory model、排隊 op 與 storage event 的一致性規則",
+            "body": "現在所有保存點都是同步流程：先改記憶體，再 `save(); render(); notify(); toast`（crafting-list.js:95、110、126、276、279；app-gear.js:116-120、137-140；app-quests.js:117、243、279），toast 也直接讀記憶體裡的數量（例如 add 的「共 N 次」）。換成 `navigator.locks.request` 之後，operation 要等下一個 task 才套用，計畫沒定義幾件事：(1) UI 是樂觀先改，還是等 commit 後才改；(2) 自己的 op 還在排隊時收到他 tab 的 storage event，按「fresh read 更新 model」會把記憶體蓋成還沒套上這個 op 的值，而自己 commit 不會觸發本 tab 的 storage event，UI 會一直停在舊值；(3) 專家之證在鎖內重檢發現已超過3個時，UI 已勾選，要怎麼回滾（frontend-state.md 規定「回退＋toast」）；(4) `locks.request` reject 時（例如封鎖儲存時的 SecurityError）要走原本的保存失敗 toast，不能變成 unhandled rejection。修法：規定 `update()` 回傳 commit 結果，commit 後一律用鎖內寫入的值取代 model 並局部 render，toast 用 commit 結果；有 pending op 時，storage event 的 refresh 延到佇列清空後再做，或在 fresh 值上重套 pending op；鎖內拒絕要回滾 DOM 並跳 toast；reject 導向同一個一次性保存失敗提示。雙 VM 回歸要加「自己的 op 排隊時收到他 tab 事件」這個案例。",
+            "priority": 2,
+            "confidence": 0.75,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 84,
+            "line_end": 88
+          },
+          {
+            "title": "關分頁時排隊中的 lock op 可能遺失，需要 pagehide 同步 flush",
+            "body": "目前是事件處理器裡直接同步 `setItem`，只要 handler 跑了，資料就寫進去了。改成 lock 後，寫入延到 lock callback。數量欄是 `change` 事件（失焦才觸發，crafting-list.js:277），使用者改完數量直接 Ctrl+W 或切走讓瀏覽器回收分頁，`change` 仍會在卸載途中觸發，但 lock callback 不保證能在文件卸載前執行。無痕保存失敗已被視為要 toast 的資料遺失（T40），這個新路徑卻是靜默遺失，屬於回歸。修法：coordinator 監聽 `pagehide`（必要時加 `visibilitychange` hidden），把還沒拿到鎖的 op 用 fallback 路徑（同一 task 內同步 fresh read→apply→setItem）寫掉，文件標為和無 Web Locks 相同的殘餘視窗；驗收加「改數量後立刻關分頁、reload 後值還在」。",
+            "priority": 2,
+            "confidence": 0.65,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 84,
+            "line_end": 85
+          },
+          {
+            "title": "批次5要列出測試 sandbox 遷移與 app.js 硬失敗清單等必要檔案",
+            "body": "計畫要求「worker 只改指定檔」，但批次5–10都沒有批次1–4那種 Files/Blocked by 欄位。M1 至少會連帶改到：index.html 的 script 順序、deploy-allow.txt、app.js init 的分層硬失敗清單（frontend-state.md 規定分層 classic script 缺席要 throw，app-storage.js 必須加進去，不能 `?.` 軟略過），以及十幾個直接用 vm 載入單一層並同步斷言 localStorage 的測試（11-gear T23/T30、12-recipe-sync T43、20-list T40、31-render T39、40-flow-consumable、41-stages-sync 等）。這些 context 沒有載入 CraftStorage；如果各層寫成 `CraftStorage?.update`，寫入會在測試裡靜默消失；如果寫成硬依賴，就會 ReferenceError。修法：批次5明列上述檔案；規定每個測試 context 都載入真的 app-storage.js（harness 的 `navigator: {}` 沒有 locks，正好走同步 fallback，原有同步斷言可以保留），另外用可控 lock mock 測非同步路徑；app.js 硬失敗清單加入 CraftStorage；TEST-BASELINE 只升不降。",
+            "priority": 2,
+            "confidence": 0.7,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 82,
+            "line_end": 88
+          },
+          {
+            "title": "第二輪會疊在未 commit 的第一輪修改上，開工前要先封存每批 patch 邊界",
+            "body": "crafter 工作樹目前有 29 個未 commit 的修改，是批次1–4的成果，包括 app.js、app-quests.js、crafting-list.js、app-render.js、tools/build-wasm.ps1、tools/check-actions.py、wasm/BUILD-STAMP.json、AGENTS.md。批次5（M1）、6/8（wasm 腳本與戳記）、10（AGENTS ④）會改到同一批檔案。AGENTS.md 規定「commit 先知會、逐主題切」，本輪又沒有 commit 授權，做完之後第一輪和第二輪、以及各批之間的修改會混在同一個檔案裡，Owner 只能逐 hunk 拆，而且第一輪已驗收的 pkg 和戳記會被第二輪覆蓋。第二輪各批也沒寫預期提交邊界。修法：批次5開工前，請 Owner 先 commit 第一輪；如果不行，就把第一輪的 `git diff` 存成封存 patch，並在每批完成時存一份該批的增量 patch，寫進 evidence；每批補上預期提交邊界。",
+            "priority": 2,
+            "confidence": 0.7,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 80,
+            "line_end": 82
+          },
+          {
+            "title": "S8 的 wasm-opt 快取回退在乾淨機器上會直接 throw，解析規則也沒對齊 which",
+            "body": "wasm-pack 0.13.1 的邏輯是 PATH 上找不到 wasm-opt 才下載 binaryen version_117 到快取（Windows 預設在 `%LOCALAPPDATA%\\.wasm-pack\\wasm-opt-<hash>`，可用 `WASM_PACK_CACHE` 覆寫）。計畫要在 build 之前「PATH 優先，否則快取」解析並驗版本，但在沒有 PATH wasm-opt 的乾淨機器上，或清過快取後，快取在第一次跑 wasm-pack 之前是空的：前置檢查什麼都找不到就 throw，wasm-pack 永遠沒有機會下載，現在能建的環境反而建不了。另外，快取目錄名是 URL hash，可能同時留著舊版 wasm-pack 下載的其他 version，沒規定怎麼挑。PowerShell 的 `Get-Command`/`& wasm-opt` 會先吃 alias、function、.ps1（npm 全域安裝會同時產生 wasm-opt.ps1 和 .cmd），和 wasm-pack 用的 `which::which`（只看 PATH 順序加 PATHEXT）不一定是同一支。修法：解析規則明寫成「第一個含 PATHEXT 可執行檔的 PATH 目錄」（`Get-Command -CommandType Application` 並取第一筆）；找不到時由腳本自己下載 binaryen version_117 的 Windows 版，驗官方 sha256，放到 repo 外、腳本管理的目錄，再前置 PATH；或至少在錯誤訊息裡給出安裝指令，並列入驗收（空快取、無 PATH 的情境）。快取回退要尊重 `WASM_PACK_CACHE`，並依版本挑選目錄。",
+            "priority": 2,
+            "confidence": 0.6,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 97,
+            "line_end": 99
+          },
+          {
+            "title": "M11 真 browser 驗收要指定 dialog 處理方式、下載觀測與本機 portal 來源",
+            "body": "portal 的 `docs/gotchas.md:64` 記錄過實際踩雷：自動化中遇到原生 `confirm()` 會「凍住整個 renderer、後續指令全數 timeout」。批次7的「真 browser 在 crafter 開設定→匯出取消／確認」沒說怎麼應答 dialog，也沒說怎麼觀測「零檔案」和「同 payload」。另外 portal 本輪不部署，crafter 正式環境從 https://xivtc.com/ 載 settings-ui，只有 localhost 會切到 `http://localhost:8774/ffxiv-tw-tools-portal/`（index.html:37-38）；驗收要是沒寫明用 localhost 和 portal :8774，拿到的會是舊版 settings-ui。修法：驗收改成用 Playwright/CDP：先註冊 `page.on('dialog')`，分別 dismiss 和 accept，並斷言 message 含「webhook 已包含／未設定」且不含實際值；用 download 事件斷言取消時零下載、確認時下載內容和 `S.export()` 深度相等；明寫 crafter 跑在 localhost，portal 服務在 :8774，並先斷言載入的 settings-ui 含新按鈕文案。",
+            "priority": 2,
+            "confidence": 0.75,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 94,
+            "line_end": 96
+          },
+          {
+            "title": "compact accordion 放錯分層檔，覆寫清單和比對項目也不足",
+            "body": "portal plan 寫要改 `styles/08-motion.css`，但 `.codex-accordion` 的 base 在 `styles/07-data.css:461-494`。08-motion 的檔尾是字級裁決層，`tests/typography-scale-cascade.test.mjs` 規定最後三條 font-size 規則必須是那三個 utility（①），(0,1,1) 以上的字級宣告也只允許白名單內的（⑤）。所以 compact 如果寫在檔尾，或帶了 font-size，run-all 會紅。再來，base 會帶進 crafter 目前沒有的樣式：整圈框線、圓角、背景、summary 的 padding 和 font-weight 600、`:hover` 背景、[open] 的 border-bottom，還有相鄰的 `.codex-accordion + .codex-accordion { margin-top }`（#macro-block、#rot-block、#wt-block 正是相鄰兄弟，index.html:268-282）。計畫只比對靜止狀態 360/1400 的 computed 幾何，hover 背景、字重、顏色、caret 旋轉這些非幾何變化抓不到。修法：compact 寫在 07-data 緊接 base；明列需要中和的屬性（含相鄰 margin 和 hover）；避免覆寫 font-size，要覆寫就同步白名單和 _DESIGN-SYSTEM；基線要涵蓋 open/closed、hover、focus-visible，比對 box 尺寸以外，也比 font-weight、color、background、border 和 `::before` 的 content/transform。",
+            "priority": 2,
+            "confidence": 0.75,
+            "file_path": "C:/FFXIVProject/external/ffxiv-tw-tools-portal/docs/plans/2026-09-30-crafter-health-decisions-plan.md",
+            "line_start": 10,
+            "line_end": 10
+          },
+          {
+            "title": "S5 的「平行 session 已修改就跳過」會誤判本輪自己的修改，也和副本同步規則衝突",
+            "body": "crafter 的 AGENTS.md 已被批次4（S4）改過，目前是 dirty；照批次10的規則，光看工作樹 dirty 分不出是本輪還是平行 session 改的，crafter 自己可能被跳過，其他 repo 也會同樣誤判。AGENTS.md:113 又規定④所在段落是「external repo 共用權威版本：改本段請同步全部副本」。計畫一邊按 S/T/C 三型寫出內容不同的副本，一邊允許跳過部分 repo，結果是副本在設計上就不一致，而且沒記錄後續怎麼補齊。修法：第二輪開工時先對每個目標檔存一份基線（`git status --porcelain` 加檔案 hash），只有「相對基線出現非本輪的變化」才判定為平行 session 修改；④改成一段逐字相同、同時列出三型條款的共用文字（各 repo 在 S/T/C 標示自己屬於哪型），讓副本保持一致；被跳過的 repo 寫進 BACKLOG，列為待補的已知 drift。",
+            "priority": 2,
+            "confidence": 0.7,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 104,
+            "line_end": 105
+          },
+          {
+            "title": "TE 樂觀下界在正確實作下幾乎不會觸發，應改成量測後再決定是否保留",
+            "body": "跳過條件是 T_lb ≥ TE 時間。TE 候選至少兩步（TE 3 秒加至少一個 3 秒的進展技能），通常 3–7 步。下界要成立，M_p、M_q 就必須取真正的單步上限：例如進展要算 Heart and Soul 配 Intensive、Muscle Memory 配 Veneration；品質要算 10 層 IQ 的 Byregot 配 Innovation 和 Great Strides，約 15×base_quality。以 repo 自己的 fixture（lib.rs:414-429：5720/385、12900/468）估算，S_lb 大約 2、T_lb 約 6，遠小於 TE 路徑的秒數，普通候選幾乎每次都會照跑。反過來，如果為了讓它常觸發而低估 M，就會錯誤跳過真正較短的普通解，也就是 M3 要修的錯誤結果。換句話說，正確時它是多出來的複雜度，會觸發時它就不正確，延遲並沒有因此降低。修法：拿掉這段 bound，直接用計畫已列的「TE on/off 冷暖延遲量測」決定延遲是否可接受；如果要保留，驗收要加「代表語料上的跳過率」和「跳過時不存在更短普通解」的差分斷言，並把 M_p/M_q 的推導逐一列出技能。",
+            "priority": 3,
+            "confidence": 0.55,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 91,
+            "line_end": 91
+          },
+          {
+            "title": "S10 缺少消費端常駐的 --check 防漂移",
+            "body": "gen-site-icons 這個模式在 crafter 端是靠 `tools/tests/62-icons.test.mjs:6-11` 在 portal 兄弟 repo 存在時自動跑 `--check`，才能常駐擋漂移。S10 只在本輪驗收時跑一次 generator `--check`，而 config 和 404.html 的 markers 都在 crafter。portal 的 template 或 tokens 以後改了，404.html 不會有任何測試轉紅，等於又回到本地副本漂移的狀態，這正是 S10 要解決的問題。修法：在 crafter 的 62-icons（或同形的新測試）加一條 `gen-offline-css.mjs --config <crafter config> --check`，portal 缺席時照舊跳過；config 檔列進 deploy-deny；TEST-BASELINE 同步上調。",
+            "priority": 3,
+            "confidence": 0.6,
+            "file_path": "docs/health-reviews/2026-09-30-全方面健檢-fix-plan.md",
+            "line_start": 101,
+            "line_end": 103
+          }
+        ],
+        "overall_correctness": "incorrect",
+        "explanation": "方向大致可行，但照現在的寫法直接執行會出問題。以下依使用者指定的重點說明。\n\nM1 無 Web Locks 時的 fallback 語意誠實、可接受：沒有宣稱跨 process 互斥，也沒有把 BroadcastChannel 冒充成 mutex。問題在 async lock 下，UI 狀態怎麼跟上沒有定義：in-memory model、排隊中的 op、storage event refresh 三者之間的關係，專家之證在鎖內被拒時怎麼回滾，關分頁時排隊中的 op 怎麼處理，這些都沒寫。first-run-hint 是唯讀的同步讀取，只要 key 不變就不受影響。\n\nM3 需要注意幾點：\n- 移除 TE mask 必須限定在普通候選的 settings 副本；如果改在 build_settings，會弄壞 plan_b 重放、simulate 和 B-017 哨兵。\n- 單純把 TE 從普通候選拿掉不會造成回歸，因為 plan_b 在可行時一定支配含 TE 的普通解。\n- 樂觀下界的算法本身成立（所有進展和品質技能都是 3 秒，取 max 也正確處理了 Delicate Synthesis），但在正確的 M 值下幾乎不會觸發。\n\nM11 用原生 confirm 足夠：settings-ui 本身已有 10 處原生 confirm，design-system 的 modal 契約規範的是自造 modal。缺的是自動化驗收時處理 dialog 的方式，以及確認驗收用的是本機 portal。\n\n其他：\n- S8：wasm-opt 的快取回退在乾淨機器上會直接 throw，而且 S8 應排在 M3 重建之前。\n- S11：compact 放錯了分層檔，覆寫清單和比對的屬性也不夠。\n- S5：用工作樹 dirty 判斷會把本輪自己的修改誤判成平行 session，也和副本同步規則衝突。\n- 第二輪會疊在第一輪 29 個未 commit 的修改上，開工前要先封存 patch 邊界。\n\n本次實際使用工具：read 約 17、grep 約 17、glob 3、bash 4、yield 16，共約 57 次呼叫。",
+        "confidence": 0.72
+      },
+      "adopted": "all 11"
+    },
+    "postReview": {
+      "agent": "reviewer",
+      "model": null,
+      "toolCalls": "approximately 68 over two passes",
+      "finalSha256": "6b81a71e898eee9aeaab7fd6147b2c5a6ac8eef478c36afbc2dd8b82a1376e02",
+      "final": {
+        "overall_correctness": "correct",
+        "explanation": "上一輪的 3 項 finding 都已解決。① 保存失敗時，`commit`／`fail` 會把操作留在 `unsaved`，`view` 與下一次 commit 會重套；各層在 error 分支也改為採用 `view()`，清單、任務、食藥、角色數值在本次瀏覽中都保持有效。② app-gear 與 app-level-sync 只在輸入框內容與 baseline 不同（真的有未提交文字）時才跳過，其餘會追上新值並更新 baseline。③ crafting-list 只在實際編輯後才保留 draft，否則改用 fresh qty 並重設 baseline。\n\n按 Main 指定的面向逐項檢查：\n- 重套次數：成功寫入後會 `unsaved.delete`；`fail` 在狀態已不是 waiting 時直接返回；`settling` 狀態不會被 `view` 重套。沒有找到會套兩次的路徑。\n- 保留清單成長：delta 操作不會合併，每按一次加一筆，所以上限是使用者的點擊數；重套成本是小陣列上的 O(n)，影響可忽略，不列為缺陷。\n- 合併順序：合併會把同欄操作移到清單尾端。各層的 field 都逐欄或逐 id 獨立，對結果沒有影響。\n- 發現 1 個新的 P3：保留下來的 set／delete 在退回成功寫入時不做衝突比對，會在不提示的情況下蓋掉別分頁較新的同欄寫入（詳見 finding）。\n\n本輪只閱讀程式碼，沒有執行測試。工具用量約 68 次（含前一輪，不含 yield）。",
+        "confidence": 0.72,
+        "findings": [
+          {
+            "title": "保留的 set／delete 回寫時要比對它自己的 baseline",
+            "body": "`keepUnsaved()` 只保留了 `entry.op`，沒有保留該操作的 `entry.baseline`。之後第一次成功的 commit 會執行 `fresh = replayUnsaved(key, parse(stored))`，把這些保留的操作套在最新的保存值上再寫回；但 `conflict` 只拿當前 op 的 `before` 與它自己的 baseline 比對，而且 `before` 是在重套之後才讀的。影響有兩層：(1) 本分頁曾寫入失敗的欄位 X，後來被別分頁成功改成更新的值；本分頁下一次成功寫入（即使改的是別的欄位）會用舊的 X 蓋掉對方，卻不出現「其他分頁也修改了這個欄位」的提示；(2) 如果這次改的正好就是 X，`before` 讀到的是被重套過的本地值，與 view 出來的 baseline 相同，同樣不會提示。此外在恢復之前，view 會一直用本地保留值遮住對方的更新。觸發條件是寫入失敗只發生在部分分頁或部分寫入：例如 quota 將滿時，長度變大的寫入失敗、等長或變小的成功，或暫時性錯誤。封鎖儲存時所有分頁都會失敗，不會觸發。最小修法：`unsaved` 改存 `{ op, baseline: entry.baseline }`；在 `commit()` 重套前，對 CHECKED_KINDS 的保留操作用 `readField(op, codec.parse(stored))` 與它的 baseline 比對，任一筆不符就把結果的 `conflict` 設為 true（或丟棄該筆、改為採用對方的值）。",
+            "priority": 3,
+            "confidence": 0.5,
+            "file_path": "C:/FFXIVProject/external/ffxiv-crafter/app-storage.js",
+            "line_start": 109,
+            "line_end": 115
+          }
+        ]
+      },
+      "firstPassFindings": 3,
+      "secondPassFindings": 1,
+      "allFixed": true
+    },
+    "workers": {
+      "names": [
+        "M1Storage",
+        "M3Solver",
+        "S8Pins",
+        "M11Export",
+        "PortalDesign",
+        "S5Fleet"
+      ],
+      "agent": "task (default)",
+      "model": null,
+      "effort": null
+    },
+    "verification": {
+      "formulas": {
+        "passed": 653,
+        "failed": 0
+      },
+      "cargo": {
+        "tests": 13,
+        "staticPoints": 47
+      },
+      "checkActions": 35,
+      "rootJs": 20,
+      "deployIsolatedTracked": {
+        "allowItems": 38,
+        "green": true,
+        "reason": "main tree run-all misses untracked app-storage.js"
+      },
+      "wasm": {
+        "bytes": 316688,
+        "simd": true,
+        "wasmOpt": "117",
+        "wasmPack": "0.13.1"
+      },
+      "simDiff": {
+        "casts": 958495,
+        "knownCountsSameAs0929": true,
+        "newDivergence": 0
+      },
+      "jsGolden": {
+        "pairs": 3328,
+        "diff": 0,
+        "hqCells": 97,
+        "hqDiff": 0
+      },
+      "portal": {
+        "runAll": "125/125",
+        "worker": "106/106",
+        "frontendPoints": 1476,
+        "headerCssBytes": 81619
+      },
+      "m1TwoTab": {
+        "A": "cms 3111 + add 901 x2",
+        "B": "cp 777 + add 940",
+        "result": {
+          "gear": {
+            "cms": 3111,
+            "cp": 777
+          },
+          "list": [
+            [
+              901,
+              3
+            ],
+            [
+              940,
+              2
+            ]
+          ]
+        },
+        "reloadConsistent": true
+      },
+      "m3Recipe1008": {
+        "steps": 1,
+        "seconds": 3,
+        "macro": "/ac \"精密製作\" <wait.3>\r\n/echo 製作完成 <se.1>"
+      },
+      "m3Latency": {
+        "old": [
+          {
+            "id": 1008,
+            "rlv": 1,
+            "steps": 2,
+            "time": 6,
+            "quality": 1584,
+            "target": 80,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 65,
+            "warm": 13
+          },
+          {
+            "id": 31592,
+            "rlv": 50,
+            "steps": 2,
+            "time": 6,
+            "quality": 2004,
+            "target": 500,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 14,
+            "warm": 13
+          },
+          {
+            "id": 30972,
+            "rlv": 150,
+            "steps": 2,
+            "time": 6,
+            "quality": 3618,
+            "target": 2700,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 17,
+            "warm": 15
+          },
+          {
+            "id": 3446,
+            "rlv": 290,
+            "steps": 2,
+            "time": 6,
+            "quality": 3600,
+            "target": 3600,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 20,
+            "warm": 22
+          },
+          {
+            "id": 3812,
+            "rlv": 390,
+            "steps": 2,
+            "time": 6,
+            "quality": 3590,
+            "target": 3010,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 13,
+            "warm": 13
+          },
+          {
+            "id": 33326,
+            "rlv": 450,
+            "steps": 3,
+            "time": 8,
+            "quality": 6320,
+            "target": 6320,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 57,
+            "warm": 42
+          },
+          {
+            "id": 4731,
+            "rlv": 517,
+            "steps": 3,
+            "time": 9,
+            "quality": 5200,
+            "target": 5200,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 49,
+            "warm": 56
+          },
+          {
+            "id": 5176,
+            "rlv": 560,
+            "steps": 5,
+            "time": 14,
+            "quality": 7620,
+            "target": 7200,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 195,
+            "warm": 172
+          },
+          {
+            "id": 35029,
+            "rlv": 610,
+            "steps": 6,
+            "time": 17,
+            "quality": 13048,
+            "target": 12628,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 368,
+            "warm": 368
+          },
+          {
+            "id": 35502,
+            "rlv": 640,
+            "steps": 7,
+            "time": 19,
+            "quality": 14040,
+            "target": 14040,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 503,
+            "warm": 443
+          },
+          {
+            "id": 35417,
+            "rlv": 620,
+            "steps": 6,
+            "time": 17,
+            "quality": 12900,
+            "target": 12900,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 323,
+            "warm": 325
+          }
+        ],
+        "new": [
+          {
+            "id": 1008,
+            "rlv": 1,
+            "steps": 1,
+            "time": 3,
+            "quality": 1368,
+            "target": 80,
+            "complete": true,
+            "first": "DelicateSynthesis",
+            "cold": 2,
+            "warm": 0
+          },
+          {
+            "id": 31592,
+            "rlv": 50,
+            "steps": 1,
+            "time": 3,
+            "quality": 1368,
+            "target": 500,
+            "complete": true,
+            "first": "DelicateSynthesis",
+            "cold": 0,
+            "warm": 0
+          },
+          {
+            "id": 30972,
+            "rlv": 150,
+            "steps": 2,
+            "time": 6,
+            "quality": 3618,
+            "target": 2700,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 67,
+            "warm": 59
+          },
+          {
+            "id": 3446,
+            "rlv": 290,
+            "steps": 2,
+            "time": 6,
+            "quality": 3600,
+            "target": 3600,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 99,
+            "warm": 72
+          },
+          {
+            "id": 3812,
+            "rlv": 390,
+            "steps": 2,
+            "time": 6,
+            "quality": 3590,
+            "target": 3010,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 91,
+            "warm": 82
+          },
+          {
+            "id": 33326,
+            "rlv": 450,
+            "steps": 3,
+            "time": 8,
+            "quality": 6320,
+            "target": 6320,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 460,
+            "warm": 537
+          },
+          {
+            "id": 4731,
+            "rlv": 517,
+            "steps": 3,
+            "time": 9,
+            "quality": 5200,
+            "target": 5200,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 472,
+            "warm": 423
+          },
+          {
+            "id": 5176,
+            "rlv": 560,
+            "steps": 5,
+            "time": 14,
+            "quality": 7620,
+            "target": 7200,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 1242,
+            "warm": 1165
+          },
+          {
+            "id": 35029,
+            "rlv": 610,
+            "steps": 6,
+            "time": 17,
+            "quality": 13048,
+            "target": 12628,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 3868,
+            "warm": 3467
+          },
+          {
+            "id": 35502,
+            "rlv": 640,
+            "steps": 7,
+            "time": 19,
+            "quality": 14040,
+            "target": 14040,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 4959,
+            "warm": 5826
+          },
+          {
+            "id": 35417,
+            "rlv": 620,
+            "steps": 6,
+            "time": 17,
+            "quality": 12900,
+            "target": 12900,
+            "complete": true,
+            "first": "TrainedEye",
+            "cold": 4257,
+            "warm": 4244
+          }
+        ],
+        "env": "Node, inputs from CraftFormula.computeSettings, Lv100/4000/4000/600, warm = second run"
+      },
+      "m11": {
+        "ui": {
+          "text": "匯出私人備份 JSON",
+          "note": "私人備份，請勿分享。包含 UUID（雲端設定讀寫權限）及已設定的 Discord Webhook；僅供本人還原。尚未儲存的修改不會包含在內。"
+        },
+        "dialogs": [
+          {
+            "type": "confirm",
+            "message": "匯出私人備份（請勿分享）？\n\nUUID：包含；持有者可讀寫此身份的雲端設定。\nDiscord Webhook：未設定。若包含，持有者可向該 Discord 頻道發送訊息。\n\n請妥善保存，不要貼到聊天、公開網址或問題回報。確定下載？",
+            "leaksUuid": false,
+            "leaksHook": false
+          },
+          {
+            "type": "confirm",
+            "message": "匯出私人備份（請勿分享）？\n\nUUID：包含；持有者可讀寫此身份的雲端設定。\nDiscord Webhook：未設定。若包含，持有者可向該 Discord 頻道發送訊息。\n\n請妥善保存，不要貼到聊天、公開網址或問題回報。確定下載？",
+            "leaksUuid": false,
+            "leaksHook": false
+          }
+        ],
+        "afterCancel": {
+          "urls": 0,
+          "clicks": 0,
+          "exportVisible": true,
+          "focus": "export"
+        },
+        "afterAccept": {
+          "urls": 2,
+          "clicks": [
+            "ffxiv-tw-tools-settings-2026-09-30.json"
+          ],
+          "sameExceptTime": true,
+          "hasUuid": true
+        },
+        "hookConfigured": false
+      },
+      "s11": {
+        "baselineDiffs": 0,
+        "widths": [
+          1400,
+          360
+        ],
+        "states": [
+          "rest",
+          "hover",
+          "focus-visible"
+        ]
+      },
+      "s10": {
+        "ownRequests": 1,
+        "scripts": 0,
+        "stylesheets": 0,
+        "adguardInjected": 2
+      }
+    },
+    "followUps": [
+      "B-052 faux-hollows AGENTS ④ drift (parallel session)",
+      "B-053 TE-eligible solve latency decision"
+    ],
+    "authorization": {
+      "commit": false,
+      "push": false,
+      "deployment": false
+    },
+    "b053": {
+      "ownerDecision": "C — 手法都一樣花10倍時間只為了一個2步變1步不值得",
+      "change": "restore trained-eye early return when TE candidate completes with capped quality; keep single-step exhaustive fast path",
+      "final": [
+        {
+          "id": 1008,
+          "rlv": 1,
+          "steps": 1,
+          "time": 3,
+          "quality": 1368,
+          "target": 80,
+          "complete": true,
+          "first": "DelicateSynthesis",
+          "cold": 3,
+          "warm": 0
+        },
+        {
+          "id": 31592,
+          "rlv": 50,
+          "steps": 1,
+          "time": 3,
+          "quality": 1368,
+          "target": 500,
+          "complete": true,
+          "first": "DelicateSynthesis",
+          "cold": 0,
+          "warm": 0
+        },
+        {
+          "id": 30972,
+          "rlv": 150,
+          "steps": 2,
+          "time": 6,
+          "quality": 3618,
+          "target": 2700,
+          "complete": true,
+          "first": "TrainedEye",
+          "cold": 27,
+          "warm": 12
+        },
+        {
+          "id": 3446,
+          "rlv": 290,
+          "steps": 2,
+          "time": 6,
+          "quality": 3600,
+          "target": 3600,
+          "complete": true,
+          "first": "TrainedEye",
+          "cold": 16,
+          "warm": 15
+        },
+        {
+          "id": 3812,
+          "rlv": 390,
+          "steps": 2,
+          "time": 6,
+          "quality": 3590,
+          "target": 3010,
+          "complete": true,
+          "first": "TrainedEye",
+          "cold": 10,
+          "warm": 11
+        },
+        {
+          "id": 33326,
+          "rlv": 450,
+          "steps": 3,
+          "time": 8,
+          "quality": 6320,
+          "target": 6320,
+          "complete": true,
+          "first": "TrainedEye",
+          "cold": 39,
+          "warm": 42
+        },
+        {
+          "id": 4731,
+          "rlv": 517,
+          "steps": 3,
+          "time": 9,
+          "quality": 5200,
+          "target": 5200,
+          "complete": true,
+          "first": "TrainedEye",
+          "cold": 48,
+          "warm": 41
+        },
+        {
+          "id": 5176,
+          "rlv": 560,
+          "steps": 5,
+          "time": 14,
+          "quality": 7620,
+          "target": 7200,
+          "complete": true,
+          "first": "TrainedEye",
+          "cold": 169,
+          "warm": 148
+        },
+        {
+          "id": 35029,
+          "rlv": 610,
+          "steps": 6,
+          "time": 17,
+          "quality": 13048,
+          "target": 12628,
+          "complete": true,
+          "first": "TrainedEye",
+          "cold": 298,
+          "warm": 311
+        },
+        {
+          "id": 35502,
+          "rlv": 640,
+          "steps": 7,
+          "time": 19,
+          "quality": 14040,
+          "target": 14040,
+          "complete": true,
+          "first": "TrainedEye",
+          "cold": 421,
+          "warm": 481
+        },
+        {
+          "id": 35417,
+          "rlv": 620,
+          "steps": 6,
+          "time": 17,
+          "quality": 12900,
+          "target": 12900,
+          "complete": true,
+          "first": "TrainedEye",
+          "cold": 355,
+          "warm": 364
+        }
+      ],
+      "cargo": "13/13",
+      "wasmBytes": 316766,
+      "checkActions": "exit 0",
+      "simDiff": "no new divergence",
+      "jsGolden": "3328/0, 97/0",
+      "browser": {
+        "recipe1008": "1 step 3s 55ms",
+        "recipe35502": "7 steps 19s 458ms"
+      }
+    }
   }
 }

@@ -8,8 +8,8 @@
 // 之前就跑一次：頂層未分類項目、輸出缺 index.html、內部檔混入，都在本機紅。
 // 不直接把 `sh deploy-prepare.sh` 接在 canonicalTest 尾巴：fleet-check 對 canonicalTest 有 /\bdeploy\b/ 防呆
 // （canonicalTest 必須是測試命令），包成測試檔才是對的形狀。
-// ⚠ 腳本寫固定的 `_site/`（gitignored）：本 repo 目前沒有排程／並行寫入者，若日後有，照 ranking 的做法改成
-//   `_site.tmp.$$`＋鎖（AGENTS.md「部署面鐵則」④）。
+// ⚠ 本 repo＝S 型：腳本寫固定 `_site/` 與暫存清單，同一 working tree 不得與任何會呼叫 deploy-prepare.sh 的作業並行。
+//   開放並行前須補逐次專屬產物、repo 外暫存、換名鎖及並行行為驗證（AGENTS.md「部署面鐵則」④）。
 //
 // 跑法：node tests/deploy-prepare.test.mjs（或 node tests/run-all.mjs 自動納入）
 import { spawnSync } from 'node:child_process';

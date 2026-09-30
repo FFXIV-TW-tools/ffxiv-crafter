@@ -10,7 +10,7 @@ date: 2026-09-30
 
 內外皆穩，仍有資料保存、生成一致性與使用者流程缺陷。涵蓋 **16/16 維，0 failed／N-A**。這是修復前快照，非修復後重新評分；維度與前輪不同，不報分數 delta。
 
-要求項目：完整健檢＝完成；不須拍板者直接修復＝8須修改＋8建議項完成，實跑證據見末段；須拍板項與改善建議＝下列 M1/M3/M11、S5/S8/S10/S11。未 commit、push、部署；未修改正式雲端設定、資料快照或 portal。
+要求項目：完整健檢＝完成；不須拍板者直接修復＝8須修改＋8建議項完成，實跑證據見末段；須拍板項＝第二輪 Owner 指示「M1/M3/M11 按建議、可選四項全做」後已實作（見末段第二輪），衍生的 B-053 求解延遲 Owner 已選 C（恢復神速技巧早退、保留單步窮舉）。未 commit、push、部署；未修改正式雲端設定或資料快照；portal 修改僅在第二輪經授權後進行。
 
 ### 範圍、執行與控制
 
@@ -175,4 +175,24 @@ S1/S2/S3/S4/S6/S7/S9/S12完成：清除無consumer proxy／匯出／注入、刪
 封存：[完整判決／模型執行／PlanGate原文及SHA256／驗收數據](2026-09-30-全方面健檢-evidence.json)；畫面：[留白品質警語](2026-09-30-quality-warning.webp)、[晚到商人與未提交數量焦點](2026-09-30-delayed-vendors.webp)。PlanGate實跑Claude Opus5.5；兩個實作worker實跑Sol。實際effort／帳號通道未觀測，不填零。
 
 限制：逐檔os.replace不保證任意中途OS故障下多檔完全原子；未遷移使用者保存、不改跨站匯出／安全界線。M1/B041、M3/B043、M11/B051仍是須修改，須拍板而非降格建議；S5/S8/S10/S11選項與建議見上文。未commit／push／部署／刷新正式資料或改portal。
+
+### 第二輪：Owner 決策執行（2026-09-30）
+
+Owner：「M1/M3/M11 請按建議方案解決；可選的四項全部做掉」。計畫與 PlanGate2（Claude Opus 5.5，約57次工具呼叫、11條全採納）見[計畫第二輪](2026-09-30-全方面健檢-fix-plan.md)；portal 側主 note＝`../ffxiv-tw-tools-portal/docs/specs/2026-09-30-crafter-health-decisions.md`。六個實作 worker（task 預設 agent，實跑 model／effort／帳號未觀測）只改指定檔，Main 整合與驗收。
+
+| 項目 | 完成內容 | 實際驗收 |
+|---|---|---|
+| M1／B041 | 新 `app-storage.js`：Web Lock 內 fresh read→套單次操作→寫回；七個 writer 遷移（key／shape 不變）；同欄最後提交者勝並提示；無鎖同步 fallback（不宣稱互斥）；離頁 flush；儲存封鎖時本次瀏覽保留、恢復後合併 | 真 browser 同 context 兩 tab 同時改 CMS／CP 與加清單：兩邊皆保留、delta 累加（3／2）、UI 與 reload 一致；09-storage 95 條；實作後複審兩輪，3 條 P2／P3 與 1 條 P3 已修 |
+| M3／B043 | 封頂品質→時間→步數比較；先窮舉單步（單一技能即完成＝1步3秒絕對下界）；神速技巧候選達標即採用（B-053 Owner 選 C），不可行／未達標才求普通候選（僅副本禁神速技巧）；B-017 補償與哨兵保留 | recipe1008 UI 1步3秒、巨集 `/ac "精密製作"`；rlv640 UI 7步19秒 458ms；cargo 13/13；最終重建 WASM 316,766 B（SIMD）；差分閘 958,495 次施放無清單外分歧；JS golden 3,328／97 格 0 分歧 |
+| M11／B051 | portal「匯出私人備份 JSON」＋常駐警語；下載前 confirm 說明 UUID 權限與 Webhook 有無，不顯示實值 | localhost＋portal :8774 停快取：取消 0 object URL／0 下載、焦點回鈕、視窗不關；確認下載內容除 `exportedAt` 外等於 export；portal run-all 125/125、worker 106/106 |
+| S5 | 12 份部署規則④改逐字相同的 S/T/C 共用段＋各 repo 型別行（11 S、marketboard T、ranking C；portal S） | 寫入前逐檔比對開工 hash；faux-hollows AGENTS 因平行 session 跳過→B-052 |
+| S8 | `tools/wasm-tool-pins.json`（wasm-pack 0.13.1／wasm-opt 117）；PATH 第一筆 Application 或 wasm-pack 快取、版本不符即失敗；戳記加 wasm_opt、pin hash、`wasm/src/**/*.rs` | 正式腳本重建通過、check-actions 通過；錯版本／空快取／戳記突變拒收由 worker 隔離探針實跑 |
+| S10 | portal 生成器＋模板，crafter 404 inline CSS 由其生成；常駐 `--check` 測試 | 404 只有自身請求（另見 AdGuard 注入，非本站）、0 script／0 stylesheet；畫面正常 |
+| S11 | portal `.codex-accordion--compact`（08 開頭，生成 header.css 與放 07 檔尾逐位元組相同）；crafter 四個 details 遷移 | 1400／360 幾何與 rest／hover／focus-visible 狀態對改前基線 0 差異 |
+
+統一驗證：formulas 653/0（557→653）、cargo 13（靜態點 19→47）、check-actions 35、20 支 root JS 語法、工件與行尾檢查通過。主工作樹 run-all 的部署測試因 `app-storage.js` 尚未 tracked 而少 1 項，於「所有檔案 tracked」的隔離副本實跑 deploy-prepare 全綠（38 項）。`tools/sim-diff/compare-js.mjs` 補載 `app-storage.js`（M1 新增硬失敗後原 harness 無法初始化公式層）。
+
+**M3 延遲（B-053，已拍板 C）**：第一版（達標仍必跑普通候選）在 Node 同輸入比 HEAD 慢 3–13 倍（rlv640 443→5826ms）且手法全同，只有單步可完成的配方（1008、rlv50）變短。Owner 判定不值得，改為神速技巧達標即採用、保留單步窮舉；最終版同語料 11–481ms，與 HEAD 同級（rlv640 443→481、rlv610 368→311），手法全同，1008／rlv50 仍 2步6秒→1步3秒。非單步情況不宣稱最短解。
+
+限制：舊版已開啟的 crafter 分頁不走新鎖，切換後需重載；無 Web Locks 瀏覽器（Firefox 89–95）仍有極短跨 process 視窗；portal 須先部署，crafter 才能移除本地 accordion 規則。未 commit／push／部署。
 

@@ -60,9 +60,9 @@ R7-exempt: 2026-11-16 依據：2026-08-16 Owner 拍板（B-025 第二輪）—�
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py && (cd wasm && cargo test)
 ```
 
-<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="557" label="test-formulas" -->
+<!-- TEST-BASELINE cmd="node tools/test-formulas.mjs" match="(\d+) passed, \d+ failed" expect="653" label="test-formulas" -->
 <!-- TEST-BASELINE cmd="py -3.11 tools/check-actions.py" match="(\d+) 個 Action 變體" expect="35" label="check-actions" -->
-<!-- TEST-BASELINE points="19" paths="wasm/src/**/*.rs" label="cargo 語料" -->
+<!-- TEST-BASELINE points="47" paths="wasm/src/**/*.rs" label="cargo 語料" -->
 <!-- TEST-BASELINE cmd="node tests/run-all.mjs" match="(\d+)/\d+ 測試檔通過" expect="2" label="run-all" -->
 <!-- ↑ 改測試數量要一起改，否則 pre-commit gate 6 會擋。 -->
 
@@ -72,7 +72,7 @@ node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-a
 node --check *.js                # JS 語法（萬用字元；手維護清單會漏新模組）
 node tools/test-formulas.mjs     # 純函式 golden + 保留的機械哨兵（tools/tests/）
 py -3.11 tools/check-actions.py  # Action 變體 ＋ pkg/ 戳記 ＋ sim-diff 與 wasm 同一 tag
-cd wasm && cargo test            # round-trip + 名稱唯一 + 神速技巧三條
+cd wasm && cargo test            # round-trip + 名稱唯一 + 候選與神速技巧
 ```
 
 - 改 `wasm/`／`pkg/`／`tools/sim-diff/` → 另有引擎差分閘、`pkg/` 重建與授權清單重產的必跑步驟，**全在 `.claude/rules/wasm-engine.md`**（太慢故都不進 pre-commit）。
@@ -116,5 +116,6 @@ CF Pages 部署**不是「發佈 repo 根目錄」**，而是由 `deploy-prepare
 
 - **允許清單而非排除清單**：頂層出現任何未列入 `deploy-allow.txt`／`deploy-deny.txt` 的項目 → **build 直接失敗**。分類閘另有兩條靜默放行（CF 容器 npm 產物 skip 清單、`git check-ignore`），它只是提醒層；**真正的邊界是第 2 段複製迴圈的 allow-list 比對**，該比對不可動、skip 清單不得用來繞分類。
 - **新增站台資產** → 加 `deploy-allow.txt`；**新增內部資產** → 加 `deploy-deny.txt`。改完跑一次 `sh deploy-prepare.sh` 確認印出「✓ 部署輸出就緒」。
-- **腳本改動禁忌**：① 只能用 POSIX 語法（CF 容器的 `sh` 是 dash，bashism 靜默失敗 ⇒ 整站 404）② 根層檔名不可無條件 `mkdir "$OUT/${f%/*}"` ③ 不得移除出貨前驗收閘（輸出 <3 檔／缺 index.html／內部檔混入 → 非零 exit，CF 保留前一版）④ **產物路徑不得假設獨佔**：建到 `_site.tmp.$$`、清單走 `mktemp`（repo 外）、換名段用 `mkdir "$_site.lock"` 序列化，哨兵＝`test_deploy_prepare_is_concurrency_safe`。
+- **腳本改動禁忌**：① 只能用 POSIX 語法（CF 容器的 `sh` 是 dash，bashism 靜默失敗 ⇒ 整站 404）② 根層檔名不可無條件 `mkdir "$OUT/${f%/*}"` ③ 不得移除出貨前驗收閘（輸出 <3 檔／缺 index.html／內部檔混入 → 非零 exit，CF 保留前一版）④ **產物路徑不得假設獨佔**：S 型（固定 `_site/`）與 T 型（換名無鎖）皆 single-writer，禁並行跑 `deploy-prepare.sh`；C 型換名鎖不得回退。
+  - 本 repo＝S 型。
 - **部署後驗（務必帶 cache-bust、一定要 `-L`）**：`curl -sL -o /dev/null -w '%{http_code} %{content_type} %{url_effective}\n' "https://<repo>.pages.dev/AGENTS.md?cb=$(date +%s)"` → 回 `text/html` 正常；回 `text/markdown` ＝紅燈。少一項就會誤判（假紅燈／假綠燈，見 rationale）。

@@ -4,6 +4,12 @@
 
 > 歷史：2026 年更早段落（2026-08-26 以前）見 [CHANGELOG-2026.md](CHANGELOG-2026.md)
 
+## 2026-09-30 — 健檢第二輪：Owner 決策 M1/M3/M11＋可選四項
+
+- **改動**：本地保存改 Web Lock 下的操作級合併（新 `app-storage.js`，同欄最後提交者勝並提示）；求解先窮舉單步（單一技能即完成就回 1 步 3 秒），其餘沿用神速技巧達標即採用、否則依封頂品質→時間→步數比較；wasm-pack／wasm-opt 版本強制釘選；404 CSS 改 portal 生成；結果／食藥折疊改共用 compact accordion；fleet 部署規則④改 S/T/C 分型。portal 私人備份匯出另見該 repo。
+- **理由**：多分頁不再互相蓋掉，巨集不再多一步，建置可重現，樣式單一來源。
+- **影響**：653／2／35／cargo 13；求解耗時與修前同級（B-053 Owner 選不為多比一次付 3–13 倍時間）。portal 須先部署；未 commit／push／部署。[報告](docs/health-reviews/2026-09-30-全方面健檢-health-review.md)
+
 ## 2026-09-30 — 全方面健檢與不須拍板項直接修復（cycle: 2026-09-30-health-review）
 
 - **改動**：修正留白品質目標警語、任務共享產量、選配資料阻擋首載、鍵盤焦點與配方按鈕語意；資料生成改先 staging 完整成功再發布；WASM 戳記補 manifest／腳本 hash，旗標改 encoded 傳遞並還原環境。同步能力不足提示、CARGO_HOME 授權來源、12px fallback、死接線及現役文件 drift。
