@@ -4,6 +4,12 @@
 
 > 歷史：2026 年更早段落（2026-08-26 以前）見 [CHANGELOG-2026.md](CHANGELOG-2026.md)
 
+## 2026-09-30 — 全方面健檢與不須拍板項直接修復（cycle: 2026-09-30-health-review）
+
+- **改動**：修正留白品質目標警語、任務共享產量、選配資料阻擋首載、鍵盤焦點與配方按鈕語意；資料生成改先 staging 完整成功再發布；WASM 戳記補 manifest／腳本 hash，旗標改 encoded 傳遞並還原環境。同步能力不足提示、CARGO_HOME 授權來源、12px fallback、死接線及現役文件 drift。
+- **理由**：只修本輪查證且不涉及政策／安全決策的缺陷，保留資料來源、引擎版本、保存 schema、對外 API 與部署邊界。
+- **影響**：8須修改＋8建議項完成，3須修改與4可選項待Owner。測試刪3條無效斷言、加3條共享產量行為斷言，仍557；API／部署2/2、35Action、Rust6/6。真重建pkg hash不變，沿用09-29差分與JS golden；實際UI與隔離生成／建置驗收通過。未commit／push／部署或刷新正式資料；[報告與證據](docs/health-reviews/2026-09-30-全方面健檢-health-review.md)。
+
 ## 2026-09-29 — 引擎崩潰自動重建 worker＋不支援 SIMD 時明講（cycle: 2026-09-29-worker-recovery）
 
 - **改動**：`worker.js` 把引擎 trap（`WebAssembly.RuntimeError`）回報為 `kind:'crash'`，`app-solve.js` 收到就換新 worker 並提示已重置；載入前先用 43 bytes 的 SIMD 模組探測，不支援就回報 `NO_WASM_SIMD`，畫面明講瀏覽器太舊與最低版本、不給重試鈕。

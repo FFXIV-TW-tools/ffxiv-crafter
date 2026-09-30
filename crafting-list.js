@@ -211,7 +211,7 @@
       const nameHtml = `<a class="cl-mat-name cl-mat-name--link" href="${deps.mbItem(m.iid)}" target="ffxiv-marketboard" data-help="到市場板查「${esc(m.name)}」的價格與來源。共用同一分頁。">${esc(m.name)}</a>`;
       // 商人徽章沿用職業任務分頁的 vendorHtml（不另寫一份）；needHq 不傳＝未知——
       // 製造清單這一層沒有 HQ 要求的概念（要不要 HQ 素材是在配方詳情逐項指定）
-      const vendor = m.crystal ? '' : deps.vendorHtml(m.iid);
+      const vendor = m.crystal ? '' : `<span data-vendor="${m.iid}">${deps.vendorHtml(m.iid)}</span>`;
       // 「加進清單」＝列級重複性動作（設計系統 §按鈕選型 列級豁免）→ ghost，不參賽 primary
       const go = m.child
         ? `<button type="button" class="codex-btn codex-btn--ghost cl-mat-go" data-rid="${m.child.id}" data-times="${m.times}"` +
@@ -283,6 +283,11 @@
 
   globalThis.CraftList = {
     init(d) { deps = d; byId = new Map(d.RECIPES.map((r) => [r.id, r])); load(); render(); },
+    refresh() {
+      deps.$('craft-list')?.querySelectorAll('[data-vendor]').forEach((el) => {
+        el.innerHTML = deps.vendorHtml(el.dataset.vendor);
+      });
+    },
     add,
     has: (id) => list.some((e) => e.id === +id),                              // 配方表「已加入」標示查詢
     count: (id) => { const e = list.find((x) => x.id === +id); return e ? e.qty : 0; },  // 0＝未加入

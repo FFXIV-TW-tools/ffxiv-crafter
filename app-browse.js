@@ -45,6 +45,11 @@
   function renderChips() {
     if (!deps) return;   // 未 init 即被呼叫（app.js 已保證順序）→ 防 destructure null 崩潰（對抗審 grok F2）
     const { $, esc, iconUrl, DOH, JOB_ICON } = deps;
+    const buttons = $('job-chips').querySelectorAll('.job-btn');
+    if (buttons.length) {
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.job === jobFilter)));
+      return;
+    }
     // 職業篩選＝方形分段（Owner 拍板：不用 pill 橢圓）。2026-08-17 由 `.codex-btn --primary/--ghost`
     // 遷到共用 segmented `.codex-tab--boxed`：選中態走 aria-pressed（設計系統合法填色四處之一），
     // 而 `--primary` 的語意是「本檢視唯一主動作」——拿它表達「這顆被選中」是借形不借意（§按鈕選型 Step 0 第 3 列）。
@@ -142,7 +147,7 @@
       <table class="codex-table codex-table--fixed codex-table--sticky rt">
         <thead><tr><th>名稱</th><th>種類</th><th>職業</th><th>Lv</th><th>配方等級</th><th>難度</th><th>品質</th><th>版本</th><th class="rt-actcol">加入</th></tr></thead>
         <tbody>${shown.map(r =>
-          `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}" tabindex="0"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmline"><span class="rt-nm">${esc(r.name)}</span>${r.expert ? '<span class="codex-badge codex-badge--warn rt-expert" data-help="高難度（expert）配方：遊戲內的製作狀態是隨機的，本站算出的靜態巨集只能當參考、無法保證成功">高難度</span>' : ''}</span></span></td><td class="rt-cat">${esc(r.category || '—')}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td data-label="Lv">${r.level}</td><td data-label="配方等級">${r.rlv}</td><td data-label="難度">${r.diff == null ? '—' : r.diff}</td><td data-label="品質">${r.qual == null ? '—' : r.qual}</td><td class="rt-patch" data-label="版本">${esc(r.patch || '—')}</td><td class="rt-act">${addBtn(r)}</td></tr>`).join('')}</tbody>
+          `<tr class="rt-row${selected && selected.recipe.id === r.id ? ' is-sel' : ''}" data-id="${r.id}"><td class="rt-name"><span class="rt-cellflex">${r.icon ? `<img class="rt-ico" src="${iconUrl(r.icon)}" alt="" loading="lazy">` : ''}<span class="rt-nmline"><button type="button" class="codex-btn codex-btn--ghost rt-nm" aria-label="選擇「${esc(r.name)}」配方">${esc(r.name)}</button>${r.expert ? '<span class="codex-badge codex-badge--warn rt-expert" data-help="高難度（expert）配方：遊戲內的製作狀態是隨機的，本站算出的靜態巨集只能當參考、無法保證成功">高難度</span>' : ''}</span></span></td><td class="rt-cat">${esc(r.category || '—')}</td><td class="rt-job">${JOB_ICON[r.job] ? `<img class="rt-jico" src="${iconUrl(JOB_ICON[r.job])}" alt="" loading="lazy">` : ''}${esc(r.job)}</td><td data-label="Lv">${r.level}</td><td data-label="配方等級">${r.rlv}</td><td data-label="難度">${r.diff == null ? '—' : r.diff}</td><td data-label="品質">${r.qual == null ? '—' : r.qual}</td><td class="rt-patch" data-label="版本">${esc(r.patch || '—')}</td><td class="rt-act">${addBtn(r)}</td></tr>`).join('')}</tbody>
       </table>` : `<div class="codex-empty codex-empty--bare"><span class="codex-empty__icon" aria-hidden="true">${globalThis.CrafterVisual?.iconSVG?.('magnifying-glass') || ''}</span><b>找不到符合的配方</b><span>試試其他關鍵字，或清除所有篩選條件。</span><button type="button" class="codex-btn codex-btn--ghost crafter-clear-filters">清除篩選</button></div>`;
     // 事件委派（單一 handler，取代每列 2N listener → 篩選/搜尋重繪不重綁、行動裝置省 GC）；handler 綁在持久的 #recipe-table 上，innerHTML 換內容不掉線
     const table = $('recipe-table');
@@ -162,9 +167,6 @@
       }
       const row = e.target.closest('.rt-row');
       if (row) selectRecipe(+row.dataset.id);
-    };
-    table.onkeydown = (e) => {                  // 列本身聚焦時 Enter/Space 選配方；＋ 是原生 button，其 Enter/Space 由瀏覽器觸發 click → 冒泡到上面 onclick（不重複）
-      if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('rt-row')) { e.preventDefault(); selectRecipe(+e.target.dataset.id); }
     };
     markListState();  // 標記已在製造清單的列（換底色 + 徽章）
     fitHeight();      // 內容一換，下方的翻頁器可能出現/收起 → 重新量一次可用高度

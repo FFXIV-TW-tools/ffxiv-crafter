@@ -43,6 +43,25 @@ import { fs, vm, path, ROOT, LAYER_STUBS, check, eq } from './_harness.mjs';
     eq('T31 非配方素材同樣照次數（2 次 × 1）', flat(r.base)[300], 2);
   }
   {
+    // 重複交付物共用一次製作的剩餘產量，而不是各自進位。
+    const r = Q.expandMats([{ id: 100, qty: 1 }, { id: 100, qty: 1 }], ctx);
+    eq('T31 重複交付物共用產量：底層只需一批',
+      JSON.stringify(r.base), JSON.stringify([[400, 10], [300, 1]]));
+  }
+  {
+    // Diamond：兩種不同成品各吃一件中間材，該材一次產三件；共享餘額後合計只做一批。
+    const diamond = {
+      recipesById: { 1: { id: 1, item_amount: 1 }, 2: { id: 2, item_amount: 3 }, 3: { id: 3, item_amount: 1 } },
+      recipeByItem: { 100: 1, 200: 2, 500: 3 },
+      ingredients: { 1: [[200, 1]], 2: [[400, 5]], 3: [[200, 1]] },
+    };
+    const roots = [{ id: 100, qty: 1 }, { id: 500, qty: 1 }];
+    const r = Q.expandMats(roots, diamond);
+    eq('T31 共享中間材的採購只需一批原料', JSON.stringify(r.base), JSON.stringify([[400, 5]]));
+    eq('T31 交換不同交付物順序不改共享素材量',
+      JSON.stringify(Q.expandMats([...roots].reverse(), diamond)), JSON.stringify(r));
+  }
+  {
     const unknown = Q.expandMats([{ id: 100, qty: null }], ctx);
     const one = Q.expandMats([{ id: 100, qty: 1 }], ctx);
     eq('T31 數量未知（null）以 1 份估算、不是當 0 漏算',
@@ -56,7 +75,7 @@ import { fs, vm, path, ROOT, LAYER_STUBS, check, eq } from './_harness.mjs';
       ingredients: { 9: [[600, 1]], 10: [[500, 1]] },
     };
     const r = Q.expandMats([{ id: 500, qty: 1 }], cyc);   // 不得無限遞迴
-    check('T31 配方資料出環不會轉死，需求仍被記下', r.base.length + r.inter.length > 0);
+    eq('T31 出環需求在循環邊界收成底層', JSON.stringify(r.base), JSON.stringify([[500, 1]]));
   }
   {
     const quests = [{ id: 1, lv: 1 }, { id: 2, lv: 5 }, { id: 3, lv: 10 }];

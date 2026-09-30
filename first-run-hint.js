@@ -13,7 +13,7 @@
 // 【為什麼不叫 CraftGear.anyGear()】它要等 app.js 注入 deps 才能用，而那正是要避開的時機。
 //   所以這裡只做**寬鬆版**判斷（key 有沒有內容）；跟 anyGear() 的嚴格判斷偶有出入時，
 //   app.js 會在 ~450ms 修正回來——那是罕見情況，換掉的是每一次首訪都必然發生的位移。
-//   ⚠️ key 與 app-gear.js 的 GEAR_KEY 是兩份，漂移哨兵＝tests/first-run-hint-key.test.mjs。
+//   ⚠️ key 必須與 app-gear.js 的 GEAR_KEY 一致；原 source-only 哨兵已移除。
 (function () {
   try {
     var raw = localStorage.getItem('ffxiv-crafter-gearsets-v1');

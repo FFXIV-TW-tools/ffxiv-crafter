@@ -23,7 +23,9 @@ for _s in (sys.stdout, sys.stderr):
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 LIB_RS = os.path.join(ROOT, "wasm", "src", "lib.rs")
+CARGO_TOML = os.path.join(ROOT, "wasm", "Cargo.toml")
 Cargo_LOCK = os.path.join(ROOT, "wasm", "Cargo.lock")
+BUILD_SCRIPT = os.path.join(ROOT, "tools", "build-wasm.ps1")
 PKG_WASM = os.path.join(ROOT, "pkg", "crafter_wasm_bg.wasm")
 PKG_JS = os.path.join(ROOT, "pkg", "crafter_wasm.js")
 BUILD_STAMP = os.path.join(ROOT, "wasm", "BUILD-STAMP.json")
@@ -51,8 +53,8 @@ def normalized_sha256(path):
 
 
 def check_build_stamp():
-    """確認 pkg/ 的建置戳記仍對應目前 WASM 原始碼與依賴鎖檔。"""
-    sync_error = "✗ pkg/ 與 wasm/src 不同步，請跑 tools\\build-wasm.ps1"
+    """確認 pkg/ 的建置戳記仍對應目前 WASM 原始碼、manifest、依賴鎖檔與建置腳本。"""
+    sync_error = "✗ pkg/ 與 WASM 建置輸入不同步，請跑 tools\\build-wasm.ps1"
     if not os.path.isfile(BUILD_STAMP):
         print(sync_error, file=sys.stderr)
         print("→ 缺少 wasm/BUILD-STAMP.json", file=sys.stderr)
@@ -74,11 +76,13 @@ def check_build_stamp():
     # 產物也要對（健檢 R5 M16）：戳記要證明的是「這份 pkg 由這份 lib.rs 產出」，只雜湊來源抓不到「忘了一起 commit pkg/」
     expected = {
         "lib_rs": normalized_sha256(LIB_RS),
+        "cargo_toml": normalized_sha256(CARGO_TOML),
         "cargo_lock": normalized_sha256(Cargo_LOCK),
+        "build_script": normalized_sha256(BUILD_SCRIPT),
         "pkg_wasm": normalized_sha256(PKG_WASM),
         "pkg_js": normalized_sha256(PKG_JS),
     }
-    labels = {"lib_rs": "lib.rs", "cargo_lock": "Cargo.lock", "pkg_wasm": "pkg/crafter_wasm_bg.wasm", "pkg_js": "pkg/crafter_wasm.js"}
+    labels = {"lib_rs": "lib.rs", "cargo_toml": "wasm/Cargo.toml", "cargo_lock": "Cargo.lock", "build_script": "tools/build-wasm.ps1", "pkg_wasm": "pkg/crafter_wasm_bg.wasm", "pkg_js": "pkg/crafter_wasm.js"}
     mismatches = []
     for field, expected_hash in expected.items():
         actual_hash = stamp.get(field)
@@ -100,7 +104,7 @@ def check_build_stamp():
         if needle in blob:
             print("✗ pkg/crafter_wasm_bg.wasm 含建置者路徑片段 %r（裸 wasm-pack 產物？請走 tools\\build-wasm.ps1）" % needle, file=sys.stderr)
             return False
-    print("✓ pkg/ 與 wasm/src 同步：BUILD-STAMP.json 的 lib.rs / Cargo.lock / pkg 產物 hash 一致，且產物無建置者路徑")
+    print("✓ pkg/ 與 WASM 建置輸入同步：BUILD-STAMP.json 的 lib.rs / Cargo.toml / Cargo.lock / build-wasm.ps1 / pkg 產物 hash 一致，且產物無建置者路徑")
     return check_toolchain_pin(stamp)
 
 

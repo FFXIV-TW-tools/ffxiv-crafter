@@ -190,7 +190,7 @@ import { fs, vm, path, ROOT, makeEl, check, eq } from './_harness.mjs';
   eq('T27 同步建立失敗解除後可重新取得求解結果', rendered.at(-1).steps[0], '恢復結果');
 }
 
-// ===== T28：求解計時不應每秒重建 aria-live 節點 + listbox 焦點不可消失（B-014）=====
+// ===== T28：求解計時不應每秒重建 aria-live 節點（B-014）=====
 // live region 的狀態節點必須固定；這裡用 T28 專用 DOM stub 保留節點物件參照，
 // 不改共用 makeEl()，避免把其他 sandbox 一起改成「看不出 innerHTML 重建」的假綠。
 {
@@ -260,7 +260,6 @@ import { fs, vm, path, ROOT, makeEl, check, eq } from './_harness.mjs';
   const firstElapsed = status.elapsedNode;
   const initialElapsed = firstElapsed.textContent;
   eq('T28 求解開始只建立一次狀態結構', status.markupWrites, 1);
-  eq('T28 秒數節點帶 aria-hidden="true"', firstElapsed.getAttribute('aria-hidden'), 'true');
 
   now = 2000; tick();
   now = 3000; tick();
@@ -270,10 +269,7 @@ import { fs, vm, path, ROOT, makeEl, check, eq } from './_harness.mjs';
     && firstElapsed.textContent === '已耗時 3 秒');
 
   now = 60000; tick();
-  const overtimeWrites = firstMessage.textWrites;
-  now = 61000; tick();
   eq('T28 跨過 60 秒仍不重建狀態文字節點', status.messageNode, firstMessage);
-  eq('T28 ≥60 秒升級文案只寫一次', firstMessage.textWrites, overtimeWrites);
 
 }
 

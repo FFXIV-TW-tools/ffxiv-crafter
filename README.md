@@ -19,7 +19,8 @@ FFXIV 繁中服製作（DoH）求解器 + 模擬器。輸入配方 + 角色數�
 ```bash
 # 1. （前置）game_ref.sqlite 含 craft_actions：XIVDiscordBot/ 跑 py -3.11 -m scripts.build_game_ref
 # 2. （只在遊戲版本更新時）重抓凍結配方資料 → tools/static-data/（tracked 快照；
-#    已存在的 json 一律 reuse，要強制重爬 tnze 就先刪掉那一支）
+#    只重用 recipes / recipe_levels / ingredients 三檔完整且經驗證的 bundle；
+#    要強制重抓需一併移除這三檔；items、食藥等其他輸入仍重新抓取）
 py -3.11 tools/build-static-data.py
 # 3. 產 data/（craft-actions.json + 複製 tools/static-data）
 py -3.11 tools/build-data.py

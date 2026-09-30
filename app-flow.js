@@ -3,7 +3,7 @@
 // 由來＝設計系統 §🧭 功能頁引導標準：「需要先做幾件事才會出東西」的功能頁，任何時刻都要看得出現在該做什麼。
 // flowState 為純函式（唯一狀態真相），render 只負責寫 DOM → 流程規則可在 node 端 golden 測（test-formulas T14）。
 (function () {
-  let deps = null; // { esc, getSelected, isPicking, gearOkFor, hasResult, isSolving }
+  let deps = null; // { esc, getSelected, isPicking, gearOkFor, statGate, hasResult, isSolving }
   // 本層自帶 $（不走注入）：setTargetMode / updateConsumableSummary 會在 CraftFlow.init 之前
   // 就被 selectRecipe（深連結路徑）呼叫，靠注入會靜默失效
   const $ = (id) => document.getElementById(id);
@@ -28,8 +28,9 @@
       next = '下一步：從下方列表選一個配方';
     } else if (!c.gearOk) {
       s2.state = 'blocked';
-      s2.note = `缺「${job}」的角色數值`;
-      next = `下一步：到「角色數值」填「${job}」的作業精度、加工精度與 CP`;
+      s2.note = c.gearReason || `缺「${job}」的角色數值`;
+      next = c.gearReason ? `下一步：補足能力需求 — ${c.gearReason}`
+        : `下一步：到「角色數值」填「${job}」的作業精度、加工精度與 CP`;
     } else if (c.solving) {
       s2.state = 'done'; s2.note = '已套用角色數值與加成';
       s3.state = 'current'; s3.note = '求解中…';
@@ -93,17 +94,22 @@
 
   function update() {
     if (!deps) return;
-    const { esc, getSelected, isPicking, gearOkFor, hasResult, isSolving } = deps;
+    const { esc, getSelected, isPicking, gearOkFor, statGate, hasResult, isSolving } = deps;
     const sel = getSelected();
     // 回到配方列表時 selected 刻意保留（要標原選中列）→ 流程位置看 picker 是否展開，不看 selected 有無
     const hasRecipe = !!sel && !isPicking();
     const solving = isSolving();
     const gearOk = hasRecipe && gearOkFor(sel.recipe.job);
+    const gate = gearOk ? statGate(sel.recipe) : null;
+    const ready = gearOk && gate.ok;
+    const gearReason = gate && !gate.ok
+      ? [gate.cms ? `作業精度還差 ${gate.cms}` : '', gate.ctrl ? `加工精度還差 ${gate.ctrl}` : ''].filter(Boolean).join('、')
+      : '';
     const { st, steps, next } = flowHtml({
       hasRecipe,
       recipeName: hasRecipe && sel.recipe.item_name,
       job: hasRecipe && sel.recipe.job,
-      gearOk,
+      gearOk: ready, gearReason,
       hasResult: hasResult(),
       solving,
     }, esc);
@@ -121,9 +127,9 @@
     // 主 CTA 旁的一行狀態：就緒／停用原因（驗收線 3 — 控制不隱藏，寫清楚為什麼不能按）
     const hint = $('solve-hint');
     if (hint) {
-      const warn = hasRecipe && !gearOk;
+      const warn = hasRecipe && !ready;
       hint.textContent = !hasRecipe ? ''
-        : warn ? `尚未設定「${sel.recipe.job}」的角色數值，無法求解`
+        : warn ? (gearReason || `尚未設定「${sel.recipe.job}」的角色數值，無法求解`)
         : solving ? ''
         : hasResult() ? '改動任一設定後可再按一次重新求解'
         : '準備就緒 — 按下開始計算最佳手法';
@@ -131,7 +137,7 @@
     }
     // 空狀態內那顆 CTA 與主 CTA 同步暗掉（同一動作、同一條件；PH_HTML 重設後節點會換，故每次 update 都重設）
     const phBtn = $('ph-solve');
-    if (phBtn) phBtn.setAttribute('aria-disabled', hasRecipe && !gearOk ? 'true' : 'false');
+    if (phBtn) phBtn.setAttribute('aria-disabled', hasRecipe && !ready ? 'true' : 'false');
     // 尚無結果時結果欄不與設定欄等高（否則右半邊是一整片空面板）——**有結果**才拉齊兩欄。
     // 求解中也維持 is-idle：此時結果仍是隱藏的，拉齊只會拉出一片空黑。
     const work = $('work');
@@ -139,7 +145,7 @@
     return st;
   }
 
-  const REQUIRED = ['esc', 'getSelected', 'isPicking', 'gearOkFor', 'hasResult', 'isSolving'];
+  const REQUIRED = ['esc', 'getSelected', 'isPicking', 'gearOkFor', 'statGate', 'hasResult', 'isSolving'];
   globalThis.CraftFlow = {
     init(d) {
       const miss = REQUIRED.filter(k => d == null || d[k] == null);

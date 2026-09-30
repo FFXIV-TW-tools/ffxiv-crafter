@@ -2,7 +2,7 @@
 
 FFXIV 繁中服 DoH 配方製作求解器：純靜態站 + Rust/WASM raphael 引擎（web worker），**無自有資料後端**，另有兩支 CF Pages Functions。external 公開工具，部署 Cloudflare Pages。**規模級別 S**：不設 ROADMAP 分解層，直接 Plan→Build。
 
-R7-exempt: 2026-11-16 依據：2026-08-16 Owner 拍板（B-025 第二輪）——第二事實源已移除、敘事已搬 `docs/lessons.md`、有測試守的條目已降成「規則一行＋測試編號」；剩下的「部署面鐵則」段是 13 個 external repo 共用的內嵌副本，不得單邊移出。**本檔位元組數不得超過豁免當時的 31,248**（T65 機械守；超過＝先搬敘事，不是改數字）。到期時重評：若該段已在艦隊層集中化即撤銷豁免。
+R7-exempt: 2026-11-16 依據：2026-08-16 Owner 拍板（B-025 第二輪）——第二事實源已移除、敘事已搬 `docs/lessons.md`、有測試守的條目已降成「規則一行＋測試編號」；剩下的「部署面鐵則」段是 13 個 external repo 共用的內嵌副本，不得單邊移出。**本檔位元組數不得超過豁免當時的 31,248**（超過＝先搬敘事，不是改數字）。到期時重評：若該段已在艦隊層集中化即撤銷豁免。
 
 > **三層分工**：本檔＝全 repo 適用的規則；由來／事故／實測數字／拍板日期＝`docs/rules-rationale.md`（同標題對應），踩坑敘事＝`docs/lessons.md`，測試數字沿革＝`docs/test-baseline-history.md`。設計 spec 落 portal repo（`external/ffxiv-tw-tools-portal/docs/specs/` 的 `2026-06-22-craft-solver-spec.md` + ADR-013），本 repo 不另立 specs/；重建見 `README.md`。
 
@@ -54,7 +54,7 @@ R7-exempt: 2026-11-16 依據：2026-08-16 Owner 拍板（B-025 第二輪）—�
 
 ## ✅ VERIFY（改動後跑，未過不算完成）
 
-**canonicalTest（safe-push 實跑；claude-skills `fleet.json` 逐字對照本行）**：
+**canonicalTest（safe-push 實跑；本 repo `devloop.json` 逐字對照本行）**：
 
 ```bash
 node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py && (cd wasm && cargo test)

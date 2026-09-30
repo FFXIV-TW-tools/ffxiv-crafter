@@ -1,0 +1,2308 @@
+{
+  "schema": 1,
+  "date": "2026-09-30",
+  "purpose": "Frozen evidence, not current status authority",
+  "snapshot": {
+    "snapshot": {
+      "head": "d26b25e952cc2f1cfa8b9e508bb3a2f8cfcfefcf",
+      "status": "",
+      "eol": "i/lf    w/lf    attr/text=auto eol=lf \t.claude/rules/frontend-state.md\ni/lf    w/lf    attr/text=auto eol=lf \t.claude/rules/job-quests.md\ni/lf    w/lf    attr/text=auto eol=lf \t.claude/rules/ui-design.md\ni/lf    w/lf    attr/text=auto eol=lf \t.claude/rules/wasm-engine.md\ni/lf    w/lf    attr/text=auto eol=lf \t.gitattributes\ni/lf    w/lf    attr/text=auto eol=lf \t.gitignore\ni/lf    w/lf    attr/text=auto eol=lf \t.rgignore\ni/lf    w/lf    attr/text=auto eol=lf \t404.html\ni/lf    w/lf    attr/text=auto eol=lf \tAGENTS.md\ni/lf    w/lf    attr/text=auto eol=lf \tCHANGELOG-2026.md\ni/lf    w/lf    attr/text=auto eol=lf \tCHANGELOG.md\ni/lf    w/lf    attr/text=auto eol=lf \tCLAUDE.md\ni/lf    w/lf    attr/text=auto eol=lf \tLICENSE\ni/lf    w/lf    attr/text=auto eol=lf \tLICENSE-APACHE-2.0.txt\ni/lf    w/lf    attr/text=auto eol=lf \tLICENSE-MIT.txt\ni/lf    w/lf    attr/text=auto eol=lf \tLICENSE-THIRD-PARTY.txt\ni/lf    w/lf    attr/text=auto eol=lf \tREADME.md\ni/lf    w/lf    attr/text=auto eol=lf \t_headers\ni/lf    w/lf    attr/text=auto eol=lf \t_routes.json\ni/lf    w/lf    attr/text=auto eol=lf \tapp-browse.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-consumable.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-data.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-flow.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-formula.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-gear.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-level-sync.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-nextcraft.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-quality-stages.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-quests.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-recipe.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-render.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp-solve.js\ni/lf    w/lf    attr/text=auto eol=lf \tapp.js\ni/-text w/-text attr/text=auto eol=lf \tassets/hq.png\ni/lf    w/lf    attr/text=auto eol=lf \tcrafter-icons.js\ni/lf    w/lf    attr/text=auto eol=lf \tcrafter-visual.js\ni/lf    w/lf    attr/text=auto eol=lf \tcrafting-list.js\ni/lf    w/lf    attr/text=auto eol=lf \tdata/craft-actions.json\ni/none  w/none  attr/text=auto eol=lf \tdata/ingredients.json\ni/none  w/none  attr/text=auto eol=lf \tdata/items.json\ni/none  w/none  attr/text=auto eol=lf \tdata/job-quests.json\ni/none  w/none  attr/text=auto eol=lf \tdata/level-sync.json\ni/none  w/none  attr/text=auto eol=lf \tdata/meals.json\ni/none  w/none  attr/text=auto eol=lf \tdata/medicine.json\ni/none  w/none  attr/text=auto eol=lf \tdata/quality-stages.json\ni/none  w/none  attr/text=auto eol=lf \tdata/recipe_levels.json\ni/none  w/none  attr/text=auto eol=lf \tdata/recipes.json\ni/none  w/none  attr/text=auto eol=lf \tdata/vendors.json\ni/lf    w/lf    attr/text=auto eol=lf \tdeploy-allow.txt\ni/lf    w/lf    attr/text=auto eol=lf \tdeploy-deny.txt\ni/lf    w/lf    attr/text=auto eol=lf \tdeploy-prepare.sh\ni/lf    w/lf    attr/text=auto eol=lf \tdevloop.json\ni/lf    w/lf    attr/text=auto eol=lf \tdocs/BACKLOG-archive.md\ni/lf    w/lf    attr/text=auto eol=lf \tdocs/BACKLOG.md\ni/lf    w/lf    attr/text=auto eol=lf \tdocs/health-reviews/2026-07-04-crafter-fix-plan.md\ni/lf    w/lf    attr/text=auto eol=lf \tdocs/health-reviews/2026-07-04-crafter-health-review.md\ni/lf    w/lf    attr/text=auto eol=lf \t\"docs/health-reviews/2026-07-11-R2\\350\\244\\207\\346\\252\\242-health-review.md\"\ni/lf    w/lf    attr/text=auto eol=lf \t\"docs/health-reviews/2026-08-01-\\345\\205\\250\\347\\266\\255\\345\\201\\245\\346\\252\\242-fix-plan.md\"\ni/lf    w/lf    attr/text=auto eol=lf \t\"docs/health-reviews/2026-08-01-\\345\\205\\250\\347\\266\\255\\345\\201\\245\\346\\252\\242-health-review.md\"\ni/lf    w/lf    attr/text=auto eol=lf \t\"docs/health-reviews/2026-08-15-\\345\\205\\250\\347\\266\\255\\345\\201\\245\\346\\252\\242-fix-plan.md\"\ni/lf    w/lf    attr/text=auto eol=lf \t\"docs/health-reviews/2026-08-15-\\345\\205\\250\\347\\266\\255\\345\\201\\245\\346\\252\\242-health-review.md\"\ni/lf    w/lf    attr/text=auto eol=lf \t\"docs/health-reviews/2026-09-05-R5\\345\\205\\250\\347\\266\\255\\345\\201\\245\\346\\252\\242-fix-plan.md\"\ni/lf    w/lf    attr/text=auto eol=lf \t\"docs/health-reviews/2026-09-05-R5\\345\\205\\250\\347\\266\\255\\345\\201\\245\\346\\252\\242-health-review.md\"\ni/lf    w/lf    attr/text=auto eol=lf \t\"docs/health-reviews/2026-09-22-\\345\\205\\250\\351\\240\\201\\345\\201\\245\\346\\252\\242-health-review.md\"\ni/lf    w/lf    attr/text=auto eol=lf \tdocs/health-reviews/_INDEX.md\ni/lf    w/lf    attr/text=auto eol=lf \tdocs/lessons.md\ni/lf    w/lf    attr/text=auto eol=lf \tdocs/rules-rationale.md\ni/lf    w/lf    attr/text=auto eol=lf \tdocs/test-baseline-history.md\ni/lf    w/lf    attr/text=auto eol=lf \tdocs/verification/2026-09-28-portal-v2-redesign.md\ni/lf    w/lf    attr/text=auto eol=lf \tdocs/verification/2026-09-29-raphael-v0286-simd.md\ni/-text w/-text attr/text=auto eol=lf \tfavicon-192.png\ni/-text w/-text attr/text=auto eol=lf \tfavicon.ico\ni/lf    w/lf    attr/text=auto eol=lf \tfavicon.svg\ni/lf    w/lf    attr/text=auto eol=lf \tfirst-run-hint.js\ni/lf    w/lf    attr/text=auto eol=lf \tfunctions/settings-api/[[path]].js\ni/lf    w/lf    attr/text=auto eol=lf \tindex.html\ni/lf    w/lf    attr/text=auto eol=lf \tpkg/crafter_wasm.d.ts\ni/lf    w/lf    attr/text=auto eol=lf \tpkg/crafter_wasm.js\ni/-text w/-text attr/text=auto eol=lf \tpkg/crafter_wasm_bg.wasm\ni/lf    w/lf    attr/text=auto eol=lf \tpkg/crafter_wasm_bg.wasm.d.ts\ni/lf    w/lf    attr/text=auto eol=lf \tpkg/package.json\ni/lf    w/lf    attr/text=auto eol=lf \trobots.txt\ni/lf    w/lf    attr/text=auto eol=lf \tsitemap.xml\ni/lf    w/lf    attr/text=auto eol=lf \tstyles/10-base.css\ni/lf    w/lf    attr/text=auto eol=lf \tstyles/20-browse.css\ni/lf    w/lf    attr/text=auto eol=lf \tstyles/30-recipe.css\ni/lf    w/lf    attr/text=auto eol=lf \tstyles/40-result.css\ni/lf    w/lf    attr/text=auto eol=lf \tstyles/50-tabs.css\ni/lf    w/lf    attr/text=auto eol=lf \ttests/deploy-prepare.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttests/run-all.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttests/settings-api.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/bake-crafter-html.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build-data.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build-notices.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build-static-data.py\ni/lf    w/crlf  attr/text eol=crlf    \ttools/build-wasm.ps1\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build_lib/__init__.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build_lib/actions.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build_lib/common.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build_lib/consumables.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build_lib/items.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build_lib/level_sync.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build_lib/quests.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/build_lib/stages.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/check-actions.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/fetch-quest-qty.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/icons.config.json\ni/lf    w/lf    attr/text=auto eol=lf \ttools/job-quest-qty.json\ni/lf    w/lf    attr/text=auto eol=lf \ttools/serve.py\ni/lf    w/lf    attr/text=auto eol=lf \ttools/sim-diff/Cargo.lock\ni/lf    w/lf    attr/text=auto eol=lf \ttools/sim-diff/Cargo.toml\ni/lf    w/lf    attr/text=auto eol=lf \ttools/sim-diff/compare-js.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/sim-diff/src/bin/js-golden.rs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/sim-diff/src/main.rs\ni/none  w/none  attr/text=auto eol=lf \ttools/static-data/_meta.json\ni/none  w/none  attr/text=auto eol=lf \ttools/static-data/craft_type.json\ni/none  w/none  attr/text=auto eol=lf \ttools/static-data/ingredients.json\ni/none  w/none  attr/text=auto eol=lf \ttools/static-data/items.json\ni/none  w/none  attr/text=auto eol=lf \ttools/static-data/meals.json\ni/none  w/none  attr/text=auto eol=lf \ttools/static-data/medicine.json\ni/none  w/none  attr/text=auto eol=lf \ttools/static-data/recipe_levels.json\ni/none  w/none  attr/text=auto eol=lf \ttools/static-data/recipes.json\ni/lf    w/lf    attr/text=auto eol=lf \ttools/test-formulas.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/10-formula.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/11-gear.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/12-recipe-sync.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/20-list.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/21-browse.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/30-solve.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/31-render.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/40-flow-consumable.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/41-stages-sync.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/50-quests.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/51-nextcraft.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/60-ui-sentinels.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/61-repo-sentinels.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/62-icons.test.mjs\ni/lf    w/lf    attr/text=auto eol=lf \ttools/tests/_harness.mjs\ni/crlf  w/crlf  attr/text=auto eol=lf \twasm/BUILD-STAMP.json\ni/lf    w/lf    attr/text=auto eol=lf \twasm/Cargo.lock\ni/lf    w/lf    attr/text=auto eol=lf \twasm/Cargo.toml\ni/lf    w/lf    attr/text=auto eol=lf \twasm/rust-toolchain\ni/lf    w/lf    attr/text=auto eol=lf \twasm/src/lib.rs\ni/lf    w/lf    attr/text=auto eol=lf \tworker.js\n"
+    },
+    "map": [
+      {
+        "path": "app-browse.js",
+        "lines": 251,
+        "bytes": 18873,
+        "gzip": 8743,
+        "role": "// app-browse.js — 配方瀏覽層（職業篩選 chips + 配方表 + 已加入清單標示）。 // classic script（無 module 語法）：發佈 globalThis.CraftBrowse，app.js init 注入依賴——"
+      },
+      {
+        "path": "app-consumable.js",
+        "lines": 197,
+        "bytes": 9826,
+        "gzip": 3936,
+        "role": "// app-consumable.js — 食物 / 藥水 選擇層（classic script，發佈 globalThis.CraftConsumable）。 // 為什麼不是原生 <select>：需求要在選項列裡顯示 icon + 物品品級 + 功效（+CP 21%（≤76）），"
+      },
+      {
+        "path": "app-data.js",
+        "lines": 88,
+        "bytes": 6779,
+        "gzip": 3407,
+        "role": "// app-data.js — 靜態資料載入與索引建立（本站沒有資料後端，11 支 JSON 全是 build 時產的）。 // classic script：發佈 globalThis.CraftData，app.js init 注入依賴（toast／recipeMaxes）。"
+      },
+      {
+        "path": "app-flow.js",
+        "lines": 155,
+        "bytes": 8736,
+        "gzip": 4322,
+        "role": "// app-flow.js — 流程引導層：選配方 → 設定條件 → 求解取巨集；狀態由 flowState() 唯一決定。 // classic script（同 app-render/app-solve/app-browse 手法）：發佈 globalThis.CraftFlow，app.js init 注入依賴。"
+      },
+      {
+        "path": "app-formula.js",
+        "lines": 94,
+        "bytes": 5421,
+        "gzip": 2625,
+        "role": "// app-formula.js — FFXIV 製作公式面（已對抗驗證，spec §4）。 // classic script：發佈 globalThis.CraftFormula，app.js init 注入依賴（求解選項的 DOM 與初始品質 getter）。"
+      },
+      {
+        "path": "app-gear.js",
+        "lines": 164,
+        "bytes": 8943,
+        "gzip": 4093,
+        "role": "// app-gear.js — 角色數值（localStorage）與職業裝備表。 // classic script（無 module 語法）：發佈 globalThis.CraftGear，app.js init 注入依賴——"
+      },
+      {
+        "path": "app-level-sync.js",
+        "lines": 150,
+        "bytes": 8276,
+        "gzip": 4068,
+        "role": "// app-level-sync.js — 等級同步層：把「這個配方會依職業等級改變數值」翻成生效的 recipe level。 // classic script（同 app-quality-stages.js 手法）：發佈 globalThis.CraftSync，app.js init 注入依賴。"
+      },
+      {
+        "path": "app-nextcraft.js",
+        "lines": 180,
+        "bytes": 11507,
+        "gzip": 5326,
+        "role": "// app-nextcraft.js — 「用這個成品還能做什麼」：下一階配方的反查與選取視窗（classic script，發佈 globalThis.CraftNext）。 // 為什麼要這層：既有的「先做這個」只走得下去（成品 → 中間材）。玩家做完一批棕櫚糖後，"
+      },
+      {
+        "path": "app-quality-stages.js",
+        "lines": 137,
+        "bytes": 7110,
+        "gzip": 3441,
+        "role": "// app-quality-stages.js — 品質階段層：把「這個配方有哪幾檔品質門檻」翻成目標品質數字。 // classic script（同 crafting-list.js / app-solve.js 手法）：發佈 globalThis.CraftStages，app.js init 注入依賴。"
+      },
+      {
+        "path": "app-quests.js",
+        "lines": 311,
+        "bytes": 19744,
+        "gzip": 8841,
+        "role": "// app-quests.js — 職業任務分頁（classic script，發佈 globalThis.CraftQuests）。 // 「這個職業練上去要交哪些東西、還缺什麼」：11 職（8 製作＋3 採集）的職業任務清單、"
+      },
+      {
+        "path": "app-recipe.js",
+        "lines": 390,
+        "bytes": 28846,
+        "gzip": 11588,
+        "role": "// app-recipe.js — 配方選擇、詳情重繪與原料初始品質。 // classic script：發佈 globalThis.CraftRecipe，app.js init 注入依賴；資料與畫面狀態由 getter/setter 取回 app.js。"
+      },
+      {
+        "path": "app-render.js",
+        "lines": 233,
+        "bytes": 16444,
+        "gzip": 7401,
+        "role": "// app-render.js — 求解結果渲染層：結果摘要（badge/進度條）/ 手法序列 chips / 逐步走查表 / 遊戲巨集。 // classic script（無 module 語法，同 crafting-list.js 手法）：發佈 globalThis.CraftRender，app.js init 注入依賴。"
+      },
+      {
+        "path": "app-solve.js",
+        "lines": 201,
+        "bytes": 11980,
+        "gzip": 5315,
+        "role": "// app-solve.js — 求解編排層：worker 生命週期 / doSolve / 求解計時（軟提示不殺 worker）/ 結果回傳分派 / 取消 / setSolving。 // classic script（同 crafting-list.js / app-render.js 手法）：發佈 globalThis.CraftSolve，app.js init 注入"
+      },
+      {
+        "path": "app.js",
+        "lines": 468,
+        "bytes": 37188,
+        "gzip": 15756,
+        "role": "// 配方製作求解器 — 分頁式：配方求解（職業+等級瀏覽）/ 角色數值（各職裝備）。 // 公式在 app-formula.js（已對抗驗證，spec §4）算，WASM worker 只跑引擎；本檔是控制器：狀態持有／分頁／init 接線。"
+      },
+      {
+        "path": "crafting-list.js",
+        "lines": 295,
+        "bytes": 19483,
+        "gzip": 8123,
+        "role": "// crafting-list.js — 製造清單分頁：配方＋數量收集、素材總需求彙總、localStorage 持久化。 // classic script（無 module 語法）：發佈 globalThis.CraftList，app.js init 時注入依賴——"
+      },
+      {
+        "path": "functions/settings-api/[[path]].js",
+        "lines": 105,
+        "bytes": 6648,
+        "gzip": 3741,
+        "role": "// functions/settings-api/[[path]].js — 設定 API 同源代理（後端 PoP 修復，第一站試點） //"
+      },
+      {
+        "path": "styles/10-base.css",
+        "lines": 52,
+        "bytes": 3149,
+        "gzip": 1745,
+        "role": "/* === 10-base.css — 全站基底：body／panel padding 鐵則／分頁外距／流程軸 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */ /* 配方製作求解器 — 工具樣式。token 來自 portal CDN（tokens.css / header.css）。"
+      },
+      {
+        "path": "styles/20-browse.css",
+        "lines": 211,
+        "bytes": 19612,
+        "gzip": 8875,
+        "role": "/* === 20-browse.css — 選配方頁：篩選子面板／首載空間預留（CLS）／翻頁器／配方表 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */ /* ---- 選配方 ---- */"
+      },
+      {
+        "path": "styles/30-recipe.css",
+        "lines": 246,
+        "bytes": 21046,
+        "gzip": 7891,
+        "role": "/* === 30-recipe.css — 求解頁設定側：兩欄骨架／配方詳情／等級同步／原料＋HQ／食藥自繪下拉／求解選項 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */ /* ---- 設定/結果 兩欄 ---- */"
+      },
+      {
+        "path": "styles/40-result.css",
+        "lines": 93,
+        "bytes": 8119,
+        "gzip": 3141,
+        "role": "/* === 40-result.css — 求解頁結果側：結果摘要／手法卡／逐步走查表／巨集框／「繼續做」選取視窗 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */ /* ---- 結果 + 摺疊 ---- */"
+      },
+      {
+        "path": "styles/50-tabs.css",
+        "lines": 160,
+        "bytes": 13876,
+        "gzip": 5360,
+        "role": "/* === 50-tabs.css — 三個非求解分頁：角色數值表／製造清單／職業任務 === 保序拆分自 styles.css（788 行；健檢 R5 B-034）；層疊順序＝檔名數字序，index.html 依序載入 */ /* ---- 角色數值表 ---- */"
+      },
+      {
+        "path": "tools/bake-crafter-html.mjs",
+        "lines": 38,
+        "bytes": 2159,
+        "gzip": 1162,
+        "role": "// 把 portal 正典產出的本站圖示與冷啟動流程烤進 HTML；--check 防靜態片段漂移。 import fs from 'node:fs';"
+      },
+      {
+        "path": "tools/build-data.py",
+        "lines": 75,
+        "bytes": 3209,
+        "gzip": 1693,
+        "role": "#!/usr/bin/env python3 # -*- coding: utf-8 -*-"
+      },
+      {
+        "path": "tools/build-notices.py",
+        "lines": 110,
+        "bytes": 5869,
+        "gzip": 3071,
+        "role": "#!/usr/bin/env python3 # -*- coding: utf-8 -*-"
+      },
+      {
+        "path": "tools/build-static-data.py",
+        "lines": 344,
+        "bytes": 16637,
+        "gzip": 6396,
+        "role": "#!/usr/bin/env python3 # -*- coding: utf-8 -*-"
+      },
+      {
+        "path": "tools/build_lib/__init__.py",
+        "lines": 7,
+        "bytes": 376,
+        "gzip": 368,
+        "role": "# -*- coding: utf-8 -*- \"\"\"build_lib — build-data.py 的實作層（主檔只留 CLI 旗標編排與 PROBLEMS 收尾）。"
+      },
+      {
+        "path": "tools/build_lib/actions.py",
+        "lines": 90,
+        "bytes": 5209,
+        "gzip": 2816,
+        "role": "# -*- coding: utf-8 -*- \"\"\"craft-actions.json：35 個 raphael Action 變體 → 繁中名 + icon。"
+      },
+      {
+        "path": "tools/build_lib/common.py",
+        "lines": 96,
+        "bytes": 5279,
+        "gzip": 2472,
+        "role": "# -*- coding: utf-8 -*- \"\"\"共用底座：缺件台帳（PROBLEMS/problem）、上游輸入與輸出的路徑常數、stdout 編碼設定。\"\"\""
+      },
+      {
+        "path": "tools/build_lib/consumables.py",
+        "lines": 32,
+        "bytes": 1341,
+        "gzip": 828,
+        "role": "# -*- coding: utf-8 -*- \"\"\"meals/medicine 的 icon + item id 補欄（凍結快照只有 name/level/加成，無圖示）。\"\"\""
+      },
+      {
+        "path": "tools/build_lib/items.py",
+        "lines": 92,
+        "bytes": 4492,
+        "gzip": 2021,
+        "role": "# -*- coding: utf-8 -*- \"\"\"配方資料的複製與 items.json 生成。"
+      },
+      {
+        "path": "tools/build_lib/level_sync.py",
+        "lines": 33,
+        "bytes": 1560,
+        "gzip": 1014,
+        "role": "# -*- coding: utf-8 -*- \"\"\"level-sync.json：哪些配方會依職業等級同步。"
+      },
+      {
+        "path": "tools/build_lib/quests.py",
+        "lines": 326,
+        "bytes": 17176,
+        "gzip": 6976,
+        "role": "# -*- coding: utf-8 -*- \"\"\"職業任務分頁的兩份資料：job-quests.json（任務與交付物）與 vendors.json（誰在賣）。"
+      },
+      {
+        "path": "tools/build_lib/stages.py",
+        "lines": 38,
+        "bytes": 1724,
+        "gzip": 1095,
+        "role": "# -*- coding: utf-8 -*- \"\"\"quality-stages.json：配方的三段品質門檻。"
+      },
+      {
+        "path": "tools/check-actions.py",
+        "lines": 216,
+        "bytes": 10447,
+        "gzip": 4429,
+        "role": "#!/usr/bin/env python3 # -*- coding: utf-8 -*-"
+      },
+      {
+        "path": "tools/fetch-quest-qty.py",
+        "lines": 116,
+        "bytes": 6888,
+        "gzip": 3787,
+        "role": "#!/usr/bin/env python3 # -*- coding: utf-8 -*-"
+      },
+      {
+        "path": "tools/serve.py",
+        "lines": 24,
+        "bytes": 1051,
+        "gzip": 739,
+        "role": "#!/usr/bin/env python3 # -*- coding: utf-8 -*-"
+      },
+      {
+        "path": "tools/sim-diff/compare-js.mjs",
+        "lines": 85,
+        "bytes": 3933,
+        "gzip": 1966,
+        "role": "// 把 ffxiv-crafter 的 JS 公式（computeSettings 的 base_progress/base_quality、hqPercent） // 與 ffxiv-crafting(Tnze) 產出的 golden 值逐格對帳。"
+      },
+      {
+        "path": "tools/test-formulas.mjs",
+        "lines": 25,
+        "bytes": 1658,
+        "gzip": 1116,
+        "role": "// node tools/test-formulas.mjs — 前端純函式 golden 回歸 + 健檢機械哨兵（無框架、vm sandbox）的**入口**。 // B-039（2026-09-06）把原本 3290 行的單檔按主題拆到 `tools/tests/`：共用底座＝`tools/tests/_harness.mjs`"
+      },
+      {
+        "path": "tools/tests/10-formula.test.mjs",
+        "lines": 111,
+        "bytes": 5625,
+        "gzip": 2062,
+        "role": "// tools/tests/10-formula.test.mjs — 公式面 golden：computeSettings／effectiveStats／hqPercent／recipeMaxes（T1〜T5、T22） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/11-gear.test.mjs",
+        "lines": 284,
+        "bytes": 16749,
+        "gzip": 4998,
+        "role": "// tools/tests/11-gear.test.mjs — 角色數值與專家之證（T23／T24／T30）＋安全哨兵（T6） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/12-recipe-sync.test.mjs",
+        "lines": 342,
+        "bytes": 26080,
+        "gzip": 10023,
+        "role": "// tools/tests/12-recipe-sync.test.mjs — 配方詳情狀態機：數值更新不遺失成果／等級同步重算三上限（T25，內含 T37／T45／T52 接線） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/20-list.test.mjs",
+        "lines": 211,
+        "bytes": 13267,
+        "gzip": 5184,
+        "role": "// tools/tests/20-list.test.mjs — 製造清單與素材彙總：aggregateMats／add-has-count／三分組／採購 CSV（T7〜T12、T58） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/21-browse.test.mjs",
+        "lines": 227,
+        "bytes": 15684,
+        "gzip": 5693,
+        "role": "// tools/tests/21-browse.test.mjs — 配方瀏覽層 app-browse.js：篩選／分頁／表格行為（T11） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/30-solve.test.mjs",
+        "lines": 344,
+        "bytes": 17585,
+        "gzip": 5808,
+        "role": "// tools/tests/30-solve.test.mjs — 求解編排 app-solve.js：世代守衛／引擎初始化失敗／求解計時（T13／T27／T28） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/31-render.test.mjs",
+        "lines": 276,
+        "bytes": 19645,
+        "gzip": 8420,
+        "role": "// tools/tests/31-render.test.mjs — 資料載入降級（T41／T42）／結果渲染接線（T39）／最低能力門檻（T60／T61） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/40-flow-consumable.test.mjs",
+        "lines": 155,
+        "bytes": 10982,
+        "gzip": 4393,
+        "role": "// tools/tests/40-flow-consumable.test.mjs — 流程引導 app-flow.js（T14）與食藥自繪 listbox app-consumable.js（T15） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/41-stages-sync.test.mjs",
+        "lines": 264,
+        "bytes": 16043,
+        "gzip": 6484,
+        "role": "// tools/tests/41-stages-sync.test.mjs — 品質階段（T18）／求解選項預設與保存（T19）／等級同步（T20） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/50-quests.test.mjs",
+        "lines": 183,
+        "bytes": 12421,
+        "gzip": 5388,
+        "role": "// tools/tests/50-quests.test.mjs — 職業任務分頁 app-quests.js：素材展開／商人徽章／HQ 判定（T31〜T33） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/51-nextcraft.test.mjs",
+        "lines": 201,
+        "bytes": 15082,
+        "gzip": 6167,
+        "role": "// tools/tests/51-nextcraft.test.mjs — 「繼續做」下一階反查 app-nextcraft.js：反查索引／視窗／製作鏈語意（T56／T57） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/60-ui-sentinels.test.mjs",
+        "lines": 40,
+        "bytes": 2583,
+        "gzip": 1540,
+        "role": "// tools/tests/60-ui-sentinels.test.mjs — UI runtime sentinel（T34） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/61-repo-sentinels.test.mjs",
+        "lines": 101,
+        "bytes": 7343,
+        "gzip": 3820,
+        "role": "// tools/tests/61-repo-sentinels.test.mjs — repo 級資料／部署不變量哨兵（T29・T53〜T54・T63） // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。"
+      },
+      {
+        "path": "tools/tests/62-icons.test.mjs",
+        "lines": 14,
+        "bytes": 1011,
+        "gzip": 612,
+        "role": "// 靜態圖示與首屏流程的來源漂移哨兵；CI 缺 portal checkout 時只跳過正典比對。 import { spawnSync } from 'node:child_process';"
+      },
+      {
+        "path": "tools/tests/_harness.mjs",
+        "lines": 129,
+        "bytes": 9198,
+        "gzip": 4522,
+        "role": "// tools/tests/_harness.mjs — 主題測試檔的共用底座：原始碼字串／DOM stub／vm sandbox／迷你斷言框架／共用 fixture。 // 2026-07-11 R2 批次 0（quality A1 / BACKLOG B-004）建立：把 app.js 的公式純函式在 node 載入斷言，"
+      },
+      {
+        "path": "wasm/src/lib.rs",
+        "lines": 459,
+        "bytes": 21643,
+        "gzip": 7638,
+        "role": "// crafter-wasm — raphael-rs（Apache-2.0, KonaeAkira）求解/模擬薄綁定。 // 契約逆向自 raphael-cli/solve.rs（已對抗驗證）；公式在 JS 端算好後把 Settings 11 欄傳入。"
+      },
+      {
+        "path": "worker.js",
+        "lines": 41,
+        "bytes": 2231,
+        "gzip": 1343,
+        "role": "// Web Worker：載入 raphael WASM，跑 solve（自動求解最佳手法）。 import init, { solve } from './pkg/crafter_wasm.js';"
+      }
+    ],
+    "posture": {
+      "posture": "active",
+      "reason": "觀察窗內有 feature 類 commit",
+      "inputs": {
+        "commitsInWindow": 215,
+        "daysSinceLastCommit": 1.1459689583333332,
+        "hasFeatureCommit": true,
+        "thresholds": {
+          "recentDays": 90,
+          "minCommits": 5,
+          "maxIdleDays": 90
+        }
+      }
+    },
+    "signals": {
+      "hasFrontendUI": true,
+      "ownerAskedMemoryAudit": false,
+      "hasDepManifest": true,
+      "isBackendService": false,
+      "hasPersistence": true,
+      "isLibrary": false,
+      "hasReleaseFlow": true,
+      "isCrossMachineCLI": false,
+      "isAgentSkillRepo": false,
+      "hasSharedStyleLayer": true,
+      "isDesignSystemSource": false
+    },
+    "selection": {
+      "selected": [
+        "a11y-compat",
+        "deps-supply-chain",
+        "data-lifecycle",
+        "build-release",
+        "design-system"
+      ],
+      "skipped": [
+        {
+          "key": "memory-audit",
+          "why": "納入條件不成立"
+        },
+        {
+          "key": "observability",
+          "why": "納入條件不成立"
+        },
+        {
+          "key": "api-compat",
+          "why": "納入條件不成立"
+        },
+        {
+          "key": "config-portability",
+          "why": "納入條件不成立"
+        },
+        {
+          "key": "agent-contract",
+          "why": "納入條件不成立"
+        },
+        {
+          "key": "design-authority",
+          "why": "納入條件不成立"
+        }
+      ],
+      "unknown": []
+    },
+    "selectionSummary": "納入 5 個可選維（a11y-compat、deps-supply-chain、data-lifecycle、build-release、design-system）；成立訊號：hasFrontendUI、hasDepManifest、hasPersistence、hasReleaseFlow、hasSharedStyleLayer",
+    "uiBaseline": {
+      "resources": [
+        {
+          "name": "/styles/10-base.css",
+          "decoded": 3149,
+          "blocking": "blocking"
+        },
+        {
+          "name": "/styles/20-browse.css",
+          "decoded": 19612,
+          "blocking": "blocking"
+        },
+        {
+          "name": "/styles/30-recipe.css",
+          "decoded": 21046,
+          "blocking": "blocking"
+        },
+        {
+          "name": "/styles/50-tabs.css",
+          "decoded": 13876,
+          "blocking": "blocking"
+        },
+        {
+          "name": "/styles/40-result.css",
+          "decoded": 8119,
+          "blocking": "blocking"
+        },
+        {
+          "name": "/first-run-hint.js",
+          "decoded": 2149,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/crafter-icons.js",
+          "decoded": 10795,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/crafting-list.js",
+          "decoded": 19483,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/crafter-visual.js",
+          "decoded": 887,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-formula.js",
+          "decoded": 5421,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-data.js",
+          "decoded": 6779,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-flow.js",
+          "decoded": 8736,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-recipe.js",
+          "decoded": 28846,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-nextcraft.js",
+          "decoded": 11507,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-gear.js",
+          "decoded": 8943,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-render.js",
+          "decoded": 16444,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-browse.js",
+          "decoded": 18873,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-consumable.js",
+          "decoded": 9826,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-quests.js",
+          "decoded": 19744,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-level-sync.js",
+          "decoded": 8276,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-solve.js",
+          "decoded": 11980,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app-quality-stages.js",
+          "decoded": 7110,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/app.js",
+          "decoded": 37188,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/recipes.json",
+          "decoded": 4280614,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/craft-actions.json",
+          "decoded": 3446,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/recipe_levels.json",
+          "decoded": 42695,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/items.json",
+          "decoded": 2438205,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/meals.json",
+          "decoded": 15667,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/ingredients.json",
+          "decoded": 696784,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/medicine.json",
+          "decoded": 3781,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/quality-stages.json",
+          "decoded": 47225,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/level-sync.json",
+          "decoded": 9217,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/job-quests.json",
+          "decoded": 42319,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/data/vendors.json",
+          "decoded": 44264,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/favicon.svg",
+          "decoded": 109,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/worker.js",
+          "decoded": 2231,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/pkg/crafter_wasm.js",
+          "decoded": 17656,
+          "blocking": "non-blocking"
+        },
+        {
+          "name": "/assets/hq.png",
+          "decoded": 366,
+          "blocking": "non-blocking"
+        }
+      ],
+      "timing": [
+        {
+          "dcl": 388.2999999821186,
+          "load": 398.19999998807907
+        }
+      ],
+      "focus": "",
+      "statsInputs": 36
+    }
+  },
+  "results": [
+    {
+      "dimension": "安全性 — 後端 / API",
+      "score": 9,
+      "applicability": "applicable",
+      "summary": "已檢查：Pages Function 的 service binding／Origin／路徑與快取邊界、上游 UUID capability 與 CORS／輸入驗證／限流接點、部署 secret 外洩邊界、近期 Worker SIMD／crash 與資料生成器的反序列化／SQL 使用。正向證據：functions/settings-api/[[path]].js:50-101 採固定上游、路徑 allow-list、缺 binding 回 503、保留既有 Origin 與 If-Match、回應 no-store；資料生成器使用 JSON 與參數化 SQL，瀏覽器 WASM worker 不新增伺服器端執行入口。已用不落檔、不連網的 eval smoke 實際呼叫代理：一般路徑成功、feedback／dot traversal 回 404、binding 缺失／失敗回 503／502，且 Origin／client IP／If-Match／body 穿透；另串接上游實際 routing handler、僅替換 Cloudflare DO adapter，確認前輪提過的編碼斜線仍由上游拒收 404、非 UUID 回 400，未證實可利用的越權或 SSRF，故不將舊 hardening 建議重報為新漏洞。未驗證正式部署 binding、實際限流配額及 DO 寫入，未對正式 API 送寫入，亦未執行 build／lint／tests／formatter 或修改任何檔案；可觀測模型識別為 openai-codex/gpt-6.1-sol，effort 與實際 provider 路由未提供，不推測。",
+      "omittedCount": 0,
+      "findings": [],
+      "dimensionKey": "sec-backend",
+      "perspective": "project"
+    },
+    {
+      "dimension": "sec-frontend",
+      "score": 8.5,
+      "applicability": "applicable",
+      "summary": "已檢查：全部第一方 HTML sink 與模板內插／搜尋與 deep-link 輸入／localStorage 型別邊界／近期 portal v2 圖示與 KPI／Worker crash、SIMD 與 Rust Output 型別／CSP、CDN 信任與共用設定匯出。名稱、attribute 與引擎錯誤字串均經完整五字元 esc，iconUrl 使用固定 host 與嚴格路徑白名單，數值輸入與 Worker 輸出有型別收斂，未找到可由一般玩家輸入觸發的 XSS；集中 portal CDN、不固定 SRI 與 named target 的已拍板取捨不另列缺陷。共用設定匯出仍有一項隱私告知缺口：一般「匯出 JSON」會下載 UUID capability 與 Discord webhook 原文；已用真實 exportAll/doExport 的隔離 VM、合成資料確認保留兩者且不呼叫 confirm，並另確認實際 esc 輸出 &amp;&lt;&gt;&quot;&#39;。全程唯讀、未跑 build/lint/tests/formatter、未呼叫正式設定 API，未核驗線上 response headers 或實際下載 UI；可觀測 model=openai-codex/gpt-6.1-sol，effort/provider 未暴露、不推測。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "SF1",
+          "title": "共用設定的「匯出 JSON」未告知檔案包含 UUID capability 與 webhook 憑證",
+          "severity": "medium",
+          "file": "../ffxiv-tw-tools-portal/settings-ui.js",
+          "location": "241-249、1479-1490（doExport）；../ffxiv-tw-tools-portal/settings-client.js:1965-1971（exportAll）；本站 index.html:42-44 為載入入口",
+          "evidence": "// settings-client.js:1965-1968\nfunction exportAll() {\n  return Promise.resolve({\n    uuid: uuid,\n    global: snapshot,\n// settings-ui.js:246、1479-1481\n'<button type=\"button\" class=\"codex-btn codex-btn--ghost\" data-action=\"export\">匯出 JSON</button>'\nfunction doExport() {\n  S.export().then(function (data) {\n    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });",
+          "impact": "使用者若把這份看似一般設定的 JSON 分享作除錯，會同時交出可讀寫所有工具設定的 UUID 與可代發訊息的 Discord webhook，而匯出入口沒有相鄰告知或確認。",
+          "recommendation": "由 portal 權威上游集中修正，不在 crafter 重刻：區分預設 redact 的「分享設定」與保留 UUID/webhook 的「完整私密備份」，或至少將現有動作明確命名為完整私密備份並在下載前告知含憑證、不可分享。保留有意的身份還原能力；UUID 分區現有警語不能取代匯出動作本身的告知。",
+          "mechanize": "若新增分享匯出，以合成 UUID/webhook 快照驗證其產物不含這兩個秘密值，並驗證明確選擇的私密備份仍可 round-trip 還原。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Grep 查齊 portal 的匯出入口與 consumer，Read 確認 crafter index.html:36-44 載入 settings-client.js，而該 SDK 在 :2617-2649 lazy-load 共用 settings-ui.js，匯出按鈕經 :974-979、1038-1040 直接呼叫 doExport，並非不可達程式碼。settings-client.js:1965-1971 原樣輸出 uuid 與 global snapshot（包含已設定的 discord.webhookUrl），settings-ui.js:241-249、1479-1491 未提供含憑證告知、redaction 或下載前確認；:190 的 UUID 警語確實存在，但位於另一個同步分區，而 :390-394 會隱藏非當前分區。worker/src/index.js:387-446 佐證 UUID 是設定讀寫 capability；保留 UUID 作身份還原是既有設計，但不否定匯出告知缺口，因此維持 medium，風險以使用者另行分享檔案為前提，不是自動外洩。此次僅唯讀 Grep/Read，未寫檔、未跑 build/lint/tests/formatter、未操作正式 API 或實測外洩；可觀測 model 為 openai-codex/gpt-6.1-sol，provider 識別前綴為 openai-codex，實際服務 provider 與 effort 未另獲證據，保留未知。"
+          }
+        }
+      ],
+      "dimensionKey": "sec-frontend",
+      "perspective": "project"
+    },
+    {
+      "dimension": "正確性 — 核心邏輯 / 狀態 / 並發",
+      "score": 8.2,
+      "applicability": "applicable",
+      "summary": "已檢查：Worker 世代守衛／取消與設定失效傳播／crash 重建與 SIMD 分派／配方與製作鏈切換／等級同步保留 HQ、品質階段與目標／UI v2 瀏覽分頁與結果狀態／製造清單及角色數值保存。以唯讀載入的實際模組進行記憶體內 smoke，確認舊世代結果不會關掉新求解、crash 會終止舊 Worker 並可再次產出結果；前輪 Worker 同步失敗處理及未知技能拒絕機制仍在。另確證多分頁保存會用陳舊快照覆蓋其他分頁的清單與裝備；未跑 build、lint、test suite 或 formatter，未寫入 repo，也未聲稱已驗證真瀏覽器 error-event 競態。可觀測 model 為 openai-codex/gpt-6.1-sol，provider 識別為 openai-codex，effort 未暴露。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "C1",
+          "title": "多分頁以載入時快照全量保存，會靜默抹掉其他分頁新增的清單與職業數值",
+          "severity": "medium",
+          "file": "crafting-list.js",
+          "location": "68–76、85–95、285；同源 app-gear.js:17–32、123–138",
+          "evidence": "// crafting-list.js:70、76、94–95、285\nlist = (JSON.parse(localStorage.getItem(KEY)) || [])\ntry { localStorage.setItem(KEY, JSON.stringify(list)); }\nelse list.push({ id: +recipeId, qty: 1 });\nsave(); render(); notify();\ninit(d) { deps = d; byId = new Map(d.RECIPES.map((r) => [r.id, r])); load(); render(); },\n// 記憶體內載入實際模組，兩 context 共用 storage：\nA.add(1) → [{\"id\":1,\"qty\":1}]；B.add(2) → [{\"id\":2,\"qty\":1}]；reload.count(1) = 0。\n// 同樣操作 CraftGear：A 保存木工、B 保存鍛造，reload.gearFor('木工') = null。",
+          "impact": "玩家同時開兩個分頁操作不同配方或職業時，後保存者會無提示地刪掉前一分頁的更新，且兩個畫面的清單與角色數值持續分歧。",
+          "recommendation": "把變更改成針對最新保存狀態的操作，而不是覆寫載入時的整份快照；對跨分頁 read-modify-write 加互斥或衝突偵測。接收 storage 變更後同步畫面，角色數值改變時沿用既有結果失效路徑，避免繼續顯示依舊數值求出的巨集。",
+          "mechanize": "以兩個獨立 context 共用 storage，依序及交錯新增不同配方、更新不同職業，再重載並斷言兩方更新均保留；另確認跨分頁數值更新會作廢舊求解結果。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Read 確認 crafting-list.js:68–76、85–95、285 僅在 init 載入清單，後續保存整份記憶體快照；app-gear.js:17–32、123–140 同樣以整份 gearsets 覆寫，輸入合法性 guard 不會合併其他分頁的更新。全 repo Grep 未找到 storage listener、BroadcastChannel 或 navigator.locks 的同步實作，app.js:297–303 的結果失效回呼只由本頁角色輸入觸發，且 CLAUDE.md 與相關規則未將此資料遺失列為已拍板取捨。以實際兩個模組在獨立 VM context 共用記憶體 storage 執行，A.add(1) 後 B.add(2) 使 reload.count(1)=0；A 保存木工後 B 保存鍛造使 reload.gearFor('木工')=null，兩 context 的清單持續分歧且只有正常成功 toast，足以支持 medium 的靜默更新遺失。此次唯讀、未跑 build/lint/tests/formatter，也未實測真瀏覽器 storage event 或跨頁巨集失效；可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與實際 provider 未提供。"
+          }
+        }
+      ],
+      "dimensionKey": "correctness-core",
+      "perspective": "project"
+    },
+    {
+      "dimension": "correctness-data",
+      "score": 8.3,
+      "applicability": "applicable",
+      "summary": "已檢查：配方／原料與 item_lookup 的對齊、recipe_levels 數值、品質階段與等級同步權威、食藥／專家能力公式，以及 v0.28.6 SIMD WASM 的 action gating、神速技巧拆解與候選排序。13,874 個配方的 11 個領域欄位與 item_lookup 完全相符，recipe_levels 的六個核心數值欄位無差異，992 筆品質階段與 768 筆等級同步資料亦與 game_ref 精確一致；原料比較出現的八筆差異涉及來源庫的 7.5 染劑改制，未據此誤判繁中優先快照。實際執行已出貨 WASM 找到一個可重現的最佳解遺漏：自動採用神速技巧會把本可一步完成的配方變成兩步。全程唯讀，僅執行 in-memory 資料比對與 WASM 求解情境，未跑 build／lint／test suite／formatter；可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與獨立 provider 欄位未暴露。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "D1",
+          "title": "神速技巧候選一達標就直接回傳，漏掉更短的滿品質解",
+          "severity": "medium",
+          "file": "wasm/src/lib.rs",
+          "location": "solve_input():246-251；better():197-199",
+          "evidence": "// 神速技巧那條路做得完就直接採用\nif let Some(ob) = plan_b {\n    if ob.complete && ob.final_quality >= target_total {\n        return Ok(ob);\n    }\n}\n實跑 recipe1008 楓木木材，Lv100／作業4000／加工4000／CP600：\n自動神速技巧：TrainedEye → DelicateSynthesis，2步／6秒／CP318。\n相同輸入僅停用神速技巧：DelicateSynthesis，1步／3秒／CP568。\n兩者均 complete=true，HQ100%，配方品質上限80。",
+          "impact": "常見低階配方會產生不必要的技能與等待時間，明明有滿品質的一步解卻交付兩步巨集，違反最佳手法的求解目標。",
+          "recommendation": "保留神速技巧的耐久補償，但不要僅因其候選達標便排除其他解；比較候選或用可靠下界證明不存在更短解後再返回。候選排序須將品質夾至遊戲品質上限，否則目前兩步結果的溢出品質1584仍會被誤認為優於一步結果1368，儘管兩者在遊戲內同為80。",
+          "mechanize": "新增 recipe1008 的 deterministic solver regression：相同預設角色數值下，允許神速技巧的結果必須達滿品質且僅需一步，不能比停用該技能的已達標解更長。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Read 確認 wasm/src/lib.rs:246–251 在神速技巧候選完成且達標時立即回傳，未比較其他候選；197–199 的 better() 亦直接比較未夾至品質上限的 final_quality，再比較步數。全 repo Grep 並追讀 consumer 確認 app-formula.js:68 自動啟用該技能，app-solve.js → worker.js → CraftRender.render 將結果步驟直接轉為玩家巨集，沒有下游縮短處理。唯讀 Eval 載入既有公式、recipe1008 資料與已編譯 WASM，實際得到自動模式 TrainedEye→DelicateSynthesis（2步／6秒／剩餘CP318／品質1584）及僅停用神速技巧的 DelicateSynthesis（1步／3秒／剩餘CP568／品質1368），兩者 complete=true、品質上限80；雖原碼註解刻意省略對照求解以節省計算時間，此反例提供「同樣滿品質卻增加巨集步驟與遊戲等待」的新代價，不是單純重報既定取捨。未修改檔案，未跑 build/lint/tests/formatter，也未量測其他配方的普遍影響；可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與實際 provider 未提供。"
+          }
+        }
+      ],
+      "dimensionKey": "correctness-data",
+      "perspective": "project"
+    },
+    {
+      "dimension": "韌性 — 錯誤處理 / 重試 / 額度",
+      "score": 8.5,
+      "applicability": "applicable",
+      "summary": "已檢查：Worker crash／SIMD／取消與重試、静態資料 HTTP／逾時與選配降級、UI v2 共用功能退場、localStorage 配額失敗、資料生成驗證與 Pages Function 計費路由。唯讀、記憶體隔離情境實跑確認 crash 訊息會 terminate 舊 Worker 並重建、過期結果不干擾新求解、constructor／postMessage 同步失敗恢復操作與清除計時器、SIMD 不支援隱藏重試；資料 HTTP 503 情境確認選配失敗保留必要資料、等級同步有警告、必要資料失敗明確 reject，11 次 fetch 均設 30 秒 timeout。_routes.json 僅攔 settings-api，代理缺 binding／上游失敗分別回 503／502 且不走 URL fallback；仍有一處資料生成失敗前已發布部分新資料的跨檔一致性缺口。未執行 build／generate／lint／tests／formatter，未寫入被審 repo、未呼叫正式設定 API；可觀測模型為 openai-codex/gpt-6.1-sol，effort 與獨立 provider 欄位未暴露。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "RES-01",
+          "title": "item_lookup 驗證失敗時，已先覆寫配方快照而保留舊 items.json",
+          "severity": "medium",
+          "file": "tools/build-data.py",
+          "location": "main:52-57；tools/build_lib/items.py:38-40,84-88",
+          "evidence": "if not copy_static_data():\n    return\nenrich_consumables()\nrecipes = write_items()\nif recipes is None:\n    return\nshutil.copy(src, os.path.join(OUT, fn))\nif miss_ids:\n    problem(\"item_lookup 查無配方引用 item：%s\" % \", \".join(str(i) for i in sorted(miss_ids)))\n    return None",
+          "impact": "凍結快照新增的 item 尚未存在於 item_lookup 時，生成器雖然報失敗，但 data/ 已留下新 recipes／levels／ingredients 搭配舊 items 的混代狀態，不能保證既有可用資料完整保留。",
+          "recommendation": "在 copy_static_data 覆寫輸出前完成該快照的 item_lookup 引用驗證，或先將本輪完整產物放入隔離 staging、全部驗證通過才發布。這是 [0922-DATA] 的鄰近新缺陷：write_items 本身已修為缺 item 時不覆寫，但 caller 的先行發布順序尚未涵蓋該失敗路徑；本項依實際程式順序與分支靜態核驗，未執行生成器。",
+          "mechanize": "在暫存目錄預置完整舊輸出、提供引用缺失 item 的有效新快照，驗證整體生成失敗後所有 data/ 產物仍逐 byte 等於舊輸出。",
+          "spreadKey": "copy_static_data",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Read 確認 tools/build-data.py:52–57 先執行 copy_static_data／enrich_consumables，再執行 write_items；tools/build_lib/items.py:38–40 已覆寫五份快照，而 :84–88 遇缺 item 時直接 return None、保留舊 items.json，因此所述失敗分支確實會留下混代資料。全 repo Grep 並追讀 common.py 確認 validate_recipe_bundle 僅驗證配方／rlv／材料結構與關聯，不查 item_lookup，入口也沒有 rollback；這是 [0922-DATA] 已修「items.json 本身不覆寫」的相鄰缺口，不是原缺陷重報。上游 build-static-data.py:274–275 確實會阻止在同一份 DB 下產生缺 item 的新快照，因此不能斷言正常連續重建必然觸發，但既有凍結快照搭配較舊／不同 item_lookup 時，build-data 的這條路徑仍未防住；前輪文件亦明示未承諾整套多檔交易原子性，本項僅確認具體配方／items 混代風險。依指示僅作 Grep／Read 靜態核驗，未寫檔、未執行生成器或 tests，沒有宣稱實測重現；可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與實際 provider 未知。"
+          }
+        }
+      ],
+      "dimensionKey": "resilience",
+      "perspective": "project"
+    },
+    {
+      "dimension": "quality",
+      "score": 8.8,
+      "applicability": "applicable",
+      "summary": "已檢查：UI v2 圖示與靜態烘焙出口／classic script 注入與跨層呼叫／Worker crash、SIMD 與求解世代管理／Rust 薄綁定／資料生成器關聯驗證／死碼及 inline handler 反查。模組職責與私有狀態邊界清楚，顯示和求解共用 recipeMaxes、statShortfall，兩支資料生成器共用 validate_recipe_bundle；Worker 的初始化、一般求解失敗與 crash 有明確分流，近期變更未見需要重構的巨型新檔或第二套公式。仍有少量抽層後未清乾淨的 proxy 與已失去用途的注入契約，但不構成目前功能故障；本次僅 Find／Grep／targeted Read，未寫檔、未重跑 build／lint／tests／formatter，未另作 runtime 驗證。可觀測模型為 openai-codex/gpt-6.1-sol；effort 與 provider 未暴露，不推測。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "A1",
+          "title": "抽層後仍殘留無呼叫 proxy 與不再使用的必要依賴",
+          "severity": "low",
+          "file": "app.js",
+          "location": "103–104、310、314；app-recipe.js:370–379",
+          "evidence": "app.js:103 function refreshSelectedGear() { return globalThis.CraftRecipe.refreshSelectedGear(); }\napp.js:104 function renderIngredients(recipe, maxQ) { return globalThis.CraftRecipe.renderIngredients(recipe, maxQ); }\napp-recipe.js:372 'getComputedInitial', 'setComputedInitial', 'getOpenedFromList', ...\napp-recipe.js:374 'getRecipesById', 'getRecipeByItem', 'getRecipesByItem', ...\n全 repo Grep（含 HTML inline handler、tools/tests 與 _harness 的導出）確認：兩支 app.js proxy 無呼叫；實際呼叫位於 CraftRecipe 內部或直接呼叫 CraftRecipe 方法。\nCraftRecipe 的 getComputedInitial／getRecipeByItem 僅出現在 REQUIRED，沒有讀取；app.js 與測試仍被迫注入。\nrenderIngredients proxy 為 R5 quality A5 前輪遺留，本輪仍在；updateInitial 有 tools/tests/12-recipe-sync.test.mjs 的實際呼叫，不列死碼。",
+          "impact": "無用途的轉接與必要依賴擴大控制器及測試的維護面，也讓 init 契約錯誤宣稱模組需要它實際不使用的資料。",
+          "recommendation": "移除已確認無呼叫的兩支 app.js proxy，以及 CraftRecipe 不使用的 getComputedInitial／getRecipeByItem REQUIRED 項、對應注入與測試 fixture 欄位；保留 CraftRecipe 內部實作及仍由測試使用的 updateInitial proxy，不將刻意的同名 proxy 架構全面刪除。",
+          "spreadKey": "renderIngredients",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "全 repo Grep（含 HTML、tools/tests 與另行檢查的 _harness.mjs）確認 app.js:103–104 兩支 proxy 沒有 consumer；refreshSelectedGear／renderIngredients 的實際呼叫在 app-recipe.js 私有作用域內，另有 tools/tests/51-nextcraft.test.mjs:195 直接呼叫 CraftRecipe 方法，而 index.html:389 將 app.js 載為 module，不會提供 inline handler 可用的同名 global。app-recipe.js 的 getComputedInitial／getRecipeByItem 只出現在 REQUIRED:372、374，沒有讀取或動態 deps 存取，init:378–379 卻會因缺鍵 throw；app.js:310、314 與 51-nextcraft.test.mjs:176、178 確實仍注入這兩個無用途 getter，但其他模組使用的同名 getter 不應刪除。AGENTS.md:36 明訂同名 proxy 是刻意架構，本項只針對無 consumer 的兩支，因此不是全面否定該設計；renderIngredients 屬 R5 quality A5 前輪遺留、本輪仍在，updateInitial 在 12-recipe-sync.test.mjs:82、98、129 有實際 consumer，維持 low 的維護性問題判定。全程僅 Find／Grep／Read，未寫檔或執行 build、lint、tests、formatter；可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與實際 provider 未提供，故不推測。"
+          }
+        }
+      ],
+      "dimensionKey": "quality",
+      "perspective": "project"
+    },
+    {
+      "dimension": "測試 / CI / 機械防護網",
+      "score": 8.4,
+      "applicability": "applicable",
+      "summary": "已檢查：公式 golden／test runners 與 VERIFY 接線／UI v2 圖示漂移哨兵／Worker crash、SIMD 與世代守衛測試／資料驗證變更／WASM 與 pkg 同步防護／部署及 settings-api 測試。正向證據包括真公式全欄與邊界斷言、T66 實際核對 Worker 淘汰與下一次求解目的地、runner 自動探索與檔數下限，以及 canonicalTest 納入 JS、部署、Action/hash/tag 與 Rust 驗證；但 T28 有兩項不能辨識其宣稱回歸的斷言。高 ROI 補測建議（非已證實缺陷）：worker.js 的 SIMD 判定及 RuntimeError 分類 producer 契約、validate_recipe_bundle 的無效輸入矩陣，以及建置失敗時既有輸出保持不變。此次僅唯讀靜態核對，未寫檔、未執行 build/lint/tests/formatter，亦未重跑 Main 提供的綠燈基線；可觀測模型為 openai-codex/gpt-6.1-sol，effort/provider 未知。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "T1",
+          "title": "T28 的 aria-hidden 與 60 秒升級斷言存在假綠路徑",
+          "severity": "medium",
+          "file": "tools/tests/30-solve.test.mjs",
+          "location": "224-235、258-276；對照 app-solve.js:72-84",
+          "evidence": "// innerHTML setter 不解析 v，而自行製造預期節點\nstatus.elapsedNode = solveNode('已耗時 0 秒', { 'aria-hidden': 'true' }); // :230\n// 檢查的是上述 stub 自填的屬性\n eq('T28 秒數節點帶 aria-hidden=\"true\"', firstElapsed.getAttribute('aria-hidden'), 'true'); // :263\nnow = 60000; tick(); // :272\nconst overtimeWrites = firstMessage.textWrites; // :273\nnow = 61000; tick(); // :274\n eq('T28 ≥60 秒升級文案只寫一次', firstMessage.textWrites, overtimeWrites); // :276",
+          "impact": "刪除實作的秒數 aria-hidden，或完全移除 60 秒提示升級，這兩項斷言仍會通過，無法守住避免 live region 重複播報及長求解提示的宣稱契約。",
+          "recommendation": "保留有效的節點 identity 與每秒更新測試；移除 stub 自證的屬性斷言，改從實作輸出的 markup 解析屬性或以真 DOM 驗證。提示升級應核對 59 秒未寫入、60 秒恰好寫入一次、61 秒沒有新增寫入，而非只比較事後兩個相等計數。",
+          "mechanize": "修正 T28 的輸出解析與 59/60/61 秒邊界斷言，並於修復驗收時在暫存副本分別刪除 aria-hidden 與升級分支，確認兩種突變均轉紅。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "Read 確認 tools/tests/30-solve.test.mjs:224-235 的 innerHTML setter 不解析實作輸出的 markup，而固定製造帶 aria-hidden=\"true\" 的 elapsedNode，因此 :263 實際檢查的是 stub 自填屬性。:272-276 僅比較 60 秒執行後與 61 秒執行後的 textWrites，且 _harness.mjs:107 使用普通嚴格相等；[INFERENCE] 移除升級分支後兩者同為 0 仍會通過，全 repo Grep 也未找到其他針對此提示或秒數節點的補充斷言。app-solve.js:72-84 目前確實具有 aria-hidden 與一次性升級邏輯，因此成立的是局部 regression coverage 缺口，而非現行產品故障，嚴重度下修為 low，亦不與既有全綠基線矛盾。本次唯讀、未改檔，依指示未執行 tests 或 mutation，結論來自 Grep/Read；可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與 provider 未知。"
+          }
+        }
+      ],
+      "dimensionKey": "tests-ci",
+      "perspective": "project"
+    },
+    {
+      "dimension": "文件 / CLAUDE.md drift + 衛生",
+      "score": 7.2,
+      "applicability": "applicable",
+      "summary": "已檢查：README、AGENTS.md、root 與所有子層 CLAUDE.md、四份 path rules 的篇幅／分工／重複，以及 124 筆具體路徑、13 個命令目標、現行測試引用、部署與資料重建契約。CLAUDE.md 僅 9 行且無子層副本，AGENTS.md 120 行、rules 各 18–34 行，均未超過 200 行；本地 Markdown 連結有效，VERIFY 命令也與 devloop.json 一致，但刪測試與 fleet 遷移後留下會誤導維護者的引用。語意按風險抽查測試護欄、部署邊界、資料快取與引擎重建，未全面驗算遊戲資料數字或逐條審閱外部 design spec，歷史報告不當作現行規範；全程唯讀，未跑 build／lint／tests／formatter。可觀測 model=openai-codex/gpt-6.1-sol，provider 識別前綴=openai-codex，effort 未曝露，未探測實際後端路由。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "D1",
+          "title": "測試摘除後，現行 path rules 仍指向已刪檔與不存在的護欄",
+          "severity": "medium",
+          "file": ".claude/rules/frontend-state.md",
+          "location": "14、16、18–20；另見 .claude/rules/ui-design.md:19–28、AGENTS.md:5",
+          "evidence": "frontend-state.md:14：key 與 app-gear.js 兩份由 tests/first-run-hint-key.test.mjs 守。\nfrontend-state.md:20：匯出必有呼叫端由 T64 守。\nui-design.md:27：T44／T55 守形狀。\nAGENTS.md:5：31,248（T65 機械守）。\nCHANGELOG.md:38：完整移除 tests/first-run-hint-key.test.mjs 等 source-only 測試。\n唯讀存在性檢查：tests/first-run-hint-key.test.mjs 不存在。\n現存 tools/tests/*.test.mjs 無 T17、T21、T26、T35、T36、T44、T47、T48、T49、T50、T55、T59、T64、T65。",
+          "impact": "維護者依規則尋找測試會找不到，且可能誤以為 canonicalTest 仍保護匯出使用、UI 形狀或文件大小等已撤除的契約。",
+          "recommendation": "保留有效紅線，但刪除已撤除測試的「由某測試守」宣稱；有替代驗證者改指現行檔案，例如冷啟動 HTML 漂移已由 tools/tests/62-icons.test.mjs 覆蓋。不要為了讓舊文件成立而復活 Owner 已決定刪除的低價值測試；文件候選修訂交由 Owner 確認。",
+          "mechanize": "增加唯讀 docs-drift 檢查：現行規範引用的測試路徑必須存在，宣称護欄的 T 編號必須能定位到現行測試宣告；歷史歸檔排除。",
+          "spreadKey": "first-run-hint-key.test.mjs",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "Read 確認 frontend-state.md:14、16、18–20、ui-design.md:19–28 與 AGENTS.md:5 仍引用已撤除的測試路徑或 T 編號；Glob 確認 tests/first-run-hint-key.test.mjs 不存在，Grep 現存測試未找到所列編號的測試宣告。CHANGELOG.md:38 明載這批 source-only 測試是刻意摘除，而 62-icons.test.mjs:12–13 已改用 bake-crafter-html.mjs --check 保護冷啟動 HTML 漂移，因此不能把舊引用解讀成全部相關行為都失去驗證。文件漂移成立，但未證明使用者功能回歸，校正為 low；不應復活 Owner 已決定刪除的測試。"
+          }
+        },
+        {
+          "id": "D2",
+          "title": "canonicalTest 權威仍指向已退役的 fleet.json",
+          "severity": "medium",
+          "file": "AGENTS.md",
+          "location": "57；CLAUDE.md:8 同源舊敘述",
+          "evidence": "AGENTS.md:57：canonicalTest（safe-push 實跑；claude-skills fleet.json 逐字對照本行）。\ndevloop.json:2：\"canonicalTest\": \"node tools/test-formulas.mjs && node tests/run-all.mjs && py -3.11 tools/check-actions.py && (cd wasm && cargo test)\"\n共用 safe-push.sh:8：以 repo 根的 devloop.json 取 canonicalTest。\n共用 safe-push.sh:334–338：T6 後備已全數刪除，不要把 fleet.json／fleet.local.json 後備加回來。\n共用 fleet-check.mjs:2–4：本機 repo 快取與 repo 根 devloop.json；不讀集中式 repo 登記檔。\n存在性檢查：~/.claude/process/fleet.json 不存在。",
+          "impact": "維護者調整驗證命令時會被導向不存在、也不再由 safe-push 消費的集中式登記表，容易漏改真正的 repo 宣告。",
+          "recommendation": "把現行權威改指本 repo 的 devloop.json，說明 AGENTS.md VERIFY 命令需與該宣告一致；同步精簡 CLAUDE.md 的舊「已註冊 fleet」敘述。歷史 CHANGELOG／已結案 BACKLOG 保留當時的 fleet.json 記錄即可。",
+          "mechanize": "用唯讀 drift script 檢查現行 configuration 指標存在，並比對 devloop.json.canonicalTest 與 AGENTS.md VERIFY 代碼塊。",
+          "spreadKey": "fleet.json",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "Read/Grep 確認 AGENTS.md:57 仍稱與 claude-skills fleet.json 逐字對照，CLAUDE.md:8 也保留「已註冊 fleet canonicalTest」說法。共用 safe-push.sh:334–348 實際從 repo-decl 讀取 repo 根 devloop.json，明確禁止 fleet.json 後備；fleet-check.mjs:2–4、122–123 也以 repo 宣告為準，Glob 確認舊集中登記檔不存在。不過本 repo devloop.json 的 canonicalTest 與 AGENTS.md:60 命令一致，沒有實際漏跑驗證的證據，故屬 low 的權威來源敘述漂移。"
+          }
+        },
+        {
+          "id": "D3",
+          "title": "部署規則宣稱並行安全契約與哨兵，但實作及測試將它列為未適用的後續條件",
+          "severity": "medium",
+          "file": "AGENTS.md",
+          "location": "119；對照 deploy-prepare.sh:33–39、76 與 tests/deploy-prepare.test.mjs:11–12",
+          "evidence": "AGENTS.md:119：建到 _site.tmp.$$、清單走 mktemp、換名段用 mkdir \"$_site.lock\" 序列化，哨兵＝test_deploy_prepare_is_concurrency_safe。\ndeploy-prepare.sh:33：OUT=_site\ndeploy-prepare.sh:39：rm -rf \"$OUT\"; mkdir -p \"$OUT\"\ndeploy-prepare.sh:76：LIST=.deploy-filelist.tmp\ntests/deploy-prepare.test.mjs:11–12：目前沒有排程／並行寫入者，若日後有才改 _site.tmp.$$＋鎖。\n現存 tests/ 無 test_deploy_prepare_is_concurrency_safe。",
+          "impact": "讀者會誤認本站部署已符合並行安全要求且有回歸哨兵，實際文件卻對同一適用條件給出相反的維護指示。",
+          "recommendation": "由 Owner 在 fleet 層對齊共用規則與本站適用條件，明確區分已實作保障與有並行寫入者時才需落地的契約，並移除不存在的哨兵宣稱；不得單邊改共用部署規則。本項只確認文件矛盾，未聲稱已觀察線上競態，與 build-release 維度同根者可合併。",
+          "mechanize": "唯讀文件引用檢查應要求「哨兵＝函式名」能定位到現存測試，避免文件聲稱不存在的保護。",
+          "spreadKey": "test_deploy_prepare_is_concurrency_safe",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "Read 確認 AGENTS.md:119 要求 _site.tmp.$$、mktemp、mkdir lock 並引用 test_deploy_prepare_is_concurrency_safe；deploy-prepare.sh:33、39、76 實際使用固定 _site 與 .deploy-filelist.tmp。全 repo Grep 未找到該哨兵的實作，且 tests/deploy-prepare.test.mjs:11–12 明示目前沒有排程／並行寫入者，將暫存目錄與鎖列為未來條件。文件矛盾及不存在的哨兵引用成立，但沒有觀察到線上競態，也不推翻已通過的 allow-list build 基線，故校正為 low，並保留不得單邊修改 fleet 部署規則的限制。"
+          }
+        },
+        {
+          "id": "D4",
+          "title": "README 的單檔快取重抓 SOP 未反映資料包驗證與實際重用範圍",
+          "severity": "medium",
+          "file": "README.md",
+          "location": "21–25；對照 tools/build-static-data.py:154–168、184–198、247–253",
+          "evidence": "README.md:22：已存在的 json 一律 reuse，要強制重爬 tnze 就先刪掉那一支。\nbuild-static-data.py:184–187：craft_type／medicine／meals 每次直接 get(...)，不是重用現存 JSON。\nbuild-static-data.py:190：recipes = cached_json('recipes.json', ...)\nbuild-static-data.py:195–198：recipe_levels 快取按這次 recipes 的 rlvs 驗證。\nbuild-static-data.py:247–250：ingredients 快取按這次 recipes 的 id 集合驗證。\nbuild-static-data.py:93：raise ValueError('recipe_levels cache 缺 rlv：...')\nbuild-static-data.py:110：raise ValueError('ingredients cache 缺 recipe：...')",
+          "impact": "遊戲更新時照 SOP 只刪 recipes.json，若新資料增加 recipe id 或 rlv，既存相依快取會被正確拒絕，導致文件所述重建流程中斷。",
+          "recommendation": "README 應明列只有 recipes／recipe_levels／ingredients 走快取，其餘資料會重新取得或產生，並說明遊戲版本更新須協調更新相依的整包快照。保留現有 fail-closed 驗證，不改資料來源或公式；只列文件修訂候選，不在本輪操作 tracked 快照。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "Read 確認 README.md:21–23 宣稱既有 JSON 一律 reuse、重爬只需刪除單支，但 build-static-data.py:184–187 每次直接取得 craft_type／medicine／meals，僅 recipes／recipe_levels／ingredients 走 cached_json。程式在 :195–198、247–253 用新 recipes 的 rlv 與 recipe id 驗證相依快取，缺項於 :93、110 拋 ValueError，因此只刷新 recipes 且新增相依 key 時會中止，而非自動補齊相依快取。這是條件式重建 SOP 漂移，fail-closed 本身正確，未證明現有快照或基線失敗，故校正為 low。本批僅 Grep／Read／Glob，未寫檔、未跑 build／lint／tests／formatter 或實際重爬；可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與 provider 未知。"
+          }
+        }
+      ],
+      "dimensionKey": "docs-drift",
+      "perspective": "project"
+    },
+    {
+      "dimension": "perf-data",
+      "score": 9,
+      "applicability": "applicable",
+      "summary": "已檢查：11 份 JSON 的並行載入與索引／recipe、ingredients 反查與任務素材展開／Worker 預熱、SIMD 探測、crash 重建與 WASM 序列化／settings service binding、ETag、Cache-Control／近期生成器資料驗證的迴圈成本。正向證據：app-data.js:32-74 一輪並行 fetch 並建立 recipe 索引，app-nextcraft.js:17-26、71 按需建一次 ingredients 反查索引，app.js:289-293 提前預熱 Worker，wasm/src/lib.rs:246-251 在神速技巧候選成功時不再重跑昂貴求解；common.py:40-80 的驗證使用 dict/set、按資料規模線性走訪。唯讀實測 https://crafter.xivtc.com/ 的 recipes／items／ingredients／WASM 都回 200、gzip 與 ETag，wire payload 分別為 209799／353461／99541／118688 B，單次 curl 總耗時 517／622／449／379 ms，recipes 條件請求回 304、body 0 B（282 ms）；本機 11 份 JSON 共 7624217 B、未見 base64 payload，Bun 1.4.2 各檔 15 次 JSON.parse 中位數合計 14.5 ms，這不是手機或 browser 效能證明。未發現需另列的資料路徑缺陷；選配資料阻塞首載的 Promise.all gate 已由 perf-ux reviewer 實測並負責列報，本維度不重複，未跑 build／lint／tests／formatter、未寫入被審 repo，也未對正式 settings API 發出請求；可觀測模型為 openai-codex/gpt-6.1-sol，effort 與獨立 provider 欄位未暴露。",
+      "omittedCount": 0,
+      "findings": [],
+      "dimensionKey": "perf-data",
+      "perspective": "project"
+    },
+    {
+      "dimension": "perf-ux",
+      "score": 8.2,
+      "applicability": "applicable",
+      "summary": "已檢查：首載 script/CSS 載入鏈、11 份 JSON 與索引初始化、配方搜尋／翻頁熱路徑、Worker 預熱與取消／crash 回收、UI v2 首載位移與動畫、線上壓縮及回訪快取。正向證據包括並行 fetch、60 列分頁、180ms 搜尋 debounce、加入清單原位更新，以及 Worker／計時器的明確回收；實測線上 recipes.json 為 gzip 209,727 bytes、ETag 条件請求回 304／0 bytes，360px 首載 CLS 約 0.00016。Chromium 4× CPU slowdown 下翻頁產生 147ms long task，尚不足以認定實機嚴重卡頓；確認的缺口是與求解無關的選配 JSON 慢回應仍會阻擋配方首次可用。全程唯讀，僅做 HTTP GET 與獨立 Chromium 故障注入／互動觀察，未重跑 build、lint、tests 或 formatter；可觀測 model 為 openai-codex/gpt-6.1-sol，effort／provider 未另行暴露。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "PU1",
+          "title": "職業任務等選配資料的慢回應仍阻擋整個配方求解首載",
+          "severity": "medium",
+          "file": "app-data.js",
+          "location": "32–44；app.js:378–386",
+          "evidence": "app-data.js:11：AbortSignal.timeout(30000)\napp-data.js:32：const [recipes, rlv, actions, items, ingredients, meals, medicine, stages, levelSync, quests, vendors] = await Promise.all([\napp-data.js:42：  fetchOpt('data/job-quests.json'),\napp-data.js:43：  fetchOptObj('data/vendors.json'),\napp.js:378：await loadData();\napp.js:386：renderTable();\nChromium 對 job-quests.json 注入 5 秒延遲：必要 5 JSON 於 206–262ms 完成，299ms 時 rows=0、仍顯示「載入配方資料中」；任務 JSON 於 5197ms 完成後，5236ms 才出現 60 列。",
+          "impact": "玩家即使已收到全部核心求解資料，仍會因未使用的職業任務／商人資料等待而無法選配方；[INFERENCE] 單一請求 stall 可把等待拖至目前的 30 秒 timeout。",
+          "recommendation": "保留既有並行下載與完整靜態資料，不引入 lazy-load／IDB；將職業任務與 vendors 等非核心資料的完成／降級處理移出配方首次可用的 await gate，抵達後再更新其功能，並保留相關索引先建立的時序契約。",
+          "mechanize": "以可控制完成時機的 fetch stub 固化不變量：核心 JSON 全數完成但 job-quests／vendors 仍 pending 時，配方列表與選配方操作必須已可用；選配資料稍後完成仍須正確接入。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "全 repo Grep 並 Read 確認 app-data.js:32–44 將 job-quests／vendors 與核心資料放在同一 Promise.all，而唯一正式載入鏈 app.js:58–70、378–386 必須等其全部完成才設定配方索引、初始化 CraftBrowse 並 renderTable，沒有另一條先行可用路徑。唯讀 Eval 將實際 app-data.js 與現有 JSON 載入隔離 VM，以可控制完成時機的 fetch 觀測：其餘 9 份完成時 loadResolved=false；job-quests 完成、只剩 vendors 時仍為 false；全部完成後才回傳 13,874 配方、11 職任務與 256 商人資料。BACKLOG B-021 否決的是 lazy-load／IDB 與錯誤傳輸量論據，不是本項已觀測的選配請求等待耦合，因此不構成重提已拍板取捨；30 秒等待是依 timeout(30000) 推論的 stall 情境，非本次線上實測，且缺 AbortSignal.timeout 的舊瀏覽器沒有該上限。未修改檔案、未跑 build／lint／tests／formatter，也未重演 reviewer 的 Chromium 5 秒場景；可觀測 model=openai-codex/gpt-6.1-sol，provider 僅可見識別前綴 openai-codex，effort 未知。"
+          }
+        }
+      ],
+      "dimensionKey": "perf-ux",
+      "perspective": "user"
+    },
+    {
+      "dimension": "UX — 流程 / 回饋 / 防呆",
+      "score": 7.8,
+      "applicability": "applicable",
+      "summary": "已檢查：近期 UI v2 的三步流程／缺角色數值補救與移焦／最低能力門檻提示／空製造清單／結果與品質警語／Worker crash、SIMD 不支援及重試回饋／本機保存失敗告知。真瀏覽器操作確認缺數值會導到角色數值並移焦、空清單有明確下一步；以頁面記憶體內的 Worker 訊息注入確認 SIMD 有具體升級版本且隱藏無效重試，crash 會重建 Worker 並說明如何再試，未觸發真實引擎 crash，未重跑 build/lint/tests/formatter，未寫入 repo。仍有預設滿品質未達標時警語漏失，以及能力不足卻顯示「準備就緒」兩項回饋落差；合理可加但非缺陷的功能是移除製造清單項目後提供短暫「復原」，不因此扣分。可觀測模型為 openai-codex/gpt-6.1-sol；provider 未獨立核驗，effort 未提供。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "UX1",
+          "title": "預設滿品質未達標時漏掉警語與補救指引，手填同一目標卻會顯示",
+          "severity": "medium",
+          "file": "app-render.js",
+          "location": "134-135、147；對照 app-formula.js:73-74、app-recipe.js:287",
+          "evidence": "app-formula.js:73-74：target_quality: $('solve-mode').value === 'nq' ? 0 : (($('opt-target').value && +$('opt-target').value > 0) ? Math.min(+$('opt-target').value, max_quality) : max_quality)\napp-render.js:134-135：const targetEl = $('opt-target'); const shortLine = shortfallHtml(targetEl.disabled ? 0 : Number(targetEl.value) || 0, r.final_quality);\napp-render.js:147：...(shortLine ? ['未達目標品質：請依畫面提示調整。'] : [])\n本人真瀏覽器 render probe：同一 complete=true、final_quality=746、max_quality=12900 結果，留空→blankWarn=false；填12900→explicitWarn=true，警語寫出差12154及補救。\nTrackC 獨立真 WASM 驗證：recipe35417研究者圓手鋸、Lv90/作業4000/加工3500/CP180、選項全false，最低能力門檻通過，實際 target12900、final746、complete=true。",
+          "impact": "採用預設滿品質的玩家看不到未達目標及調整方法，複製結果摘要也漏掉未達標提示，與手填相同目標的回饋不一致。",
+          "recommendation": "結果警語應使用與 computeSettings 相同的有效目標：非 NQ 模式留空時採 max_quality，再比較實際品質；保留 NQ 不警告的既定語意。此項與 TrackC 的同源發現合併，不應當成兩個獨立缺陷計數。",
+          "mechanize": "加入等價目標的行為回歸：同一未達標結果，目標留空與顯式 max_quality 都產生警語及摘要提醒，切 NQ 後兩者都不產生品質未達警語。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "全 repo Grep 並追讀 app-formula.js:73-74、app-recipe.js:287、app-quality-stages.js:121，確認留空實際代表 max_quality；app-solve.js:147 直接交給 CraftRender.render，而 app-render.js:135 卻把留空轉成 0，且第147行的複製摘要提醒共用此錯誤判定。獨立 localhost 真瀏覽器 render probe 使用 final_quality=746、max_quality=12900：留空沒有警語，顯式12900出現差12154與補救指引；停用目標欄的 NQ 情境兩者均無警語。31-render.test.mjs:133 的確把「留空不警告」釘成現有測試，但 CLAUDE.md／AGENTS.md 與其 frontend-state 規則未找到 Owner 拍板的此項取捨，且與有效目標語意及 render 的未達標提示契約不一致，不能以基線綠否定。未重跑 WASM 情境或任何測試；本次 runtime 證據只證明實際 renderer 差異，複製摘要遺漏則由實際共用分支確認。"
+          }
+        },
+        {
+          "id": "UX2",
+          "title": "最低能力不足時求解鈕呈停用態，但旁邊仍宣告準備就緒",
+          "severity": "low",
+          "file": "app-flow.js",
+          "location": "96-109、121-134；對照 app-recipe.js:195-198",
+          "evidence": "app-flow.js:101：const gearOk = hasRecipe && gearOkFor(sel.recipe.job);\napp-flow.js:124：const warn = hasRecipe && !gearOk;\napp-flow.js:129：: '準備就緒 — 按下開始計算最佳手法';\napp-flow.js:134：if (phBtn) phBtn.setAttribute('aria-disabled', hasRecipe && !gearOk ? 'true' : 'false');\napp-recipe.js:196-197：const gate = deps.statGate(recipe); deps.$('solve-btn').setAttribute('aria-disabled', (g && gate.ok) ? 'false' : 'true');\n真瀏覽器記憶體內設 Lv50/作業200/加工200/CP100，選1207玄鋼塊：需求作業275、solve-btn aria-disabled=true，但 solve-hint 顯示「準備就緒」，流程下一步仍叫玩家求解。",
+          "impact": "玩家同時看到不足警示、暗掉的求解鈕與「準備就緒」，無法一致判斷是否能製作，也必須多按一次才取得差額與補救方向。",
+          "recommendation": "流程軸、主 CTA 狀態與空結果 CTA 共用既有最低能力 gate，數值已填但不足時就地顯示差額及補救下一步；維持求解鈕可聚焦、可按後導向補資料的既定設計。",
+          "mechanize": "以有有效 gear 但 gate.ok=false 的情境守住不顯示「準備就緒」，並確認主 CTA 與空結果 CTA 的 aria-disabled 一致。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "全 repo Grep 確認 app.js:453 注入 CraftFlow 的 gearOkFor 只是 !!gearFor(job)，而 app-gear.js:42-52 只驗證數值合法與 fallback，並未比較配方最低能力；主 CTA 則在 app-recipe.js:196-197 使用 statGate。獨立 localhost 真瀏覽器以記憶體內 Lv50／作業200／加工200／CP100 套用玄鋼塊1207後，實際觀察主 CTA aria-disabled=true、空結果 CTA=false，旁邊仍寫「準備就緒」，流程仍叫玩家求解。這是提示與 CTA 狀態不一致，不是能繞過門檻：app-solve.js:46-51 仍會擋下、說明差額並導向角色數值，且 recipe-req 的 data-help 已提供差額，因此「必須多按一次才能取得差額」略有誇大，維持 low。唯讀核驗未寫 repo、未跑 build／lint／tests／formatter；可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與實際 provider 未知，不猜測。"
+          }
+        }
+      ],
+      "dimensionKey": "ux-flows",
+      "perspective": "user"
+    },
+    {
+      "dimension": "a11y-compat",
+      "score": 7.5,
+      "applicability": "applicable",
+      "summary": "已檢查：近期 UI v2 的 tablist／配方表語意、鍵盤 focus／食藥選單／modal、360px 觸控版面與字級配色、Worker crash／SIMD 的相容性提示。實際 Chromium 操作確認 Home／End 切頁、選配方移焦、食物選單 Tab 收合、「繼續做」modal 的 Esc／還焦均正常，360px 的設定、裝備、任務頁未見整頁橫向溢出；前輪 [0922-UI] 的選配方移焦與窄屏修復仍有效，但另有重繪遺失 focus 與核心選配方入口缺少操作語意兩項缺口。未跑 build／lint／tests／formatter、未寫 repo；未實測 Firefox／Safari、實機 safe-area 或 screen reader 語音，跨瀏覽器結論僅限程式明示的 SIMD 版本提示。可觀測模型為 openai-codex/gpt-6.1-sol；實際 provider 路由與 effort 未暴露。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "A1",
+          "title": "職業篩選重繪與完成任務移除會丟失鍵盤 focus",
+          "severity": "medium",
+          "file": "app-browse.js; app-quests.js",
+          "location": "app-browse.js:52-59；app-quests.js:94-105、221-234",
+          "evidence": "app-browse.js:52 $('job-chips').innerHTML = ['', ...DOH].map(j => {\napp-browse.js:58 jobFilter = b.dataset.job; renderChips(); renderTable();\napp-quests.js:94 $('quest-jobs').innerHTML = DATA.map((j) => {\napp-quests.js:104 b.onclick = () => { state.job = b.dataset.job; save(); render(); };\napp-quests.js:229 if (state.hideDone && c.checked) card.remove();\nChromium 實操：配方「木工」chip 按 Enter → activeElement=BODY。\n任務「鍛造師」chip 按 Enter → activeElement=BODY。\n「只顯示未完成」下以 Space 完成第一項 → activeElement=BODY，剩 18 項。",
+          "impact": "鍵盤使用者每次換職業或連續完成待辦都失去 focus 可見位置，無法可靠地接續下一個操作。",
+          "recommendation": "職業 chip 優先保留 DOM 節點並更新選中狀態，若仍重建則還焦到同一職業的新節點；移除完成任務前，將 focus 移到下一項、前一項或清單空狀態的可操作入口。此為與 [0922-UI] 相鄰但不同的觸點，不是已修的選配方移焦問題。",
+          "mechanize": "以 browser 鍵盤回歸固定不變量：Enter 切職業後 focus 仍在選中 chip，Space 移除任務後 focus 落在下一個有效控制而非 BODY。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Read 確認 app-browse.js:52–59 與 app-quests.js:94–105 在 chip click 後以 innerHTML 重建觸發按鈕，app-quests.js:229 則直接移除包含 checkbox 的 card；全 repo Grep 未找到這三條路徑的還焦 guard，翻頁與選配方的 focus 保護不涵蓋它們。獨立 Chromium 實操：木工 chip 按 Enter 後 activeElement=BODY，任務木工師 chip 按 Enter 後同樣為 BODY，「只顯示未完成」下第一項按 Space 後任務由 19 減至 18 且 activeElement=BODY。這是與 [0922-UI] 已修選配方移焦相鄰但不同的缺陷，medium 合理；未寫 repo、未跑 build/lint/tests/formatter，並已還原本次操作前的任務 localStorage。可觀測 model 為 openai-codex/gpt-6.1-sol；provider 與 effort 未取得獨立可觀測值，不猜測。"
+          }
+        },
+        {
+          "id": "A2",
+          "title": "選配方核心入口只有可聚焦 table row，沒有可辨識的操作控制",
+          "severity": "medium",
+          "file": "app-browse.js",
+          "location": "145、163-167",
+          "evidence": "145 <tr class=\"rt-row…\" data-id=\"${r.id}\" tabindex=\"0\"><td class=\"rt-name\">…<span class=\"rt-nm\">${esc(r.name)}</span>…\n163 const row = e.target.closest('.rt-row');\n164 if (row) selectRecipe(+row.dataset.id);\n167 if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('rt-row')) { e.preventDefault(); selectRecipe(+e.target.dataset.id); }\nChromium ariaSnapshot：楓木木材暴露為 row／cell，品名不是 button 或 link。\n該列唯一的 button 名稱為「將『楓木木材』加入製造清單」，沒有「選擇／求解配方」控制。",
+          "impact": "依 button／link 導覽的輔助科技使用者能找到加入清單，卻無法由語意辨識如何進入設定與求解，必須猜測一般 table row 可按 Enter。",
+          "recommendation": "在品名 cell 提供有明確 accessible name 的原生 button（例如「選擇楓木木材配方」），保留 table／row／cell 的資料語意；整列點擊可作額外捷徑，但不要只靠 tabindex 與隱藏的 keydown 規約承載核心動作。此為與 [0922-UI] 相鄰的語意缺口，已修的選取後 focus 行為無需重做。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Read app-browse.js:145 的完整 markup 確認品名是 span、配方列是 tabindex=0 的 tr，列內只有加入與隱藏的退掉清單 button；全 repo Grep 的 consumer 顯示選配方由 :163–167 的 click／Enter／Space 委派處理，沒有替品名補上操作語意的 runtime。独立 Chromium ariaSnapshot 中楓木木材確實是 row／cell，唯一可見 button 是「將『楓木木材』加入製造清單」；同時實操列上 Enter 可正常選取且移焦到 config-title，因此成立的是操作可辨識性缺口，不是鍵盤完全不可達。CHANGELOG-2026.md:1290 已記錄同一 row+button a11y 取捨，但描述為升級 Owner、未自改，未找到 CLAUDE.md 或現行規則中明示接受此限制的拍板，不能據此 refute，也不宜宣稱是本輪首次發現。核心入口的 AT 語意缺口維持 medium；已驗 Chromium accessibility tree，但未實跑 NVDA／VoiceOver。"
+          }
+        }
+      ],
+      "dimensionKey": "a11y-compat",
+      "perspective": "user"
+    },
+    {
+      "dimension": "依賴 / 供應鏈健康",
+      "score": 8.2,
+      "applicability": "applicable",
+      "summary": "已檢查：raphael／Rust manifest 與 lockfile、SIMD build toolchain／BUILD-STAMP、Python／JS 外部依賴、portal／Phosphor 更新來源、第三方授權產物與部署 allow-list。raphael 已鎖定 v0.28.6 與完整 git commit，且與[上游最新 release](https://github.com/KonaeAkira/raphael-rs/releases/tag/v0.28.6)一致；Rust nightly 釘日期、來源與 WASM／JS hash 對帳、第三方 notices 已實際由正式站提供，classic JS／Node／Python 工具不依賴 npm／pip 套件，因此此處沒有缺 npm lockfile 的問題。仍有 wasm-pack／optimizer 未受版本約束，以及授權生成器未支援 CARGO_HOME 的重建缺口；授權僅作粗檢，不下法律定論。唯讀驗證執行 wasm-pack --version／PATH 探查（exit 0：0.13.1、無 wasm-opt）與非 __main__ 的 runpy 環境 probe，未執行 build／generator main／tests／lint／formatter、未修改 repo；可觀測 model＝gpt-6.1-sol、provider 標識＝openai-codex，effort 未暴露。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "D1",
+          "title": "WASM 建置工具只記錄版本，未約束 wasm-pack 與 optimizer 的選用",
+          "severity": "medium",
+          "file": "tools/build-wasm.ps1",
+          "location": "55-59、73-80；tools/check-actions.py:125-132",
+          "evidence": "$wasmPackV = ((& wasm-pack -V 2>&1 | Out-String).Trim() -replace '^wasm-pack\\s+', '')\nif ($LASTEXITCODE -ne 0 -or -not $wasmPackV) { throw \"wasm-pack -V 失敗（未安裝？cargo install wasm-pack）\" }\nwasm-pack build --release --target web --out-dir $out\ntoolchain = [ordered]@{ channel = $channel; rustc = $rustcRelease; rustc_commit = $rustcCommit; wasm_pack = $wasmPackV }\nBUILD-STAMP.json 記錄 wasm_pack＝0.13.1；實際 --version 亦為 0.13.1。\ncheck-actions.py 只要求 wasm_pack 欄存在，沒有 expected version 比對或 optimizer 欄位。",
+          "impact": "乾淨機器依提示安裝最新版，或 PATH 上存在不同 wasm-opt 時，會在未明確核准 toolchain 更新的情況下產生不同版本工具處理的 WASM，而目前戳記仍能接受。",
+          "recommendation": "將已驗證的 wasm-pack 與 Binaryen／wasm-opt 版本納入單一建置契約，安裝指令指定 version／locked，建置前拒絕不符版本並記錄實際 optimizer；升級時再有意識地更新與驗證。上游 [wasm-pack v0.15.0](https://github.com/wasm-bindgen/wasm-pack/releases/tag/v0.15.0)仍活躍維護，不是要求盲升；目前使用的 [v0.13.1 optimizer 選用程式](https://github.com/wasm-bindgen/wasm-pack/blob/v0.13.1/src/wasm_opt.rs)會優先採用任意 PATH wasm-opt，否則下載該版內建 Binaryen。",
+          "mechanize": "將工具版本契約與 BUILD-STAMP 的 wasm_pack／optimizer 逐項比對，並用替代版本輸入驗證不符時必須 fail-closed。",
+          "verdict": {
+            "verdict": "partial",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "全 repo Grep 與 Read 確認 tools/build-wasm.ps1:55-59、80 只讀取並記錄 wasm-pack 版本，tools/check-actions.py:125-133 只要求欄位非空並比對 Rust channel；隔離的記憶體 probe 將 wasm_pack 改成 0.15.0 或 arbitrary-version，原函式均回傳 True，且不要求 optimizer 欄位。惟 docs/BACKLOG.md:20 明載 B-038 的 Owner 拍板就是「Rust channel 釘日期、rustc／wasm-pack 記錄版本」，因此不能把未 pin wasm-pack 本身當成未落實既有決策的新缺陷。新增的 optimizer 部分有具體佐證：wasm/Cargo.toml 未停用或指定 wasm-opt，上游 https://github.com/wasm-bindgen/wasm-pack/blob/v0.13.1/src/wasm_opt.rs 的 find_wasm_opt 確實優先接受 PATH 中的 wasm-opt，腳本與戳記皆未記錄其版本；但未實跑替代 optimizer，不能宣稱已發生產物漂移或功能故障，故限於 low 重現性風險。依要求未執行 build／lint／tests／formatter，也未寫入被審 repo；兩次 probe 均正常完成。"
+          }
+        },
+        {
+          "id": "D2",
+          "title": "授權生成器忽略 CARGO_HOME，與 WASM 建置的自訂 Cargo cache 支援不一致",
+          "severity": "low",
+          "file": "tools/build-notices.py",
+          "location": "20-21、61-63；tools/build-wasm.ps1:38",
+          "evidence": "REG = glob.glob(os.path.expanduser(\"~/.cargo/registry/src/*\"))\nGIT = glob.glob(os.path.expanduser(\"~/.cargo/git/checkouts/raphael-rs-*/*\"))\nraphael_dir = next((g for g in GIT if os.path.basename(g) == raphael_rev), None)\nif not raphael_dir:\n    sys.exit(\"✗ 找不到 raphael-rs ...：先在 wasm/ 跑一次 cargo fetch\")\n唯讀 probe 設定 CARGO_HOME＝TEMP 下替代位置，REG／GIT 仍解析到使用者 ~/.cargo。\n相鄰 build-wasm.ps1 已處理 $env:CARGO_HOME 的 remap-path-prefix。",
+          "impact": "使用自訂 CARGO_HOME 的乾淨環境即使已完成 cargo fetch／WASM 建置，仍無法從相同 cache 重建第三方授權聲明，且錯誤提示要求重做 fetch 不能解決根因。",
+          "recommendation": "以 CARGO_HOME 優先、未設定時才回退 ~/.cargo 的同一 cache root 尋找 registry 與 git checkout；保留缺 checkout 時 fail-closed，不依賴另一份家目錄 cache。",
+          "mechanize": "在不呼叫 generator main 的 isolated probe 中設定 CARGO_HOME，驗證 REG／GIT 搜尋 root 必須落在該位置，未設定時才使用 ~/.cargo。",
+          "spreadKey": "CARGO_HOME",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "Read tools/build-notices.py:20-21、25-31、61-63 確認 REG／GIT 固定搜尋 ~/.cargo，crate_dir 與 raphael checkout 選取實際使用這兩份結果；全 repo Grep 未找到替它改採 CARGO_HOME 的 wrapper 或 guard，而 tools/build-wasm.ps1:38 明確支援自訂 CARGO_HOME 的 path remap。隔離執行原始 REG／GIT assignments 的記憶體 probe，將 CARGO_HOME 設為系統 TEMP 下的替代路徑後，兩個 glob 搜尋仍落在使用者 ~/.cargo，取消 CARGO_HOME 後搜尋路徑也完全相同。故只有自訂 cache 的乾淨環境無法由同一 cache 產生授權聲明，原本的 cargo fetch 提示不能排除根因；未呼叫 generator main、未產生授權檔，也未驗完整 WASM 建置，low 嚴重度合理。本次可觀測 model 為 openai-codex/gpt-6.1-sol（Sol）；effort 與實際 provider 未提供，保持未知。"
+          }
+        }
+      ],
+      "dimensionKey": "deps-supply-chain",
+      "perspective": "project"
+    },
+    {
+      "dimension": "data-lifecycle",
+      "score": 7.2,
+      "applicability": "applicable",
+      "summary": "已檢查：7 類 localStorage 保存資料的讀取／型別與邊界驗證／版本 key／刪除與失敗恢復、生成器跨檔發布、SQLite 來源讀取、共用設定備份範圍、Worker crash 對持久資料的影響。正向證據包括保存失敗大多有一次性通知、角色數值 corruption 有警告、製造清單改版會排除失效配方且保留有效數量、食品暫時失載不抹掉既有選擇，以及 settings proxy 保留 If-Match／ETag；本站專用資料則仍是本機 localStorage，未見接入共用設定 export／import。唯讀核驗使用系統暫存副本：Node VM smoke exit 0 證明多分頁覆寫與正常改版過濾，Python 隔離函式 smoke exit 0 證明 items 生成失敗留下跨世代 bundle；未跑 build／lint／tests／formatter、未對正式 API 操作，也未實測硬碟故障或瀏覽器資料清除後的完整還原。可觀測模型為 openai-codex/gpt-6.1-sol，provider 識別前綴為 openai-codex，effort 未暴露；暫存副本已清除，被審 repo 未寫入。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "DL-01",
+          "title": "生成器先發布配方，再驗證 items，失敗後留下跨世代資料集",
+          "severity": "medium",
+          "file": "tools/build-data.py",
+          "location": "52-60；tools/build_lib/items.py:38-40,84-88",
+          "evidence": "if not copy_static_data():\n    return\nenrich_consumables()\nrecipes = write_items()\nif recipes is None:\n    return\n# temp smoke：copy_static_data=True；write_items=None（item 20 查無）\n# recipes=[{id:2,item_id:20}]，items 仍只有 id10\n# quality-stages / level-sync 仍只有舊 recipe id1",
+          "impact": "一次失敗的資料更新會讓新 recipes／ingredients 搭配舊 items／品質階段／同步資料，後续讀取或出貨可能使用不一致的快照。",
+          "recommendation": "先在隔離 staging 產出並驗證完整相依資料集，全部成功後再發布；失敗時保留完整上一代資料，而不只保留該支生成器自己的舊檔。這是與 [0922-DATA] 相鄰的新缺口：單檔 missing-item 不覆寫已修，但 caller 的先發布順序仍未處理；resilience 的 RES-01 為同型，應跨維度去重。",
+          "mechanize": "以既有完整 bundle 為基準，注入新配方所引用 item 查無，斷言失敗後所有相依輸出均保持原始 bytes。",
+          "spreadKey": "copy_static_data",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Read 確認 tools/build-data.py:52–60 先呼叫 copy_static_data，再執行 write_items；items.py:38–40 已覆寫五份快照，84–86 查無 item 時只停止 items.json 更新，caller 隨即 return，品質階段與等級同步也不會重建。common.py:27–80 的關聯 guard 僅驗 recipes／recipe_levels／ingredients，並未涵蓋 item_lookup；另讀 app-data.js 與 deploy-prepare.sh，前者接受缺 item 的 fallback，後者沒有資料世代一致性驗收，但生成 CLI 確實會 exit 1，因此不是假成功或必然自動出貨。以實際函式在系統暫存 fixture 重現：copy_static_data=true、write_items=null、缺 item 20，recipes／ingredients 已變更而 items／quality-stages／level-sync 保留舊 bytes；fixture 清理曾因驗證端 SQLite 連線未關閉失敗，釋放後已清除，未執行完整生成器、build 或測試套件。這是 [0922-DATA] 單檔保護已修之後仍存在的 caller 跨檔發布缺口，應與 RES-01 去重，medium 合理。"
+          }
+        },
+        {
+          "id": "DL-02",
+          "title": "同 origin 多分頁保存整份角色資料，會靜默撤銷另一分頁已保存的修改",
+          "severity": "medium",
+          "file": "app-gear.js",
+          "location": "17-23,31-32,123-138；同型 crafting-list.js:68-76、app-quests.js:26-40",
+          "evidence": "const raw = localStorage.getItem(GEAR_KEY);\ngearsets = parsed;\ntry { localStorage.setItem(GEAR_KEY, JSON.stringify(gearsets)); }\n(gearsets[job] = gearsets[job] || {})[f] = value;\nsaveGear();\n// 隔離雙 VM：A、B 都先讀 cms=4000/ctrl=4000\n// A 保存 cms=4100，B 再保存 ctrl=4200\n// 持久值變 cms=4000/ctrl=4200；A edit retained:false（exit 0）",
+          "impact": "玩家在多個求解分頁依序修改角色數值、製造清單或任務進度時，較舊記憶體快照會蓋掉另一分頁已成功保存的資料，重整後修改消失。",
+          "recommendation": "為本站持久資料建立跨分頁變更協調：保存前讀取最新狀態並套用本次局部操作，且以 storage 事件更新其他分頁的狀態；對真正同時寫入明確序列化或偵測衝突，避免單純整份 last-writer-wins。先涵蓋 gear、craftlist、quests 這三類具累積價值的資料，不必引入 IDB。",
+          "mechanize": "用共享 storage 的兩個獨立 VM／頁面，先各讀同一版本再依序更新不同欄位，斷言重載後兩筆更新都保留。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Read 確認 app-gear.js:17–32 僅讀取並保存整份 gearsets，123–140 的合法輸入直接修改記憶體再覆寫 storage；app.js 的正式 loadGear 呼叫在初始化，沒有保存前重新讀取或合併另一分頁的修改。全 repo Grep 未找到實作中的 storage／focus／visibilitychange 同步 listener、onstorage、BroadcastChannel 或 navigator.locks；crafting-list.js:68–95,285 與 app-quests.js:26–40,221–225 也分別保存整份 list／doneSet，確認同型問題確實到達使用者操作。以實際 app-gear.js 在兩個獨立 VM 共用 storage 重現：A 保存 cms=4100 後，B 保存 ctrl=4200，最終為 cms=4000／ctrl=4200、aEditRetained=false；這是依序合法操作造成已存修改遺失，非數值 guard、儲存例外通知或不用 IDB 的拍板能防住，維持 medium，未實測真瀏覽器多分頁。全程未改 repo、未跑 build／lint／測試套件；可觀測 model=openai-codex/gpt-6.1-sol，effort 與執行 provider 未提供，不推測。"
+          }
+        }
+      ],
+      "dimensionKey": "data-lifecycle",
+      "perspective": "project"
+    },
+    {
+      "dimension": "build-release",
+      "score": 8.2,
+      "applicability": "applicable",
+      "summary": "已檢查：raphael v0.28.6 依賴與工具鏈、SIMD 建置旗標、BUILD-STAMP 來源／產物對帳、授權生成與 allow-list 出貨、部署失敗保留前版路徑，以及 repo 內 CI／secret 暴露面。以唯讀 GET 實查正式站 WASM、JS 與三份授權檔：全部 HTTP 200、內容 SHA-256 與 checkout 相同，WASM MIME 正確且實際回應 Brotli 與 must-revalidate；未發現 repo 內 GitHub Actions 或部署長壽 token。仍有建置輸入未納入同步戳記，以及含空白 Windows 路徑的旗標編碼缺口；未執行 build／lint／tests／formatter、未寫 repo，亦未操作 Cloudflare dashboard 或實做 rollback。可觀測 model 為 openai-codex/gpt-6.1-sol（Sol）；effort 與實際 provider 未暴露，不推測。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "BR1",
+          "title": "BUILD-STAMP 未涵蓋 Cargo.toml 與建置腳本，改建置契約仍可被判為同步",
+          "severity": "medium",
+          "file": "tools/check-actions.py",
+          "location": "75–80；tools/build-wasm.ps1:73–80；wasm/Cargo.toml:19–22",
+          "evidence": "# tools/check-actions.py:75–80\nexpected = {\n    \"lib_rs\": normalized_sha256(LIB_RS),\n    \"cargo_lock\": normalized_sha256(Cargo_LOCK),\n    \"pkg_wasm\": normalized_sha256(PKG_WASM),\n    \"pkg_js\": normalized_sha256(PKG_JS),\n}\n# wasm/Cargo.toml:19–21\n[profile.release]\nopt-level = 3",
+          "impact": "[INFERENCE] 修改 release profile、既有 dependency features 或 SIMD 建置腳本而未重建 pkg，可能完全不改 Cargo.lock，使同步護欄仍全綠、上線繼續使用舊建置契約的 WASM。",
+          "recommendation": "把 wasm/Cargo.toml 與 tools/build-wasm.ps1 納入 BUILD-STAMP 的建置輸入雜湊，生成端與 check-actions 驗證端同時更新；建置契約變更必須重建 pkg，而不只對帳 lib.rs 與 lockfile。",
+          "mechanize": "增加隔離突變驗證：只修改 Cargo.toml 的 release profile 或 build-wasm.ps1 的 SIMD 旗標、保持 pkg／舊戳記不變，check-actions 必須拒收。",
+          "spreadKey": "BUILD-STAMP.json",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Read 確認 tools/check-actions.py:75–80 與 tools/build-wasm.ps1:73–80 的 hash 集合只有 lib_rs、cargo_lock、pkg_wasm、pkg_js，實際 BUILD-STAMP.json 也沒有 Cargo.toml 或建置腳本的 hash。追查完整驗證路徑後，額外護欄只比對 rust-toolchain channel、掃描產物帳號路徑，以及比對兩份 Cargo.toml 的 raphael tag；不會檢查 wasm/Cargo.toml:19–22 的 release profile 或腳本旗標變更。因此只改 release profile 或建置腳本、保留其餘輸入與舊 pkg，現有同步檢查無法辨識建置契約漂移；這不否定機械基線綠燈，也不是已拍板取捨。medium 合理，但本次未執行隔離突變，亦未證明目前已發布的 pkg 存在漂移。"
+          }
+        },
+        {
+          "id": "BR2",
+          "title": "RUSTFLAGS 用空白串接，Windows 家目錄或 CARGO_HOME 含空白時不能可靠重建",
+          "severity": "medium",
+          "file": "tools/build-wasm.ps1",
+          "location": "36–43",
+          "evidence": "$flags = @(\"--remap-path-prefix=$env:USERPROFILE=~\")\nif ($env:CARGO_HOME) { $flags += \"--remap-path-prefix=$env:CARGO_HOME=~/.cargo\" }\n$flags += '-C', 'target-feature=+simd128'\n$env:RUSTFLAGS = $flags -join ' '\nCargo 官方契約：RUSTFLAGS「split by whitespace」；CARGO_ENCODED_RUSTFLAGS 以 0x1f 分隔。\n來源：https://doc.rust-lang.org/cargo/reference/environment-variables.html",
+          "impact": "[INFERENCE] USERPROFILE=C:\\Users\\Build User 或含空白的 CARGO_HOME 會把一個 remap 參數拆成多個 rustc 參數，使乾淨 Windows 機器依 README 操作時建置失敗；本輪未執行此建置情境。",
+          "recommendation": "以 CARGO_ENCODED_RUSTFLAGS 和 ASCII Unit Separator 傳遞完整參數陣列，避免用空白序列化路徑；同步處理既存的 RUSTFLAGS／CARGO_ENCODED_RUSTFLAGS，讓 remap 與 SIMD 旗標只有一個明確來源。",
+          "mechanize": "以含空白的 USERPROFILE／CARGO_HOME 驗證旗標編碼與解碼 round-trip，每個 remap 路徑必須仍是一個完整參數，且 SIMD 旗標保留。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Read 確認 tools/build-wasm.ps1:37–43 將 USERPROFILE／CARGO_HOME 插入各 remap 參數，再以空白 join 寫入 RUSTFLAGS；全 repo Grep（含 ignored／hidden 範圍）未找到程式碼中的 CARGO_ENCODED_RUSTFLAGS 補救設定。Cargo 官方文件 https://doc.rust-lang.org/cargo/reference/environment-variables.html 明示 RUSTFLAGS 以 whitespace 分割，因此 C:\\Users\\Build User 的 remap 參數會被拆開，腳本內字串的雙引號不會保留到 Cargo 的參數解析階段。這是含空白路徑環境下的具體重建相容性缺陷，medium 合理；現有正常環境重建成功不能反證此情境，但本次沒有實跑該 Windows 建置情境。此次只做 Grep／Read，未寫檔或跑 build／lint／tests／formatter；可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與實際 provider 未明示，不推測。"
+          }
+        }
+      ],
+      "dimensionKey": "build-release",
+      "perspective": "project"
+    },
+    {
+      "dimension": "Design system 引用一致性",
+      "score": 8.1,
+      "applicability": "applicable",
+      "summary": "已檢查：portal tokens／共用 CSS 與元件契約、四個分頁、求解結果與重試按鈕、圖示來源、inline style、獨立 404 頁及字級 fallback。主頁確實載入 tokens.css／header.css，四頁沿用共用標題、表格、KPI、空狀態與步驟軸；實際瀏覽器操作確認楓木木材求解後共用 KPI 正常，390px 無整頁橫溢且結果 KPI 維持三欄，inline style 主要是動態進度／量測／捲動控制而非重新定義視覺。剩餘缺口是 404 自刻共用視覺、兩套本地 accordion，以及兩處舊字級 fallback；未寫入 repo、未執行 build／lint／tests／formatter，亦未重測 Worker crash 路徑。可觀測 model 為 openai-codex/gpt-6.1-sol；逐呼叫 effort 與獨立 provider 欄位未暴露，不推測。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "DS1",
+          "title": "404 頁仍以本地副本重刻面板、徽記與按鈕，無法承接 portal 共用更新",
+          "severity": "medium",
+          "file": "404.html",
+          "location": "8-12、19-33",
+          "evidence": "8: <!-- 這頁刻意**不載入任何外部資產**（不接 portal CDN、無 JS、無圖）。\n20: padding:2rem; text-align:center; background:var(--color-surface, #101824);\n22: clip-path:polygon(0 14px,14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%);\n25: h1::before { content:\"\"; width:12px; height:12px; flex:none; transform:rotate(45deg);\n26: border:2px solid var(--accent, #4ec9d0); }\n29: a { display:inline-block; padding:.6rem 1.4rem; border-radius:.5rem;\n瀏覽器：stylesheets=[null]、--fs-xs 與 --space-2 均未定義，返回連結無 codex class，圓角 8px。\nportal 共用 codex-btn 圓角採 --radius-sm=6px；codex-sigil 有獨立共用幾何。",
+          "impact": "404 的視覺與 token 值永久停在手寫快照，portal 集中調整時不會同步，形成另一份元件權威與可見的控制項差異。",
+          "recommendation": "保留無 JS、無 navbar／settings 的輕量錯誤頁需求，但讓最小必要視覺引用 portal 共用層，或由 portal 權威產生受漂移檢查保護的離線樣式；本站只維持內容與版面特化，不另手刻 codex 元件。",
+          "verdict": {
+            "verdict": "partial",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "Read 404.html:8–12、19–33 確認面板切角、菱形與返回連結皆為本地手寫；獨立 browser 實測只有 inline stylesheet、返回連結圓角 8px、菱形寬 12px／框 2px，確實不同於 portal tokens.css:110 的 6px 與 _DESIGN-SYSTEM.md:254 的共用 sigil。另一方面，404 檔頭明載零外部資產是避免假路徑放大請求的刻意設計，不能把不接 CDN 本身當成缺陷。AGENTS.md:29 與 ui-design.md:17 仍要求元件走共用權威，且未找到 404 樣式由權威生成或檢查漂移的機制，因此視覺副本維護債成立，但不是功能失效，medium 誇大。可保留離線策略再處理權威生成；本次沒有驗證線上未知路徑 HTTP 狀態。"
+          }
+        },
+        {
+          "id": "DS2",
+          "title": "食藥與結果區各自重刻 accordion，與既有共用元件形成三份實作",
+          "severity": "low",
+          "file": "styles/40-result.css",
+          "location": "15-20；styles/30-recipe.css:131-136；index.html:173、268-280",
+          "evidence": "16: .res-block > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: var(--space-2, 8px); padding: var(--space-2, 8px) 0; }\n17: .res-block > summary::-webkit-details-marker { display: none; }\n18: .res-block > summary::before { content: '▸'; color: var(--accent); transition: transform var(--transition-fast, .15s); display: inline-block; }\n19: .res-block[open] > summary::before { transform: rotate(90deg); }\n30-recipe.css:135 另有 .consumable-block > summary::before，同樣 content:'▸'，多出 margin-right:var(--space-1,4px)。\nportal styles/07-data.css:461-494 已提供 codex-accordion、marker／hover／caret／open 規則。\n實際 hover 結果 summary：背景 transparent；結果 caret margin-right=0px，食藥 caret=4px。",
+          "impact": "同一頁的折疊標記與互動回饋由兩組本地 CSS 維護，既有 portal accordion 的修正也無法自然落到這四個折疊區。",
+          "recommendation": "改以 codex-accordion 承接 marker、caret 與互動基底；目前無外框／緊密排版若與共用外觀不同，先在 portal 權威提供適合的變體，再讓本站只留間距與內容布局。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "全 repo Grep 與 Read 確認 index.html:173、268–280 的四個 details 只掛 consumable-block／res-block，styles/30-recipe.css:131–136 與 40-result.css:15–20 各自實作 marker 隱藏、caret 與 open 旋轉，沒有 codex-accordion consumer。portal styles/07-data.css:461–494 已有同類共用規則，並額外提供 summary hover 與 ::marker 防護；獨立 browser 選配方後實測食藥 summary hover 背景仍 transparent、caret margin-right 為 4px，結果區 DOM 的 caret 則為 0px。這是具體的共用元件收斂遺漏，未證明折疊功能或鍵盤操作壞掉，維持 low；共用版有外框與較大內距，遷移不能直接犧牲既有密集布局。"
+          }
+        },
+        {
+          "id": "DS3",
+          "title": "兩處 --fs-xs fallback 仍是舊 11px，與共用 12px 權威不一致",
+          "severity": "low",
+          "file": "styles/50-tabs.css",
+          "location": "78、123",
+          "evidence": "78: .cl-mat-go { flex: 0 0 auto; height: 26px; padding: 0 var(--space-2, 8px); font-size: var(--fs-xs, .6875rem); }\n123: .crafter-qt-tag { padding-top: 1px; padding-bottom: 1px; font-size: var(--fs-xs, .6875rem); white-space: nowrap; }\nportal tokens.css:241：--fs-xs: 0.75rem; /* 12px，2026-06-12 11→12 */\n瀏覽器對實際「可製作」badge 暫時使 --fs-xs 無效：12px → 11px；復原後回到 12px。",
+          "impact": "token 缺失或載入失敗時，這兩類文字退回已淘汰的 11px，而不是設計系統的 12px 下限。",
+          "recommendation": "將這兩處 fallback 對齊 0.75rem，保留既有元件和密集列布局，不另調整整套字級。",
+          "mechanize": "在既有 design drift／VERIFY 檢查中比對 --fs-xs fallback 與 portal tokens.css 的權威值，阻擋 .6875rem 舊值再次出現。",
+          "spreadKey": "--fs-xs",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "Read styles/50-tabs.css:78、123 確認兩處 fallback 都是 .6875rem，而 portal tokens.css:241、339 的 --fs-xs 均為 .75rem；全 repo Grep 也追到 crafting-list.js:217 與 app-quests.js:119–120、298 的實際 UI consumer。獨立 browser 在職業任務的「可製作」badge 暫時令 --fs-xs 缺失，實測字級 12px→11px，恢復後回到 12px，故失載路徑的差異成立，但正常載入沒有這個退化。這也是 R5 health-review 已記錄的 A6 延續問題，不應包裝成全新發現。本次唯讀、未跑 build／lint／tests／formatter，browser 分頁已關閉；可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與獨立 provider 資訊未知。"
+          }
+        }
+      ],
+      "dimensionKey": "design-system",
+      "perspective": "project"
+    },
+    {
+      "dimension": "Track C：獨立探索與行為驗證",
+      "score": null,
+      "applicability": "applicable",
+      "summary": "已檢查：repo 架構與規則／app.js 初始化與依賴注入／worker 世代失效／角色數值保存／配方與製作鏈／品質階段及等級同步／製造清單／職業任務素材展開／生成器資料來源／實際出貨 WASM 與結果呈現。classic script + globalThis 注入、求解失效守衛、最低能力共用擋閘，以及既有資料生成來源均有明確實作；確認兩項會影響玩家判斷與採購量的缺口。以 Eval 在記憶體中執行現有 Formula／Render／Quests 及 pkg WASM，未寫入 repo、未跑 build／generate／lint／tests／formatter；未驗證瀏覽器實際視覺表面。可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與 provider 未暴露，未推測。",
+      "omittedCount": 0,
+      "findings": [
+        {
+          "id": "C1",
+          "title": "預設滿品質目標未達成時，留白欄位使必要警語被省略",
+          "severity": "medium",
+          "file": "app-render.js",
+          "location": "134-135；對照 app-formula.js:73-74",
+          "evidence": "app-formula.js:73 target_quality: $('solve-mode').value === 'nq' ? 0\napp-formula.js:74   : (($('opt-target').value && +$('opt-target').value > 0) ? Math.min(+$('opt-target').value, max_quality) : max_quality),\napp-render.js:134 const targetEl = $('opt-target');\napp-render.js:135 const shortLine = shortfallHtml(targetEl.disabled ? 0 : Number(targetEl.value) || 0, r.final_quality);\n實際 pkg WASM：recipe35417「研究者圓手鋸」，Lv90／作業4000／加工3500／CP180，最低能力擋閘通過。\n選項皆關、HQ 模式、target 留白：target_quality=12900，final_quality=746，complete=true。\n呼叫現有 CraftRender.render：留白時無「未達目標品質」警語；明填12900時同一結果有警語。",
+          "impact": "玩家選擇預設「滿品質」卻只得到最佳努力結果時，仍看到完成狀態與可複製巨集，缺少本應提醒未達品質目標的警告。",
+          "recommendation": "讓結果警語使用與求解一致的有效 target：HQ 模式留白代表 max_quality，只有 NQ 模式代表不要求品質；不要把留白再次解讀成未設目標。保留現有 HQ 對照表與製作公式。",
+          "mechanize": "加入行為 regression：同一未滿品質結果，在 HQ 留白與顯式滿品質兩種輸入皆有 shortfall 警語，NQ 則沒有。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "全 repo Grep 與 Read 確認 app-formula.js:73-74 將品質模式留白轉為 max_quality，app-quality-stages.js:21、121 亦定義留白＝滿品質，但 app-render.js:134-135 卻將留白轉為 0，略過 shortfall 警語；app-solve.js:147 直接消費該 render，沒有額外品質擋閘。於系統暫存副本執行既有 pkg WASM 與 CraftRender.render（DOM stub），recipe35417、Lv90／4000／3500／CP180 通過最低能力門檻，實得 target=12900、final_quality=746、complete=true，留白無警語、明填12900有警語、欄位停用的 NQ 無警語。Read 亦發現 app-render.js:11 與 tools/tests/31-render.test.mjs:133 刻意保留「留白不警告」，但查到的拍板紀錄只要求 NQ 不警告，並未裁示可省略預設滿品質未達標警語，故這不是宣稱基線測試失敗。畫面仍顯示實際品質與 HQ 機率，因此成立的是必要警語缺漏而非偽造滿品質；隔離 probe exit 0，未跑 build／lint／tests／formatter，未寫被審 repo。"
+          }
+        },
+        {
+          "id": "C2",
+          "title": "職業任務素材展開先逐分支進位，共享中間材的剩餘產量無法共用",
+          "severity": "medium",
+          "file": "app-quests.js",
+          "location": "57-68（expandMats）",
+          "evidence": "app-quests.js:62 const per = Math.max(1, Number(recipe.item_amount) || 1);\napp-quests.js:63 const runs = Math.ceil(need / per);\napp-quests.js:64 if (depth > 0) add(inter, itemId, need);\napp-quests.js:66 for (const [iid, amt] of (ing[String(recipe.id)] || [])) walk(Number(iid), Number(amt) * runs, depth + 1, next);\napp-quests.js:68 for (const it of items || []) walk(Number(it.id), Math.max(1, Number(it && it.qty) || 1), 0, new Set());\n真資料：烹調師 Lv10 渡渡鳥烤肉×2、Lv15 貓魅風味山珍烤串×1；兩筆交付數量皆已知。\n現有 expandMats 回傳 inter 食鹽×2、base 岩鹽×2。\n現有 recipe901 每批岩鹽×1→食鹽×6；上述兩份食鹽需求實際只需一批、岩鹽×1。",
+          "impact": "「要買／要採」彙總系統性高估多產量共享中間材的底層需求，玩家依清單採購會多買或多採。",
+          "recommendation": "先合併同一中間材的總需求，再按配方產量計算製作批次與展開下游需求，或在整次展開中共用產量餘額。保留既有出環／深度保護與未知交付數量的明示估算，不修改權威資料或新增對照表。",
+          "mechanize": "加入純函式 regression：兩個成品各需食鹽1、食鹽每批產6且耗岩鹽1時，inter需求應為食鹽2、base需求應為岩鹽1。",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "medium",
+            "reasoning": "Read app-quests.js:57-68 確認各分支先各自 Math.ceil(need / item_amount) 再展開，Map 僅累加需求而不共用剩餘產量；全 repo Grep 追到 matsHtml:156-181、refreshSummary:193 與 app.js:329-331，證實此結果直接進入職業任務的「要買／要採」UI。使用暫存副本的 CraftData.load 建立真實索引並執行 expandMats，烹調師 Lv10 渡渡鳥烤肉×2、Lv15 貓魅風味山珍烤串×1 的 qty 均已知，實得食鹽需求2、岩鹽需求2，而 recipe901 每批產食鹽6、耗岩鹽1，合併需求只需岩鹽1。再執行 CraftQuests.setData 的 DOM stub 呈現流程，確認 HTML 實際列出食鹽×2、岩鹽×2，且沒有未知數量估算警語，因此非 CLI-only、未知 qty 取捨或已刪 craftPlan 的舊帳。隔離 probe exit 0，未執行專案檢查或寫入 repo；可觀測 model＝openai-codex/gpt-6.1-sol、provider 識別＝openai-codex，effort 未提供、不猜測。"
+          }
+        }
+      ],
+      "dimensionKey": "track-c",
+      "outOfBand": true
+    },
+    {
+      "dimension": "關鍵字擴散",
+      "score": null,
+      "applicability": "applicable",
+      "summary": "自 8 個 spreadKey 擴散出 5 條同源候選",
+      "findings": [
+        {
+          "id": "BUILD-STAMP.json:A1",
+          "title": "WASM 維護規則同樣漏列 Cargo.toml 與建置腳本的重建要求",
+          "severity": "low",
+          "file": ".claude/rules/wasm-engine.md",
+          "location": "22–24",
+          "evidence": ".claude/rules/wasm-engine.md:22：\n- 改 `wasm/src/lib.rs` 或 `Cargo.lock` → `cargo test`（host target 可跑）＋ `powershell tools\\build-wasm.ps1` 重建 `pkg/`＋`BUILD-STAMP.json`（否則 `check-actions.py` 紅），`pkg/` 一起 commit。\n.claude/rules/wasm-engine.md:24：\n- 改 `wasm/Cargo.toml` 依賴 → `py -3.11 tools/build-notices.py` 重產 `LICENSE-THIRD-PARTY.txt` 一起 commit（授權義務跟著依賴變）。\n唯讀核對：規則列出 lib.rs／Cargo.lock／toolchain channel 的重建義務，但未列 Cargo.toml release profile／features 或 tools/build-wasm.ps1 的變動。\n搜尋統計：含 ignored tmp/ 共 58 檔、81 命中行、83 次字面出現；遵守 ignore 的正式範圍為 20 次。",
+          "impact": "[INFERENCE] 維護者依權威規則修改 manifest features／release profile 或 SIMD 建置旗標時，可能只更新授權或腳本而不重建 pkg；這與種子同步護欄漏驗建置契約的缺口互相放大。",
+          "recommendation": "修補種子 finding 時，同步將 Cargo.toml 與 tools/build-wasm.ps1 納入這份維護規則的重建觸發條件，明列 pkg／BUILD-STAMP 必須一起更新；Cargo.toml 的授權生成義務則保留。其他命中屬種子已涵蓋的 producer／checker、歷史紀錄或本輪 tmp 審查材料，不另重報。",
+          "spreadKey": "BUILD-STAMP.json",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "Read .claude/rules/wasm-engine.md:22–24 確認重建觸發條件僅明列 lib.rs、Cargo.lock 與 toolchain channel，Cargo.toml 依賴變更另只列授權生成，未列 release profile／features 或建置腳本變更後的重建要求。Grep 其他維護入口後，AGENTS.md:78 亦將相關必跑步驟指向此規則；Read tools/check-actions.py:75–80 與 tools/build-wasm.ps1:73–80 確認同步 hash 未涵蓋 manifest 或腳本。這是維護契約的低嚴重度缺口，不代表現有 pkg 錯誤或已驗機械基線失敗。"
+          }
+        },
+        {
+          "id": "renderIngredients:A1",
+          "title": "抽層後 renderIngredients 的無有效 consumer 匯出也未收回",
+          "severity": "low",
+          "file": "app-recipe.js",
+          "location": "290、301、375–386；唯一外部引用 app.js:104",
+          "evidence": "app-recipe.js:290 renderIngredients(recipe, maxQ); // 模組內有效呼叫\napp-recipe.js:301 function renderIngredients(recipe, maxQ) {\napp-recipe.js:375 globalThis.CraftRecipe = {\napp-recipe.js:386   renderIngredients,\napp.js:104 function renderIngredients(recipe, maxQ) { return globalThis.CraftRecipe.renderIngredients(recipe, maxQ); }\n全 repo 字面反查：對外方法的唯一 consumer 是種子已確認無呼叫的 proxy；HTML、測試及 harness 沒有其他 consumer。\n計數：含 ignored 的 _site、tmp 與歷史審查工件，共 37 次／29 個命中行／15 檔；尊重 gitignore 時為 12 次／11 行／6 檔。\n_site 是相同生成副本，其他歷史文件與 tmp 工件是引用，不另列 finding；本次唯讀，未跑 build/lint/tests/formatter。\n可觀測 model：openai-codex/gpt-6.1-sol；effort 與實際 provider 未提供。",
+          "impact": "種子死 proxy 的另一端仍把僅供模組內使用的 renderer 宣告為公開 API，增加沒有實際用途的維護契約；未發現額外使用者行為故障。",
+          "recommendation": "與種子的 app.js 死 proxy 一起移除 CraftRecipe.renderIngredients 匯出，保留 app-recipe.js 內部函式及其有效呼叫；不必改 classic script/globalThis 架構，也不要將生成副本另算獨立問題。",
+          "spreadKey": "renderIngredients",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "全 repo Grep renderIngredients（分別含與不含 ignored 檔案）確認正式程式只有 app-recipe.js:290 的內部呼叫、:301 的定義、:386 的匯出，以及 app.js:104 的 proxy 定義，未見 HTML inline handler、測試或其他有效外部呼叫。Read CraftRecipe 匯出與 app.js proxy 區段後，確認 renderer 本身仍有用途，但公開匯出目前只服務無 consumer 的 proxy。成立範圍僅為低嚴重度的 API／死碼清理，不能據此否定已拍板的 classic script、globalThis 與同名 proxy 架構。"
+          }
+        },
+        {
+          "id": "first-run-hint-key.test.mjs:A1",
+          "title": "首次提示程式註解仍宣稱已刪除的 key 漂移哨兵存在",
+          "severity": "low",
+          "file": "first-run-hint.js",
+          "location": "16；同內容副本 _site/first-run-hint.js:16",
+          "evidence": "first-run-hint.js:16：// ⚠️ key 與 app-gear.js 的 GEAR_KEY 是兩份，漂移哨兵＝tests/first-run-hint-key.test.mjs。\n_site/first-run-hint.js:16：同一條註解。\nCHANGELOG.md:38：完整移除 `tests/first-run-hint-key.test.mjs`。\n唯讀存在性檢查：tests/first-run-hint-key.test.mjs 不存在。\n全目錄 grep（gitignore:false，含 _site 與 tmp）：21 次字面出現、18 個命中行、14 檔；其中非 tmp 為 9 次。\n本次僅 grep/read/glob 與唯讀計數，未跑 build/lint/tests/formatter；model=openai-codex/gpt-6.1-sol，effort/provider 未揭露。",
+          "impact": "維護者在修改首次提示或 localStorage key 時，會誤以為仍有自動測試攔住兩份 key 漂移。",
+          "recommendation": "保留 key 重複與 parser-blocking 的實際設計說明，但刪除或更正已不存在的測試保護宣稱；_site 副本應在既有部署流程重新產生時跟隨來源更新，不另手修。",
+          "spreadKey": "first-run-hint-key.test.mjs",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "low",
+            "reasoning": "Read first-run-hint.js:16 確認仍把 tests/first-run-hint-key.test.mjs 宣稱為 key 漂移哨兵，而 Glob tests/* 顯示目前只有 deploy-prepare、settings-api 與 runner，CHANGELOG.md:36–38 明載該測試已於 2026-09-12 完整移除。Grep tests 與 tools/tests 找到 gear key 的行為測試，但未找到首次提示與 gear key 一致性或 parser-blocking 時機的替代哨兵。這是現役程式註解的假護欄敘述，不是要求恢復刻意刪除的 source-only 測試，也未證明目前兩份 key 已漂移。"
+          }
+        },
+        {
+          "id": "first-run-hint-key.test.mjs:A2",
+          "title": "維護經驗文件仍把已摘除測試描述成現役雙重護欄",
+          "severity": "low",
+          "file": "docs/lessons.md",
+          "location": "118",
+          "evidence": "docs/lessons.md:118：key 有**兩份**，漂移哨兵＝`tests/first-run-hint-key.test.mjs`（同時鎖「不得改成 defer／async／module」——那會讓它跑在首次繪製之後，位移原樣回來而測試仍綠）。\nCHANGELOG.md:36–38：2026-09-12 精準摘除，完整移除該測試。\n唯讀存在性檢查：tests/first-run-hint-key.test.mjs 不存在。",
+          "impact": "讀者會把已撤除的 key 一致性與載入時機檢查當成現行保護，延續種子 finding 的假護欄認知。",
+          "recommendation": "明確把此段測試敘述改成歷史狀態，註明該測試已於 2026-09-12 摘除；保留 CLS 根因與 parser-blocking 的有效經驗，不必恢復刻意刪除的 source-only 測試。",
+          "spreadKey": "first-run-hint-key.test.mjs",
+          "verdict": {
+            "verdict": "partial",
+            "confidence": "high",
+            "correctedSeverity": "info",
+            "reasoning": "Read docs/lessons.md:118 確認確實保留已刪測試同時守 key 與載入時機的敘述，且 CHANGELOG.md:36–38 與 tests/* 存在性查核支持其已摘除。不過 Read 上文 :114 發現本節已明示是 2026-09-06 搬入的原文，標題也標示 2026-08-23，故 finding 將其直接定性為『現役雙重護欄』忽略了歷史語境。可以加上撤除註記避免混淆，但此處比現役程式與規則中的假護欄宣稱更弱，降為 info。"
+          }
+        },
+        {
+          "id": "--fs-xs:A1",
+          "title": "_site 部署副本亦保留兩處舊 11px fallback（種子的產物副本，非獨立新增缺陷）",
+          "severity": "low",
+          "file": "_site/styles/50-tabs.css",
+          "location": "78、123",
+          "evidence": "_site/styles/50-tabs.css:78：.cl-mat-go { flex: 0 0 auto; height: 26px; padding: 0 var(--space-2, 8px); font-size: var(--fs-xs, .6875rem); }\n_site/styles/50-tabs.css:123：.crafter-qt-tag { padding-top: 1px; padding-bottom: 1px; font-size: var(--fs-xs, .6875rem); white-space: nowrap; }\ndeploy-prepare.sh:88：cp \"$f\" \"$OUT/$f\" || { echo \"✗ 複製失敗：$f\" >&2; rm -f \"$LIST\"; exit 1; }\n全 repo Grep（gitignore:false）及唯讀 literal 計數：30 次、17 個命中行、10 個檔案。\n分布：來源 CSS 4 次、_site CSS 4 次、歷史健檢文件 1 次、tmp 審查資料 21 次。\n其他 CSS 命中為 var(--fs-xs)，沒有 .6875rem fallback；文件／tmp 命中為既有 finding 引述，未發現額外獨立同病觸點。\n未寫檔、未跑 build／lint／tests／formatter；本次僅靜態查核，未重跑瀏覽器。\n可觀測 model：openai-codex/gpt-6.1-sol；effort 與獨立 provider 未暴露。",
+          "impact": "目前 _site 的兩類文字在 token 缺失時同樣退回 11px；這是已知種子的複製結果，不應另計一個獨立缺陷。",
+          "recommendation": "修正來源 styles/50-tabs.css 的兩處 fallback 為 0.75rem，依既有部署流程重新生成 _site；不要直接修改產物或把此副本另算一條新缺陷。",
+          "spreadKey": "--fs-xs",
+          "verdict": {
+            "verdict": "confirmed",
+            "confidence": "high",
+            "correctedSeverity": "info",
+            "reasoning": "Read _site/styles/50-tabs.css:78、123 確認兩處 .6875rem fallback 存在，Grep 來源 styles/50-tabs.css 得到相同宣告；Read deploy-prepare.sh:78–88 確認由 allow-list 的 tracked 來源逐檔複製。Grep consumer 找到 crafting-list.js 的 cl-mat-go 按鈕與 app-quests.js 的 crafter-qt-tag 徽章，index.html 同時載入 portal tokens.css，因此只能確認 token 缺失時的條件式 fallback，不能宣稱正常線上字級已實測為 11px。這是種子的生成副本證據，不另計獨立缺陷，校正為 info；本次唯讀、未跑 build／lint／tests／formatter／瀏覽器，可觀測 model 為 openai-codex/gpt-6.1-sol，effort 與實際 provider 未提供。"
+          }
+        }
+      ],
+      "dimensionKey": "spread",
+      "outOfBand": true
+    }
+  ],
+  "run": {
+    "stats": {
+      "calls": 41,
+      "spawned": 41,
+      "cached": 0,
+      "failed": 0,
+      "peakConcurrent": 12
+    },
+    "logs": [
+      "16 維度，每批 99（review→verify pipeline）→ 對抗驗證（critical/high 獨立、其餘批次）",
+      "註冊表差集：無缺席項（或本 repo 無自維護登記表）— 健康訊號，**不計入退場的零產出**",
+      "對抗驗證統計：confirmed 28 / partial 3 / refuted 0 / 無verdict 0（⚠ refuted 0 — 主迴圈加倍抽驗 confirmed，見 SKILL.md Phase 4）",
+      "recall 層：track-c 2 條 confirmed≥medium / spread 0 條 confirmed≥medium｜盲重驗 触發 0 / 二審維持 0 / 分歧 0（無 refuted critical/high ⇒ 無觸發機會，不計入退場）",
+      "⚠ 主迴圈注意：out-of-band 條目（outOfBand:true）**不得進 perspective 分組加權**，否則雙視角分母被污染；它們走報告的「盲區命中 / 缺席清單」段。",
+      "審查 + 驗證完成，回傳結果供主迴圈綜整評分"
+    ],
+    "identities": [
+      {
+        "label": "review:correctness-data",
+        "agent": "sol"
+      },
+      {
+        "label": "review:sec-frontend",
+        "agent": "sol"
+      },
+      {
+        "label": "review:sec-backend",
+        "agent": "sol"
+      },
+      {
+        "label": "review:docs-drift",
+        "agent": "sol"
+      },
+      {
+        "label": "review:resilience",
+        "agent": "sol"
+      },
+      {
+        "label": "review:perf-ux",
+        "agent": "sol"
+      },
+      {
+        "label": "review:ux-flows",
+        "agent": "sol"
+      },
+      {
+        "label": "explore:track-c",
+        "agent": "sol"
+      },
+      {
+        "label": "review:tests-ci",
+        "agent": "sol"
+      },
+      {
+        "label": "review:quality",
+        "agent": "sol"
+      },
+      {
+        "label": "review:correctness-core",
+        "agent": "sol"
+      },
+      {
+        "label": "review:perf-data",
+        "agent": "sol"
+      },
+      {
+        "label": "review:a11y-compat",
+        "agent": "sol"
+      },
+      {
+        "label": "review:deps-supply-chain",
+        "agent": "sol"
+      },
+      {
+        "label": "review:data-lifecycle",
+        "agent": "sol"
+      },
+      {
+        "label": "review:build-release",
+        "agent": "sol"
+      },
+      {
+        "label": "review:design-system",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:tests-ci:batch×1",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:quality:batch×1",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:correctness-core:batch×1",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:sec-frontend:batch×1",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:perf-ux:batch×1",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:resilience:batch×1",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:ux-flows:batch×2",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:correctness-data:batch×1",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:a11y-compat:batch×2",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:docs-drift:batch×4",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:deps-supply-chain:batch×2",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:build-release:batch×2",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:design-system:batch×3",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:data-lifecycle:batch×2",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:track-c:batch×2",
+        "agent": "sol"
+      },
+      {
+        "label": "spread:copy_static_data",
+        "agent": "sol"
+      },
+      {
+        "label": "spread:BUILD-STAMP.json",
+        "agent": "sol"
+      },
+      {
+        "label": "spread:renderIngredients",
+        "agent": "sol"
+      },
+      {
+        "label": "spread:fleet.json",
+        "agent": "sol"
+      },
+      {
+        "label": "spread:first-run-hint-key.test.mjs",
+        "agent": "sol"
+      },
+      {
+        "label": "spread:test_deploy_prepare_is_concurrency_safe",
+        "agent": "sol"
+      },
+      {
+        "label": "spread:CARGO_HOME",
+        "agent": "sol"
+      },
+      {
+        "label": "spread:--fs-xs",
+        "agent": "sol"
+      },
+      {
+        "label": "verify:spread:batch×5",
+        "agent": "sol"
+      }
+    ]
+  },
+  "journal": [
+    {
+      "ts": "2026-09-30T06:13:12.327Z",
+      "label": "review:tests-ci",
+      "key": "04e869360d1b3cdd4e17d0024109bddd",
+      "cached": false,
+      "ok": true,
+      "ms": 189236
+    },
+    {
+      "ts": "2026-09-30T06:13:37.463Z",
+      "label": "review:quality",
+      "key": "601c0074534b2d995376b911a7269515",
+      "cached": false,
+      "ok": true,
+      "ms": 214372
+    },
+    {
+      "ts": "2026-09-30T06:14:42.749Z",
+      "label": "review:correctness-core",
+      "key": "882d324774be56d9a2f71e00f749868f",
+      "cached": false,
+      "ok": true,
+      "ms": 279658
+    },
+    {
+      "ts": "2026-09-30T06:15:08.243Z",
+      "label": "review:perf-data",
+      "key": "b759b20d980c5a7ee4bf28741ad7e03f",
+      "cached": false,
+      "ok": true,
+      "ms": 305152
+    },
+    {
+      "ts": "2026-09-30T06:15:21.317Z",
+      "label": "review:sec-frontend",
+      "key": "9d4ab69ba4c44a176c43ec16a9cac5b4",
+      "cached": false,
+      "ok": true,
+      "ms": 318226
+    },
+    {
+      "ts": "2026-09-30T06:15:25.330Z",
+      "label": "review:sec-backend",
+      "key": "60435dba194460ab51772cc5321e8ce7",
+      "cached": false,
+      "ok": true,
+      "ms": 322238
+    },
+    {
+      "ts": "2026-09-30T06:16:15.871Z",
+      "label": "review:perf-ux",
+      "key": "e72c57ff8d9914050529f6e4dfc36f19",
+      "cached": false,
+      "ok": true,
+      "ms": 372780
+    },
+    {
+      "ts": "2026-09-30T06:16:33.771Z",
+      "label": "verify:tests-ci:batch×1",
+      "key": "1d9124ac6ddd2ba6904dd6b975f0257d",
+      "cached": false,
+      "ok": true,
+      "ms": 201439
+    },
+    {
+      "ts": "2026-09-30T06:16:38.060Z",
+      "label": "review:resilience",
+      "key": "07dd9db1d2459b482cb968dac3ea33c2",
+      "cached": false,
+      "ok": true,
+      "ms": 394969
+    },
+    {
+      "ts": "2026-09-30T06:16:50.495Z",
+      "label": "explore:track-c",
+      "key": "1bb18b0e9e85aa251f59f7dec8b67e4e",
+      "cached": false,
+      "ok": true,
+      "ms": 407404
+    },
+    {
+      "ts": "2026-09-30T06:17:48.295Z",
+      "label": "review:ux-flows",
+      "key": "257523ace0084cc02e8eff22ed1c3f50",
+      "cached": false,
+      "ok": true,
+      "ms": 465204
+    },
+    {
+      "ts": "2026-09-30T06:17:50.426Z",
+      "label": "review:correctness-data",
+      "key": "c0a747ba068afae1bce029359db37ebb",
+      "cached": false,
+      "ok": true,
+      "ms": 467335
+    },
+    {
+      "ts": "2026-09-30T06:18:07.677Z",
+      "label": "verify:quality:batch×1",
+      "key": "2c408ae9827034acf82c328625faaf31",
+      "cached": false,
+      "ok": true,
+      "ms": 270209
+    },
+    {
+      "ts": "2026-09-30T06:18:35.197Z",
+      "label": "verify:sec-frontend:batch×1",
+      "key": "2e3c421a240173b9b4460d613bd0ca19",
+      "cached": false,
+      "ok": true,
+      "ms": 193874
+    },
+    {
+      "ts": "2026-09-30T06:19:01.429Z",
+      "label": "review:a11y-compat",
+      "key": "f4dc76db1076bf25b81725ba8f471885",
+      "cached": false,
+      "ok": true,
+      "ms": 538338
+    },
+    {
+      "ts": "2026-09-30T06:19:07.587Z",
+      "label": "verify:correctness-core:batch×1",
+      "key": "6cda9dc9e4ad58e55c8c64393cc380ce",
+      "cached": false,
+      "ok": true,
+      "ms": 264833
+    },
+    {
+      "ts": "2026-09-30T06:19:09.622Z",
+      "label": "review:docs-drift",
+      "key": "dce506658418b77ee3491a51ed259a5a",
+      "cached": false,
+      "ok": true,
+      "ms": 546531
+    },
+    {
+      "ts": "2026-09-30T06:19:13.721Z",
+      "label": "verify:perf-ux:batch×1",
+      "key": "875562638abcffbac8dbfffb651e6c38",
+      "cached": false,
+      "ok": true,
+      "ms": 177844
+    },
+    {
+      "ts": "2026-09-30T06:19:17.387Z",
+      "label": "review:deps-supply-chain",
+      "key": "c36a4cde277c5e0329ccb0c33f85b08e",
+      "cached": false,
+      "ok": true,
+      "ms": 554296
+    },
+    {
+      "ts": "2026-09-30T06:19:17.714Z",
+      "label": "verify:resilience:batch×1",
+      "key": "a212ef97b7689b91377c591f3b7eea78",
+      "cached": false,
+      "ok": true,
+      "ms": 159647
+    },
+    {
+      "ts": "2026-09-30T06:19:23.365Z",
+      "label": "review:build-release",
+      "key": "fb150d58b35477b4f42068dde70b1694",
+      "cached": false,
+      "ok": true,
+      "ms": 560273
+    },
+    {
+      "ts": "2026-09-30T06:20:44.359Z",
+      "label": "verify:correctness-data:batch×1",
+      "key": "5ba53b1ff5afd5830043acc1954c7995",
+      "cached": false,
+      "ok": true,
+      "ms": 173927
+    },
+    {
+      "ts": "2026-09-30T06:21:17.859Z",
+      "label": "verify:build-release:batch×2",
+      "key": "a828cbc52fd7651cf12b1cfa3b4e1a54",
+      "cached": false,
+      "ok": true,
+      "ms": 114494
+    },
+    {
+      "ts": "2026-09-30T06:21:20.671Z",
+      "label": "review:design-system",
+      "key": "c970afbd16245ee088b30c41b5ed3cc1",
+      "cached": false,
+      "ok": true,
+      "ms": 677579
+    },
+    {
+      "ts": "2026-09-30T06:21:41.247Z",
+      "label": "verify:ux-flows:batch×2",
+      "key": "aa709b4fd8e0de4ac85bdd1c10452aad",
+      "cached": false,
+      "ok": true,
+      "ms": 232947
+    },
+    {
+      "ts": "2026-09-30T06:21:47.435Z",
+      "label": "verify:docs-drift:batch×4",
+      "key": "4660b9639089e2ccb51b94d42c756184",
+      "cached": false,
+      "ok": true,
+      "ms": 157812
+    },
+    {
+      "ts": "2026-09-30T06:22:09.741Z",
+      "label": "verify:deps-supply-chain:batch×2",
+      "key": "48847a102f4fdd2bc277409c1d0a6a58",
+      "cached": false,
+      "ok": true,
+      "ms": 172353
+    },
+    {
+      "ts": "2026-09-30T06:22:17.335Z",
+      "label": "verify:a11y-compat:batch×2",
+      "key": "53bc017ed1d3814b8567d70505be2278",
+      "cached": false,
+      "ok": true,
+      "ms": 195906
+    },
+    {
+      "ts": "2026-09-30T06:22:28.723Z",
+      "label": "review:data-lifecycle",
+      "key": "06257cd1258db0f6252ad3ddc9d6c694",
+      "cached": false,
+      "ok": true,
+      "ms": 745631
+    },
+    {
+      "ts": "2026-09-30T06:24:42.126Z",
+      "label": "verify:design-system:batch×3",
+      "key": "39dc62e4ee60f3603770ef507e7c7772",
+      "cached": false,
+      "ok": true,
+      "ms": 201455
+    },
+    {
+      "ts": "2026-09-30T06:26:33.069Z",
+      "label": "verify:data-lifecycle:batch×2",
+      "key": "5528a91206b95c61181e9ea285597000",
+      "cached": false,
+      "ok": true,
+      "ms": 244346
+    },
+    {
+      "ts": "2026-09-30T06:30:51.576Z",
+      "label": "verify:track-c:batch×2",
+      "key": "201a7dd2ebc63afb26cf517520703615",
+      "cached": false,
+      "ok": true,
+      "ms": 258507
+    },
+    {
+      "ts": "2026-09-30T06:31:32.920Z",
+      "label": "spread:CARGO_HOME",
+      "key": "fc5330960fe5259a994d951263b62bee",
+      "cached": false,
+      "ok": true,
+      "ms": 41343
+    },
+    {
+      "ts": "2026-09-30T06:32:02.129Z",
+      "label": "spread:test_deploy_prepare_is_concurrency_safe",
+      "key": "0202ea03264a1f4baf746722476e4d9b",
+      "cached": false,
+      "ok": true,
+      "ms": 70552
+    },
+    {
+      "ts": "2026-09-30T06:32:33.706Z",
+      "label": "spread:copy_static_data",
+      "key": "64f10e17d8d194ef60831d4368540c0a",
+      "cached": false,
+      "ok": true,
+      "ms": 102129
+    },
+    {
+      "ts": "2026-09-30T06:32:49.487Z",
+      "label": "spread:first-run-hint-key.test.mjs",
+      "key": "ba2d8846b11b21710be6dfd5829c7792",
+      "cached": false,
+      "ok": true,
+      "ms": 117910
+    },
+    {
+      "ts": "2026-09-30T06:32:50.043Z",
+      "label": "spread:fleet.json",
+      "key": "b533f781532a8fc4f0c4c9cab45942b8",
+      "cached": false,
+      "ok": true,
+      "ms": 118466
+    },
+    {
+      "ts": "2026-09-30T06:32:53.763Z",
+      "label": "spread:--fs-xs",
+      "key": "0e355fe5dd30282300d0d56fc5d4adad",
+      "cached": false,
+      "ok": true,
+      "ms": 122185
+    },
+    {
+      "ts": "2026-09-30T06:33:10.936Z",
+      "label": "spread:renderIngredients",
+      "key": "60284c05c3a77342f5a2b2e33cedab57",
+      "cached": false,
+      "ok": true,
+      "ms": 139359
+    },
+    {
+      "ts": "2026-09-30T06:34:10.837Z",
+      "label": "spread:BUILD-STAMP.json",
+      "key": "3867cf89db7f86941c8c25099e7b428c",
+      "cached": false,
+      "ok": true,
+      "ms": 199260
+    },
+    {
+      "ts": "2026-09-30T06:36:28.618Z",
+      "label": "verify:spread:batch×5",
+      "key": "50d6c3aef55324438c0d2997f0e48e07",
+      "cached": false,
+      "ok": true,
+      "ms": 137780
+    }
+  ],
+  "planGate": {
+    "model": "anthropic/claude-opus-5-5",
+    "toolCalls": "approximately 23 read/grep",
+    "reportedDuration": "2m43s",
+    "effort": null,
+    "accountChannel": null,
+    "sha256": "3eb8f6aa405d6a6f02d3398d6026ffa376aa05cfd1e5f587d6fe82c9863da7a9",
+    "original": {
+      "findings": [
+        {
+          "title": "M6 late vendors must also re-render the crafting-list vendor badges",
+          "body": "The plan (batch 1, M6) makes vendors.json a separate promise that lands after the core nine files, but only names the quests tab as its consumer. The crafting list uses the same data: app.js:445 injects `vendorHtml: (iid) => CraftQuests.vendorHtml(iid)` into CraftList, and crafting-list.js:214 calls it for each shopping material. CraftList only calls render() inside init (crafting-list.js:285) or when the list changes (add, addRuns, removeOne, delete, qty), and it has no public refresh. Today loadData awaits vendors before CraftList.init, so a saved list shows 🏪 price badges on first paint. After M6, if vendors arrive after init, those badges stay missing and nothing signals it until the user edits the list. Files and acceptance cover only app-render/app-quests/app-data/app-browse/app.js and quest-tab checks. The plan should add crafting-list.js to Files with a list re-render when vendors arrive late (or keep vendors in the core set). It should also add an acceptance check: 5-second-late vendors, then the saved crafting list shows its vendor badges.",
+          "priority": 2,
+          "confidence": 0.85,
+          "file_path": "tmp/phr-plan-review.md",
+          "line_start": 15,
+          "line_end": 19
+        },
+        {
+          "title": "Seed staging with existing inputs for partial and in-place modes",
+          "body": "Batch 2 points every module's OUT at a fresh staging directory, and the partial flags \"only update their own files\". Two partial modes, however, read existing files out of OUT. `--consumables-only` rewrites meals.json and medicine.json in place: consumables.py:16-18 records a problem and skips when the file is missing. `--quests-only` reads OUT/recipes.json in write_job_quests (quests.py:165), and write_vendors reads OUT/recipes.json and ingredients.json (quests.py:259-261). Those files are only created in the full path, by copy_static_data. With an empty staging dir, both entry points will always fail with PROBLEMS and exit 1, breaking the plan's own \"四種入口維持範圍\" acceptance. Also, since each module does `from .common import OUT` at import time, reassigning common.OUT is not enough; every read site must follow the redirect. The plan should state the precondition: before running a partial mode, copy that mode's inputs (meals/medicine, or recipes/ingredients) from data/ into staging, and publish only that mode's output files. Staging should also sit on the same volume as data/ so per-file os.replace can publish; build-data.py itself notes that drive letters differ per machine.",
+          "priority": 2,
+          "confidence": 0.8,
+          "file_path": "tmp/phr-plan-review.md",
+          "line_start": 26,
+          "line_end": 27
+        },
+        {
+          "title": "Assign S-items fixed this round to a batch with acceptance checks",
+          "body": "The plan says S1, S2, S3, S4, S6, S7, S9 and S12 are \"直接清理, 本輪confirmed\", yet none of them is placed in a batch, given an order, or given acceptance checks. Some change behavior. S7 changes readiness display in app-flow.js, a file outside batch 1's list. S9 changes how build-notices.py resolves CARGO_HOME, which affects the output of the notices build. S2 deletes assertions from tools/tests/30-solve.test.mjs while batch 1 (M4/M6) may also need to change the frontend tests, so the same file has overlapping edits. S1 deletes app.js proxies while batch 1 also restructures app.js loadData. Without a batch and acceptance checks, the final unified run cannot tell whether a change to S7's UI or S9's notices output is intended or a regression. The plan should either fold these into batch 1 (app.js, app-flow.js, tests) and batch 3 (build-notices) with matching acceptance checks, or mark them explicitly out of scope for this round.",
+          "priority": 3,
+          "confidence": 0.6,
+          "file_path": "tmp/phr-plan-review.md",
+          "line_start": 50,
+          "line_end": 52
+        }
+      ],
+      "overall_correctness": "incorrect",
+      "explanation": "Reviewer: read-only clean-context subagent on anthropic/claude-opus-5-5, using about 23 read/grep calls. I did not read the original findings or reports, did not write files, and did not run build/lint/tests/formatter; wall-clock time was not measured. Batch order and dependencies are sound. Nothing blocks the M5 surplus design (pooled runs total ceil(total/per), independent of walk order), keeping meals/medicine in the core nine files, or the batch 3 encoded-flags/restore plan. Two gaps need fixing before execution: M6's late vendors leave the crafting-list vendor badges unrefreshed, and batch 2's staging does not seed inputs for the partial and in-place modes. There is also one P3 gap: the S-items fixed this round have no batch or acceptance checks.",
+      "confidence": 0.8
+    },
+    "adopted": [
+      "late vendors refresh saved crafting list",
+      "seed staging for partial modes and restore every imported OUT",
+      "assign direct S items to batches and acceptance"
+    ]
+  },
+  "repairWorkers": {
+    "names": [
+      "GeneratorRepair",
+      "BuildRepair"
+    ],
+    "model": "openai-codex/gpt-6.1-sol",
+    "effort": null,
+    "accountChannel": null
+  },
+  "authorization": {
+    "commit": false,
+    "push": false,
+    "deployment": false,
+    "formalDataRefresh": false,
+    "portalChanges": false
+  },
+  "verification": {
+    "canonical": {
+      "formulas": {
+        "passed": 557,
+        "failed": 0,
+        "finalLog": "artifact://209"
+      },
+      "runAll": {
+        "passed": 2,
+        "total": 2
+      },
+      "actions": 35,
+      "cargo": {
+        "passed": 6,
+        "failed": 0
+      },
+      "environment": "PowerShell; cargo cwd wasm",
+      "log": "artifact://180; cargo bg_14",
+      "rootJsSyntaxChecks": 19
+    },
+    "generator": {
+      "cases": [
+        "full",
+        "actions-only",
+        "quests-only",
+        "consumables-only",
+        "missing-lookup",
+        "missing-static",
+        "exception-after-items"
+      ],
+      "passed": 7,
+      "failureExit": 1,
+      "allFailureOutputHashesUnchanged": true,
+      "formalDataUnchanged": true,
+      "limit": "No claim of atomic publication under arbitrary mid-publish OS failures"
+    },
+    "stamp": {
+      "cases": [
+        "current accepted",
+        "manifest mutation rejected",
+        "build script mutation rejected",
+        "LF accepted",
+        "CRLF accepted"
+      ],
+      "passed": 5
+    },
+    "flags": {
+      "beforeExit": 101,
+      "encodedExit": 0,
+      "pathsContainSpaces": true,
+      "encodedPrecedence": true,
+      "failureRestoresRawEncodedAndCwd": true
+    },
+    "notices": {
+      "isolatedCargoHomeWithSpaces": true,
+      "byteIdentical": true,
+      "unknownLicenses": 0,
+      "sha256": "bfb45ef650a5699de690f4d34149c918b88abcfda7f91c4b96e2752aebf07bf9"
+    },
+    "browser": {
+      "goal": {
+        "recipe": 35417,
+        "stats": {
+          "level": 90,
+          "craftsmanship": 4000,
+          "control": 3500,
+          "cp": 180
+        },
+        "blank": {
+          "quality": 746,
+          "max": 12900,
+          "warningShortfall": 12154
+        },
+        "explicit900": {
+          "quality": 746,
+          "warningShortfall": 154
+        },
+        "nq": {
+          "quality": 237,
+          "steps": 7,
+          "seconds": 19,
+          "qualityWarning": false
+        },
+        "summaryClipboardIncludesWarning": true
+      },
+      "slowOptional": {
+        "core": {
+          "ms": 519,
+          "pending": 2,
+          "quests": "職業任務資料載入中…"
+        },
+        "solved": {
+          "ms": 901,
+          "pending": 2,
+          "summary": "✓ 可完成\nHQ 2%\n複製結果摘要\n品質\n5%\n手法步數\n9\n預估時間\n25 秒\n⚠ 未達目標品質 12900（實際 746，差 12154）— 提高作業／加工精度、開食物藥水或掌握等技能，或改選較低的品質階段\n進展\n5876/5720\n品質\n746/12900"
+        },
+        "before": {
+          "badge": "",
+          "focused": "cl-qty-in codex-input",
+          "qty": "7"
+        },
+        "after": {
+          "badge": "🏪 3 G",
+          "focused": "cl-qty-in codex-input",
+          "qty": "7",
+          "chips": 11
+        },
+        "lateMs": 5156
+      },
+      "optionalFailure": {
+        "message": "職業任務資料載入失敗，請重新整理重試。",
+        "coreSelected": true,
+        "gate": "false"
+      },
+      "focus": {
+        "browseChip": {
+          "job": "木工",
+          "pressed": true,
+          "focusRetained": true
+        },
+        "questChip": {
+          "job": "烹調師",
+          "pressed": true,
+          "focusRetained": true
+        },
+        "hideDone": {
+          "next": "65791",
+          "previous": "68143",
+          "last": "quest-hide-done",
+          "emptyStateVisible": true
+        }
+      },
+      "nativeRecipe": {
+        "rowTabindex": null,
+        "role": "button in table cell",
+        "label": "選擇「食鹽」配方",
+        "enterFocus": "config-title",
+        "solve": {
+          "steps": 1,
+          "seconds": 3
+        },
+        "clipboard": "/ac \"精密製作\" <wait.3>\r\n/echo 製作完成 <se.1>"
+      },
+      "lowStats": {
+        "recipe": 35830,
+        "craftsmanshipShortfall": 740,
+        "controlShortfall": 900,
+        "ariaDisabled": true,
+        "guidance": "下一步：補足能力需求"
+      },
+      "responsive": [
+        {
+          "width": 360,
+          "client": 360,
+          "scroll": 350,
+          "native": [
+            {
+              "h": 38,
+              "w": 86.328125,
+              "name": "高山食鹽"
+            },
+            {
+              "h": 38,
+              "w": 86.328125,
+              "name": "北洋食鹽"
+            },
+            {
+              "h": 38,
+              "w": 60.171875,
+              "name": "食鹽"
+            }
+          ],
+          "table": 314
+        },
+        {
+          "width": 390,
+          "client": 390,
+          "scroll": 380,
+          "native": [
+            {
+              "h": 38,
+              "w": 86.6875,
+              "name": "高山食鹽"
+            },
+            {
+              "h": 38,
+              "w": 86.6875,
+              "name": "北洋食鹽"
+            },
+            {
+              "h": 38,
+              "w": 60.34375,
+              "name": "食鹽"
+            }
+          ],
+          "table": 344
+        },
+        {
+          "width": 700,
+          "client": 700,
+          "scroll": 690,
+          "native": [
+            {
+              "h": 38,
+              "w": 90.40625,
+              "name": "高山食鹽"
+            },
+            {
+              "h": 38,
+              "w": 90.40625,
+              "name": "北洋食鹽"
+            },
+            {
+              "h": 38,
+              "w": 62.203125,
+              "name": "食鹽"
+            }
+          ],
+          "table": 654
+        },
+        {
+          "width": 1400,
+          "client": 1400,
+          "scroll": 1390,
+          "native": [
+            {
+              "h": 38,
+              "w": 94,
+              "name": "高山食鹽"
+            },
+            {
+              "h": 38,
+              "w": 94,
+              "name": "北洋食鹽"
+            },
+            {
+              "h": 38,
+              "w": 64,
+              "name": "食鹽"
+            }
+          ],
+          "table": 1284
+        }
+      ],
+      "fallback": [
+        {
+          "class": "codex-badge codex-badge--success crafter-qt-tag crafter-qt-tag--shop",
+          "font": "12px"
+        },
+        {
+          "class": "codex-btn codex-btn--ghost cl-mat-go",
+          "font": "12px"
+        },
+        {
+          "class": "codex-badge codex-badge--success crafter-qt-tag crafter-qt-tag--shop",
+          "font": "12px"
+        },
+        {
+          "class": "codex-badge codex-badge--success crafter-qt-tag crafter-qt-tag--shop",
+          "font": "12px"
+        },
+        {
+          "class": "codex-badge codex-badge--success crafter-qt-tag crafter-qt-tag--shop",
+          "font": "12px"
+        },
+        {
+          "class": "codex-badge codex-badge--success crafter-qt-tag crafter-qt-tag--shop",
+          "font": "12px"
+        }
+      ],
+      "normalProductErrors": []
+    },
+    "yield": {
+      "realCulLevels": [
+        10,
+        15
+      ],
+      "rockSalt": 1,
+      "originalRockSalt": 2,
+      "duplicateRoots": {
+        "before": [
+          [
+            400,
+            20
+          ],
+          [
+            300,
+            2
+          ]
+        ],
+        "after": [
+          [
+            400,
+            10
+          ],
+          [
+            300,
+            1
+          ]
+        ]
+      },
+      "diamond": {
+        "before": [
+          [
+            400,
+            10
+          ]
+        ],
+        "after": [
+          [
+            400,
+            5
+          ]
+        ]
+      },
+      "depthBoundary": {
+        "base": [
+          [
+            112,
+            4096
+          ]
+        ],
+        "lastIntermediate": [
+          111,
+          2048
+        ]
+      }
+    },
+    "engine": {
+      "rebuilt": true,
+      "wasmBytes": 315879,
+      "simd": true,
+      "pkgWasmSha256": "21f2776231ca8acc725900b710299c112a135375627dd3133f77b1dcb25294d3",
+      "pkgJsSha256": "9c8db26375b404e3b9f62998fe48dc969f7bb455f3cad0f45e39e1bd6b817ec6",
+      "hashesSameAsSnapshot": true,
+      "reusedEvidence": "docs/verification/2026-09-29-raphael-v0286-simd.md",
+      "diffAndJsGoldenRerun": false
+    }
+  }
+}

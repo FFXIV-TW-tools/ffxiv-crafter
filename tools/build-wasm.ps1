@@ -33,18 +33,31 @@ function Get-NormalizedSha256([string]$Path) {
   }
 }
 
+$originalRustFlags = [Environment]::GetEnvironmentVariable('RUSTFLAGS', 'Process')
+$originalEncodedRustFlags = [Environment]::GetEnvironmentVariable('CARGO_ENCODED_RUSTFLAGS', 'Process')
+$flagSeparator = [char]0x1f
+$flags = @()
+# 遵循 Cargo 優先序：encoded 已設定時優先使用；否則沿用 RUSTFLAGS 的 whitespace split 語意。
+if ($null -ne $originalEncodedRustFlags) {
+  if ($originalEncodedRustFlags.Length -gt 0) { $flags = @($originalEncodedRustFlags.Split($flagSeparator)) }
+} elseif ($null -ne $originalRustFlags) {
+  $flags = @($originalRustFlags -split '\s+' | Where-Object { $_ -ne '' })
+}
+
 # 家目錄 → ~；cargo home 若被搬到別處（CARGO_HOME）也一併改寫
-$flags = @("--remap-path-prefix=$env:USERPROFILE=~")
+$flags += "--remap-path-prefix=$env:USERPROFILE=~"
 if ($env:CARGO_HOME) { $flags += "--remap-path-prefix=$env:CARGO_HOME=~/.cargo" }
 # WebAssembly SIMD：raphael 的支配比較用 wide::u32x4（一次比 4 個值），不開這個旗標就退化成逐一比較。
 # raphael 官網自己的建置也開著（上游 .cargo/config_wasm.toml 的 +simd128）。瀏覽器門檻：
 # Chrome 91／Firefox 89／Safari 16.4（MDN BCD webassembly.fixed-width-SIMD），更舊的載入引擎即失敗。
 $flags += '-C', 'target-feature=+simd128'
-$env:RUSTFLAGS = $flags -join ' '
-Write-Host "RUSTFLAGS = $env:RUSTFLAGS"
 
 Push-Location $wasmDir
 try {
+  # 0x1f 分隔參數，保住含空白路徑的 remap；不要讓 Cargo 再按 whitespace 拆開。
+  $env:CARGO_ENCODED_RUSTFLAGS = $flags -join $flagSeparator
+  [Environment]::SetEnvironmentVariable('RUSTFLAGS', $null, 'Process')
+  Write-Host "CARGO_ENCODED_RUSTFLAGS = $($flags -join ' | ')"
   # 工具鏈版本一起進戳記（B-038）：rust-toolchain 釘的是日期，這裡記的是**實際用來編這份 pkg 的**版本——
   # 兩者不一致（有人本機 override、或 rustup 沒裝那個日期而退回別的）由 check-actions.py 對帳。
   # 在 wasm/ 目錄下呼叫，rustup 才會讀到 rust-toolchain 的 channel。
@@ -58,7 +71,12 @@ try {
   Write-Host "toolchain: channel=$channel rustc=$rustcRelease ($rustcCommit) wasm-pack=$wasmPackV"
   wasm-pack build --release --target web --out-dir $out
   if ($LASTEXITCODE -ne 0) { throw "wasm-pack 失敗（exit $LASTEXITCODE）" }
-} finally { Pop-Location }
+} finally {
+  try { Pop-Location } finally {
+    [Environment]::SetEnvironmentVariable('RUSTFLAGS', $originalRustFlags, 'Process')
+    [Environment]::SetEnvironmentVariable('CARGO_ENCODED_RUSTFLAGS', $originalEncodedRustFlags, 'Process')
+  }
+}
 
 # 驗收：產物裡不得再出現建置者路徑（不變量，別只看「編過了」）
 $bytes = [System.IO.File]::ReadAllBytes((Join-Path $out 'crafter_wasm_bg.wasm'))
@@ -66,13 +84,15 @@ $text = [System.Text.Encoding]::ASCII.GetString($bytes)
 $leaks = ([regex]::Matches($text, [regex]::Escape($env:USERPROFILE))).Count
 if ($leaks -gt 0) { throw "✗ 產物仍含 $leaks 處建置者路徑（$env:USERPROFILE）— remap 未生效" }
 Write-Host "✓ pkg/ 重建完成，無建置者路徑外洩（$($bytes.Length) bytes）"
-# 驗收：SIMD 真的有進產物（rustc 會把啟用的 target feature 寫進 target_features 自訂段；RUSTFLAGS 被外部覆寫時這裡會抓到）
-if (-not $text.Contains('simd128')) { throw "✗ 產物沒有宣告 simd128 — RUSTFLAGS 的 target-feature 未生效" }
+# 驗收：SIMD 真的有進產物（rustc 會把啟用的 target feature 寫進 target_features 自訂段；CARGO_ENCODED_RUSTFLAGS 被外部覆寫時這裡會抓到）
+if (-not $text.Contains('simd128')) { throw "✗ 產物沒有宣告 simd128 — CARGO_ENCODED_RUSTFLAGS 的 target-feature 未生效" }
 Write-Host "✓ 產物已啟用 WebAssembly SIMD（simd128）"
 
 $stamp = [ordered]@{
   lib_rs = Get-NormalizedSha256 (Join-Path $wasmDir 'src\lib.rs')
+  cargo_toml = Get-NormalizedSha256 (Join-Path $wasmDir 'Cargo.toml')
   cargo_lock = Get-NormalizedSha256 (Join-Path $wasmDir 'Cargo.lock')
+  build_script = Get-NormalizedSha256 (Join-Path $repoRoot 'tools\build-wasm.ps1')
   # 產物也要進戳記：只雜湊來源證明不了「這份 pkg 由這份 lib.rs 產出」——改了引擎、重建了、忘了一起 commit pkg/ 會全綠（健檢 R5 M16）
   pkg_wasm = Get-NormalizedSha256 (Join-Path $out 'crafter_wasm_bg.wasm')
   pkg_js = Get-NormalizedSha256 (Join-Path $out 'crafter_wasm.js')
@@ -82,4 +102,4 @@ $stamp = [ordered]@{
 $stampJson = $stamp | ConvertTo-Json -Compress -Depth 3
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($stampPath, $stampJson + [Environment]::NewLine, $utf8NoBom)
-Write-Host "✓ wasm/BUILD-STAMP.json 已更新（lib.rs / Cargo.lock / pkg 產物 hash）"
+Write-Host "✓ wasm/BUILD-STAMP.json 已更新（lib.rs / Cargo.toml / Cargo.lock / build-wasm.ps1 / pkg 產物 hash）"

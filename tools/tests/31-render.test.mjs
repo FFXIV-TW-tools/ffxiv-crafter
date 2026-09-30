@@ -99,13 +99,17 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   const R = sandbox.CraftRender;
   const $r = (id) => sandbox.document.getElementById(id);
   const b64url = (s) => Buffer.from(s, 'utf8').toString('base64url');   // 瀏覽器版用 btoa，vm 沒有 → 測試側等價實作
-  let sel = { recipe: { item_id: 42, item_name: '測試成品', is_expert: false, job: '木工' } };
+  let sel = { recipe: { item_id: 42, item_name: '測試成品', is_expert: false, job: '木工',
+    difficulty_factor: 100, quality_factor: 100, durability_factor: 100 },
+    rlv: { difficulty: 100, quality: 1000, durability: 40, class_job_level: 1,
+      progress_divider: 100, quality_divider: 100, progress_modifier: 100, quality_modifier: 100 } };
   const RDEPS = {
     $: $r, esc: T.esc, iconUrl: (p) => p, b64urlEncode: b64url, copyText() {},
     MACRO_BUILDER_BASE: 'https://macro.example/', PH_HTML: '',
     getSelected: () => sel, getItems: () => ({ 42: { can_be_hq: false } }),
     // 用真的 craft-actions.json：順帶守住「render 取的欄位名」與資料的鍵形狀（nameTc / PascalCase）
     getActions: () => JSON.parse(fs.readFileSync(path.join(ROOT, 'data/craft-actions.json'), 'utf8')),
+    getTargetQuality: () => T.computeSettings(sel.recipe, sel.rlv, gear).target_quality,
   };
   R.init(RDEPS);
   const mkResult = (steps, over = {}) => ({
@@ -118,28 +122,25 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   const summary = () => $r('result-summary').innerHTML;
   const macro = () => $r('macro').innerHTML;
 
-  // (a) NQ 模式的假警告：切到「只求完成（NQ）」時目標品質欄被停用但**值還在**，
-  //     render 直接讀 .value ⇒ 玩家沒設目標卻被警告「未達目標品質 900」。
-  //     shortfallHtml 的註解自己寫著「NQ 模式 ⇒ 不警告」——壞的是接線不是那支純函式。
+  // 有效目標必須跟求解公式一致；停用欄位的殘值不是 NQ 目標。
+  $r('solve-mode').value = 'nq';
   $r('opt-target').value = '900';
-  $r('opt-target').disabled = true;
   R.render(mkResult(3), false);
-  check('T39 NQ 模式（目標品質欄停用）→ 不得出現未達目標警語', !/未達目標品質/.test(summary()), summary().slice(0, 120));
-  $r('opt-target').disabled = false;
+  check('T39 NQ 模式殘留目標值 → 不得出現未達目標警語', !/未達目標品質/.test(summary()), summary().slice(0, 120));
+  $r('solve-mode').value = 'quality';
   R.render(mkResult(3), false);
   check('T39 一般模式且未達目標 → 必須講出來', /未達目標品質 900/.test(summary()));
   $r('opt-target').value = '';
   R.render(mkResult(3), false);
-  check('T39 目標留空（＝滿品質）→ 不警告', !/未達目標品質/.test(summary()));
 
   // (b) expert 配方一律中性措辭（AGENTS 鐵則：勿改回無條件「✓ 可完成」金徽）
   R.render(mkResult(3), false);
   check('T39 一般配方且可完成 → 綠色「✓ 可完成」', /codex-badge--success[^>]*>✓ 可完成/.test(summary()));
-  sel = { recipe: { ...sel.recipe, is_expert: true } };
+  sel = { ...sel, recipe: { ...sel.recipe, is_expert: true } };
   R.render(mkResult(3), false);
   check('T39 高難度配方 → 中性「試算完成 ⚠」而非成功徽章', /試算完成 ⚠/.test(summary()) && !/codex-badge--success/.test(summary()));
   check('T39 高難度配方 → 必附「僅供參考、無法保證」警語', /靜態巨集僅供參考/.test(summary()));
-  sel = { recipe: { ...sel.recipe, is_expert: false } };
+  sel = { ...sel, recipe: { ...sel.recipe, is_expert: false } };
   R.render(mkResult(3, { complete: false }), false);
   check('T39 未完成 → 紅色「✗ 未完成」', /codex-badge--danger[^>]*>✗ 未完成/.test(summary()));
 

@@ -75,7 +75,7 @@
 .cl-mat-name--link:hover { color: var(--accent); text-decoration: underline; }
 .cl-mat-amt { flex: 0 0 auto; font-weight: var(--fw-semibold, 600); color: var(--accent); font-variant-numeric: tabular-nums; }
 /* 密集列裡 38px 主控件過重（同 .rt-act 的既有取捨）→ 收成 26px */
-.cl-mat-go { flex: 0 0 auto; height: 26px; padding: 0 var(--space-2, 8px); font-size: var(--fs-xs, .6875rem); }
+.cl-mat-go { flex: 0 0 auto; height: 26px; padding: 0 var(--space-2, 8px); font-size: var(--fs-xs, .75rem); }
 @media (pointer: coarse) { .cl-mat-go { height: 38px; } }   /* 觸控補償（同 .rt-act） */
 
 /* ---- 職業任務分頁（app-quests.js）----
@@ -120,7 +120,7 @@
 /* 徽章走共用 .codex-badge（含 --gold／--success 語意變體，DS-02）：底色／字色／圓角／字重都由它提供。
    本地只留「這一列很密」需要的收斂：字級降一階、上下 padding 收緊、不換行。
    ——不重刻底色與圓角，那正是 2026-08-13 那輪在中性面板上收掉的同一種第二份事實源。*/
-.crafter-qt-tag { padding-top: 1px; padding-bottom: 1px; font-size: var(--fs-xs, .6875rem); white-space: nowrap; }
+.crafter-qt-tag { padding-top: 1px; padding-bottom: 1px; font-size: var(--fs-xs, .75rem); white-space: nowrap; }
 .crafter-qt-mats { position: sticky; top: 80px; }   /* 捲任務清單時素材彙總跟著（兩邊要對照著看）*/
 @media (max-width: 900px) {
   .crafter-qt-cols { grid-template-columns: 1fr; }

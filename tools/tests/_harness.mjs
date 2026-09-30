@@ -48,7 +48,7 @@ export const LAYER_STUBS = () => ({
   CraftStages: { init() {}, setData() {}, setRecipe() {}, syncFromInput() {}, stageSelection: () => null, applyStageSelection: () => false },
   CraftSync: { init() {}, setData() {}, resolve: () => null, render() {} },
   CraftBrowse: { init() {}, renderChips() {}, renderTable() {}, markListState() {} },
-  CraftList: { init() {}, add() {}, has: () => false, count: () => 0 },
+  CraftList: { init() {}, refresh() {}, add() {}, has: () => false, count: () => 0 },
   CraftNext: { init() {}, setData() {}, countFor: () => 0, open() {}, close() {} },
 });
 

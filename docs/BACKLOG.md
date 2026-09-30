@@ -132,3 +132,27 @@
 
 - 健檢 2026-07-04 須修改項 0-1、0-3、0-4、1-1、1-2、1-3、2-1、3-1、3-2 + 建議 SEC-01/02/03、RES-01/02/03/04/05/06、a11y-02/03/04/05、ux-3/5/6、perf-ux-01/02/03/04、CQ-01/02/05、DATA-1 + 0-2 → 見 `CHANGELOG.md` 2026-07-04 / 2026-07-11 兩段。
 - R2 複檢 2026-07-11 須修改 M1（專家之證 CP+15）+ 建議全批（quality A1＝B-004 done／sec A1·A2／docs A1·A2／UX A1·A2·A3）→ 見 `CHANGELOG.md` 2026-07-11 R2 段（`d70d590`／`a6ab096`）。
+
+### 健檢 2026-09-30（本輪不須拍板项由 Owner 明確授權直接修）
+
+- [ ] **B-041** (P2, investigation)【建議 高｜延遲風險 中｜執行風險 中｜副作用 待政策決策｜體量 M】**多分頁保存靜默覆蓋**（crafting-list.js:68-95；app-gear.js:17-32,123-138；app-quests.js:38-40）。保存衝突政策待 Owner 拍板；建議操作級合併並序列化寫入。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md）
+
+- [x] **B-042** (P2, fix)【建議 高｜延遲風險 中｜執行風險 低｜副作用 恢復既有行為契約｜體量 S】**資料生成失敗留下混代 bundle**（tools/build-data.py:52-63）。在隔離目錄完整生成，缺上游任一輸入不發布；不重刷正式資料。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md） ✓ 完成於 cycle 2026-09-30-health-review（staging；隔離四入口＋三失敗情境，原輸出hash不變；未刷新正式資料）
+
+- [ ] **B-043** (P2, investigation)【建議 高｜延遲風險 中｜執行風險 中｜副作用 待政策決策｜體量 M】**神速技巧早退漏掉更短滿品質解**（wasm/src/lib.rs:197-199,246-251）。最短巨集與求解延遲取捨待 Owner 拍板；不得針對配方特判。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md）
+
+- [x] **B-044** (P2, fix)【建議 高｜延遲風險 中｜執行風險 低｜副作用 恢復既有行為契約｜體量 S】**留白滿品質目標缺警語**（app-render.js:134-147）。直接消費 computeSettings 的有效目標；NQ 不警告。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md） ✓ 完成於 cycle 2026-09-30-health-review（真實留白／900／NQ求解與複製摘要驗收）
+
+- [x] **B-045** (P2, fix)【建議 高｜延遲風險 中｜執行風險 低｜副作用 恢復既有行為契約｜體量 S】**共享中間材逐分支進位使採購量偏高**（app-quests.js:51-70）。整次展開共用產量餘額；保留循環與深度邊界。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md） ✓ 完成於 cycle 2026-09-30-health-review（CUL10/15岩鹽2→1；root／diamond修前紅、修後綠；cycle／depth驗收）
+
+- [x] **B-046** (P2, fix)【建議 高｜延遲風險 中｜執行風險 低｜副作用 恢復既有行為契約｜體量 S】**任務與商人慢回應阻擋核心首載**（app-data.js:32-44；app.js:loadData）。維持 eager 平行 fetch，任務／商人不再進核心 ready gate；任務載入狀態明示。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md） ✓ 完成於 cycle 2026-09-30-health-review（5秒選配延遲下901ms完成Worker求解；晚到商人徽章保留未提交數量與焦點；任務失載明示）
+
+- [x] **B-047** (P2, fix)【建議 高｜延遲風險 中｜執行風險 低｜副作用 恢復既有行為契約｜體量 S】**職業篩選與完成任務丟鍵盤焦點**（app-browse.js:52-59；app-quests.js:94-105,221-234）。保留 chip DOM；移除已完成卡片時把焦點移到相鄰 checkbox 或篩選器。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md） ✓ 完成於 cycle 2026-09-30-health-review（Enter／Space chip、next／previous／最後卡片焦點實測）
+
+- [x] **B-048** (P2, fix)【建議 高｜延遲風險 中｜執行風險 低｜副作用 恢復既有行為契約｜體量 S】**選配方入口缺原生操作語意**（app-browse.js:145-167）。名稱欄提供具名原生按鈕，保留點擊整列捷徑與 table 語意。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md） ✓ 完成於 cycle 2026-09-30-health-review（AX原生button；鍵盤選→求解→複製；四寬幾何／畫面驗收）
+
+- [x] **B-049** (P2, fix)【建議 高｜延遲風險 中｜執行風險 低｜副作用 恢復既有行為契約｜體量 S】**建置戳記漏 manifest 與腳本**（tools/build-wasm.ps1；tools/check-actions.py:75-81）。雙端新增 Cargo.toml 與 build-wasm.ps1 正規化 hash，真實重建戳記。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md） ✓ 完成於 cycle 2026-09-30-health-review（真重建pkg hash不變；manifest／腳本突變拒收，LF／CRLF通過）
+
+- [x] **B-050** (P2, fix)【建議 高｜延遲風險 中｜執行風險 低｜副作用 恢復既有行為契約｜體量 S】**空白路徑的 RUSTFLAGS 編碼失敗**（tools/build-wasm.ps1:36-43）。改 CARGO_ENCODED_RUSTFLAGS Unit Separator，保留既有旗標並 finally 還原環境。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md） ✓ 完成於 cycle 2026-09-30-health-review（空白路徑真實Cargo exit101→0；encoded優先與失敗env／cwd還原驗收）
+
+- [ ] **B-051** (P2, investigation)【建議 高｜延遲風險 中｜執行風險 中｜副作用 待政策決策｜體量 M】**共用匯出未說明內含 capability 與 webhook**（../ffxiv-tw-tools-portal/settings-ui.js:241-249,1479-1490）。跨 repo 安全／匯出契約待 Owner 拍板；本 repo 不擅改 portal。 來源: 健檢 2026-09-30（對照 docs/health-reviews/2026-09-30-全方面健檢-health-review.md）

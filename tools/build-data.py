@@ -14,12 +14,13 @@
 跨機：monorepo 根預設**由檔案位置上溯推導**（build_lib/common.py），env FFXIV_PROJECT_ROOT 仍可覆寫。
 **不要寫死磁碟機代號**——external 層明訂代號依機器而異。用 py -3.11 跑。
 """
-import os, sys
+import filecmp, os, shutil, sys, tempfile
 
 # 本檔是**被直接執行的腳本**（`py -3.11 tools/build-data.py`）而非套件成員，且檔名帶連字號不能被 import
 # ⇒ tools/ 不會自動在 sys.path 上（cwd 是 repo 根）。把 tools/ 塞進 path 才 import 得到 build_lib。
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from build_lib import actions, common, consumables, items, level_sync, quests, stages
 from build_lib.actions import write_craft_actions
 from build_lib.common import OUT, PROBLEMS
 from build_lib.consumables import enrich_consumables
@@ -28,9 +29,11 @@ from build_lib.level_sync import write_level_sync
 from build_lib.quests import write_job_quests, write_vendors
 from build_lib.stages import write_quality_stages
 
+# 各模組用 from .common import OUT，必須逐一導向 staging，不能只改 common.OUT。
+OUT_MODULES = (common, actions, consumables, items, level_sync, quests, stages)
 
-def main():
-    os.makedirs(OUT, exist_ok=True)
+
+def main(out):
     # 只補食藥 icon 時不必重刷 3.5MB 配方資料
     if "--consumables-only" in sys.argv:
         enrich_consumables()
@@ -38,7 +41,7 @@ def main():
     if "--quests-only" in sys.argv:                    # 只重刷職業任務（不動 3.5MB 配方資料）
         if not write_job_quests():
             return
-        write_vendors(os.path.join(OUT, "job-quests.json"))
+        write_vendors(os.path.join(out, "job-quests.json"))
         return
 
     if not write_craft_actions():
@@ -60,11 +63,38 @@ def main():
     write_level_sync(recipes)
     if not write_job_quests():
         return
-    write_vendors(os.path.join(OUT, "job-quests.json"))
+    write_vendors(os.path.join(out, "job-quests.json"))
 
+
+def build_staged():
+    os.makedirs(OUT, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".build-data-staging-", dir=os.path.dirname(OUT)) as stage:
+        # 部分入口會讀上一輪 recipes/ingredients，或就地補 meals/medicine，先留一份隔離副本。
+        for entry in os.scandir(OUT):
+            if entry.is_file():
+                shutil.copy2(entry.path, os.path.join(stage, entry.name))
+        original_outs = tuple(module.OUT for module in OUT_MODULES)
+        try:
+            for module in OUT_MODULES:
+                module.OUT = stage
+            main(stage)
+        finally:
+            for module, original_out in zip(OUT_MODULES, original_outs):
+                module.OUT = original_out
+        if PROBLEMS:
+            return
+
+        changed = []
+        for entry in os.scandir(stage):
+            destination = os.path.join(OUT, entry.name)
+            if not os.path.exists(destination) or not filecmp.cmp(entry.path, destination, shallow=False):
+                changed.append((entry.path, destination))
+        # 生成與比對都成功才發布；replace 是逐檔操作，不保證任意 OS 故障下多檔原子性。
+        for source, destination in changed:
+            os.replace(source, destination)
 
 if __name__ == "__main__":
-    main()
+    build_staged()
     if PROBLEMS:
         print(file=sys.stderr)
         print("✗ 上游輸入有 %d 項缺件，data/ 的對應檔案**維持上一輪的舊內容**：" % len(PROBLEMS),

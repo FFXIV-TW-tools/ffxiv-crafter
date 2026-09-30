@@ -64,10 +64,7 @@ async function loadData() {
   globalThis.CraftStages?.setData?.(d.stages);
   globalThis.CraftSync?.setData?.(d.levelSync);
   globalThis.CraftNext?.setData?.();   // INGREDIENTS 換了新綁定 → 反查索引作廢（下次用到再建）
-  // **必須在兩份配方索引建好之後**：職業任務的素材展開要靠它們判斷「這件東西做得出來嗎」，
-  // 早一步呼叫的話整份清單會靜默變成「全部非製作」（畫面正常、只是全錯）。
-  globalThis.CraftQuests?.setVendors?.(d.vendors);   // 先給商人資料，setData 一次繪到位（省一次重繪）
-  globalThis.CraftQuests?.setData?.(d.quests);
+  return d; // 任務／商人 promise 由完整 init 後接線；此時核心索引已就緒。
 }
 
 // ---------- 角色數值（localStorage，已抽到 app-gear.js：globalThis.CraftGear）----------
@@ -100,8 +97,6 @@ function statShortfall(recipe, gear) { return globalThis.CraftFormula.statShortf
 
 // CraftRecipe.refreshGearNote 內保留 Number(g.level) 等級同步硬化。
 function refreshGearNote() { return globalThis.CraftRecipe.refreshGearNote(); }
-function refreshSelectedGear() { return globalThis.CraftRecipe.refreshSelectedGear(); }
-function renderIngredients(recipe, maxQ) { return globalThis.CraftRecipe.renderIngredients(recipe, maxQ); }
 
 // ---------- 食物 / 藥水（選擇 UI + 本地保存已抽到 app-consumable.js：globalThis.CraftConsumable）----------
 // 「選中品項 → 數值加成」的公式面在 app-formula.js（applyConsumables / effectiveStats）。
@@ -278,7 +273,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // ⚠ 分層檔缺席一律**硬失敗**（RES-02）：每一支都是必經路徑，缺了就是部署不完整。
   // 早報會落到下面的 catch 顯示錯誤橫幅；用 `?.` 軟略過的話玩家看到的是一個少了功能、
   // 按下去才無聲 TypeError 的頁面。各層**內部**的 `globalThis.CraftXxx?.` 選擇性呼叫不在此列
-  // （那是給測試 sandbox 只載部分層用的）。新增分層檔時這裡要一起加，T49 機械守。
+  // （那是給測試 sandbox 只載部分層用的）。新增分層檔時這裡要一起加；原 source-only 哨兵已移除。
   // 公式層（app-formula.js classic script）：**必須最早**——下面每一層注入的 computeSettings／recipeMaxes／
   // statShortfall 都是本檔轉往 CraftFormula 的 proxy，deps 沒就位的話那些呼叫會在求解當下才炸
   if (!globalThis.CraftFormula) throw new Error('app-formula.js 未載入（部署不完整）');
@@ -307,11 +302,11 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     statGate: (recipe) => statShortfall(recipe, gearFor(recipe.job)),
     renderTable, getRecipes: () => RECIPES, getRlvTable: () => RLV, getItems: () => ITEMS, getIngredients: () => INGREDIENTS,
     getSelected: () => selected, setSelected: (v) => { selected = v; },
-    getComputedInitial: () => computedInitial, setComputedInitial: (v) => { computedInitial = v; },
+    setComputedInitial: (v) => { computedInitial = v; },
     getOpenedFromList: () => openedFromList, setOpenedFromList: (v) => { openedFromList = v; },
     invalidateResults, updateEff, gearFor, refreshSpecialistGate,
     restoreOpt: (id) => { $(id).checked = optWanted[id]; },   // 程式強制取消後的還原（expert 閘用；偏好本體住 optWanted）
-    getRecipesById: () => RECIPE_BY_ID, getRecipeByItem: () => RECIPE_BY_ITEM,
+    getRecipesById: () => RECIPE_BY_ID,
     getRecipesByItem: () => RECIPES_BY_ITEM, gearOkFor: (job) => !!gearFor(job) });
   // 「繼續做」反查層（app-nextcraft.js classic script）：索引在資料載完後才建（setData 作廢重建）
   if (!globalThis.CraftNext) throw new Error('app-nextcraft.js 未載入（部署不完整）');
@@ -375,7 +370,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // renderGearsets 只吃 DOH／JOB_ICON／localStorage、零資料相依（健檢 R5 M18；前輪 T42 修的是分頁鈕、漏了這顆）。
   renderGearsets();
   { const gsh = $('goto-stats-hint'); if (gsh) gsh.onclick = () => switchTab('stats', true); }
-  await loadData();
+  const lateData = await loadData();
   // 配方瀏覽層（app-browse.js classic script）：注入依賴後才能 render（getter 取 live RINDEX/selected——loadData 會重賦值綁定）
   if (!globalThis.CraftBrowse) throw new Error('app-browse.js 未載入（部署不完整）'); // 明確早報 → 落 catch 顯錯誤橫幅，非等 render 才 undefined.X 白屏（對抗審 grok F3）
   if (!globalThis.CraftFlow) throw new Error('app-flow.js 未載入（部署不完整）');     // 同上：setTargetMode/摘要為必經路徑，缺檔要早報而非中途 TypeError
@@ -434,7 +429,8 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 結果渲染（app-render.js classic script）：注入 getter 取 live 狀態（loadData 會重賦值 ITEMS/ACTIONS 綁定）
   if (!globalThis.CraftRender) throw new Error('app-render.js 未載入（部署不完整）');
   globalThis.CraftRender.init({ $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE,
-    getSelected: () => selected, getItems: () => ITEMS, getActions: () => ACTIONS });
+    getSelected: () => selected, getItems: () => ITEMS, getActions: () => ACTIONS,
+    getTargetQuality: () => computeSettings(selected.recipe, selected.rlv, gearFor(selected.recipe.job)).target_quality });
   // 製造清單（crafting-list.js classic script，先於本 module 執行）：注入依賴後接手 #craft-list 分頁
   if (!globalThis.CraftList) throw new Error('crafting-list.js 未載入（部署不完整）');
   {
@@ -451,10 +447,16 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
     globalThis.CraftFlow.init({ esc, getSelected: () => selected,
       isPicking: () => !$('picker').hidden,
       gearOkFor: (job) => !!gearFor(job),
+      statGate: (recipe) => statShortfall(recipe, gearFor(recipe.job)),
       hasResult: () => !!$('results') && !$('results').hidden,
       isSolving: () => !$('cancel-btn').hidden });
     globalThis.CraftFlow.update();
   }
+  lateData.quests.then((rows) => globalThis.CraftQuests.setData(rows));
+  lateData.vendors.then((map) => {
+    globalThis.CraftQuests.setVendors(map);
+    globalThis.CraftList.refresh();
+  });
   window.FFXIVHelp?.setup?.();   // [data-help] 即現說明卡（設計系統鐵則：禁原生 title；opt-in、冪等）
   } catch (e) {
     console.error('[crafter] 初始化失敗:', e);

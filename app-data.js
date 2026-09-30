@@ -9,12 +9,10 @@
     // 逾時：網路 stall 時不讓「📦 載入配方資料中…」無限空轉（無逾時＝玩家看不出是慢還是壞掉，只能自己重整）
     // 舊瀏覽器沒有 AbortSignal.timeout：退回無逾時，別整站死在 fetch 之前（連 fetchOpt 的降級都吃不到；健檢 R5 M8）
     const fetchJson = async (url) => { const r = await fetch(url, { signal: globalThis.AbortSignal?.timeout ? AbortSignal.timeout(30000) : undefined }); if (!r.ok) throw new Error(`${url} HTTP ${r.status}`); return r.json(); }; // HTTP 錯誤明確降級（非把 404 頁當 JSON 硬 parse）
-    // 選配資料（食物/藥水）非必要 → 失敗只降級該功能、不拖垮整站；回傳 [] 讓 buildConsumables 安全略過
-    const fetchOpt = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return []; } };
     // 食藥兩份失敗要回 null 不是 []：app-consumable.setData 把「不在清單裡的保存值」當品項下架清掉，
     // 給它 [] 等於一次網路抖動就把玩家的食藥偏好清空（健檢 R5 M3）。null ＝「這次沒拿到，維持上一份」。
     const fetchOptOrNull = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，維持上一份:', url, e); return null; } };
-    // 七檔同一輪併發：meals/medicine 原本排第二輪 await，白等一個 RTT 只換 2.5KB（fetchOpt 自己吞錯，不會拖垮必要資料）
+    // 十一檔同時開始抓取；任務／商人不阻擋核心九檔可用。
     // 品質階段同為選配：載不到只是少了「一階/二階/三階」快捷，目標品質仍可手打 → 不拖垮整站
     const fetchOptObj = async (url) => { try { return await fetchJson(url); } catch (e) { console.warn('[crafter] 選配資料載入失敗，略過:', url, e); return {}; } };
     // 等級同步**不是普通選配資料**：其他選配載不到只是少一個快捷（品質階段）或少一份加成（食藥），
@@ -29,7 +27,9 @@
         return {};
       }
     };
-    const [recipes, rlv, actions, items, ingredients, meals, medicine, stages, levelSync, quests, vendors] = await Promise.all([
+    const quests = fetchOptOrNull('data/job-quests.json');
+    const vendors = fetchOptObj('data/vendors.json');
+    const [recipes, rlv, actions, items, ingredients, meals, medicine, stages, levelSync] = await Promise.all([
       fetchJson('data/recipes.json'),
       fetchJson('data/recipe_levels.json'),
       fetchJson('data/craft-actions.json'),
@@ -39,8 +39,6 @@
       fetchOptOrNull('data/medicine.json'),
       fetchOptObj('data/quality-stages.json'),
       fetchLevelSync(),
-      fetchOpt('data/job-quests.json'),
-      fetchOptObj('data/vendors.json'),
     ]);
     // 職業任務層展開素材樹要用的兩份索引（建一次；避免每次重繪掃 11803 筆）
     const byId = {}, byItem = {}, recipesByItem = {};   // 後者＝item_id → 全部配方 id（多職業）

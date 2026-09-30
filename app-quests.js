@@ -12,6 +12,7 @@
   const MAX_DEPTH = 12;          // 配方樹遞迴上限（真實深度 ≤5；這是資料出環時的煞車，不是業務規則）
   let deps = null;
   let DATA = [];                 // [{ job, role, iconId, quests: [{id, lv, name, items:[{id,name,icon,recipe,qty}] }] }]
+  let dataStatus = 'loading';
   // 交付物（尤其採集職的魚）不一定在 items.json 裡（那份只收配方相關物品）→ 用本資料自帶的名稱/圖補上，
   // 否則素材彙總會出現「#4874」這種只有 id 的列。
   const NAME_BY_ID = new Map();
@@ -49,7 +50,7 @@
   // 回 { base, inter }：base＝**要去買/採的底層素材**（沒有配方的東西），inter＝過程中要先做出來的中間材。
   // 配方一次產 n 個 → 需要 m 個要做 ceil(m/n) 次，素材依「做幾次」乘 —— 不是依「要幾個」。
   function expandMats(items, ctx) {
-    const base = new Map(), inter = new Map();
+    const base = new Map(), inter = new Map(), surplus = new Map();
     const recipeById = ctx.recipesById || {};
     const recipeOfItem = ctx.recipeByItem || {};
     const ing = ctx.ingredients || {};
@@ -60,8 +61,11 @@
       // 沒有配方 → 底層（買或採）。出環或過深也收成底層：寧可少展開一層，也不要無限遞迴或漏記需求。
       if (!recipe || depth >= MAX_DEPTH || path.has(itemId)) { add(base, itemId, need); return; }
       const per = Math.max(1, Number(recipe.item_amount) || 1);
-      const runs = Math.ceil(need / per);
-      if (depth > 0) add(inter, itemId, need);   // depth 0 是任務交付物本身，已在任務列顯示，不重複列進中間材
+      if (depth > 0) add(inter, itemId, need);
+      const remaining = need - (surplus.get(itemId) || 0);
+      const runs = Math.max(0, Math.ceil(remaining / per));
+      surplus.set(itemId, runs * per - remaining);
+      if (!runs) return;
       const next = new Set(path); next.add(itemId);
       for (const [iid, amt] of (ing[String(recipe.id)] || [])) walk(Number(iid), Number(amt) * runs, depth + 1, next);
     };
@@ -91,6 +95,15 @@
   function renderChips() {
     const { $, esc, iconUrl } = deps;
     const cur = current();
+    const buttons = [...$('quest-jobs').querySelectorAll('.job-btn')];
+    if (buttons.length === DATA.length && buttons.every((b, i) => b.dataset.job === DATA[i].job)) {
+      buttons.forEach((b, i) => {
+        const j = DATA[i], left = j.quests.filter((q) => !doneSet.has(q.id)).length;
+        b.setAttribute('aria-pressed', String(!!cur && j.job === cur.job));
+        b.querySelector('.codex-xs').textContent = left ? left + ' 待辦' : '✓ 完成';
+      });
+      return;
+    }
     $('quest-jobs').innerHTML = DATA.map((j) => {
       const on = cur && j.job === cur.job;
       const ico = j.iconId ? `<img src="${iconUrl(jobIcon(j.iconId))}" alt="" loading="lazy">` : '';
@@ -131,7 +144,7 @@
     // 一大片空白才讀到「要幾個」。右側只留狀態徽章與動作鈕。
     return `<div class="crafter-qt-item">${ico}<span class="crafter-qt-item__name">${esc(it.name)}${hq}</span>` +
       `${qty}${copyBtn(it.name)}` +
-      `<span class="crafter-qt-item__src">${tag}${vendorHtml(it.id, it.hq)}${src}</span></div>`;
+      `<span class="crafter-qt-item__src">${tag}<span data-vendor="${it.id}" data-hq="${it.hq}">${vendorHtml(it.id, it.hq)}</span>${src}</span></div>`;
   }
 
   function questsHtml(v) {
@@ -168,7 +181,7 @@
       // 而且點鈕會連帶觸發連結跳頁。連結只包「可點去查價」的那段。
       return `<div class="crafter-qt-mat">` +
         `<a class="crafter-qt-mat__link" href="${mbItem(iid)}" target="ffxiv-marketboard" data-help="到市場板查價格與來源。共用同一分頁。">` +
-        `${ico}<span class="crafter-qt-mat__name">${esc(name)}</span>${vendorHtml(iid)}<b class="crafter-qt-mat__n">×${n}</b></a>` +
+        `${ico}<span class="crafter-qt-mat__name">${esc(name)}</span><span data-vendor="${iid}">${vendorHtml(iid)}</span><b class="crafter-qt-mat__n">×${n}</b></a>` +
         copyBtn(name) + `</div>`;
     };
     const note = unknown
@@ -213,6 +226,11 @@
     const { $ } = deps;
     const body = $('quest-body');
     if (!body) return;                 // 分頁骨架不在（測試 sandbox / 部署不完整）→ 靜靜不畫，不炸掉整個 init
+    if (dataStatus !== 'ready') {
+      body.innerHTML = `<div class="codex-empty codex-empty--bare">${dataStatus === 'loading'
+        ? '職業任務資料載入中…' : '職業任務資料載入失敗，請重新整理重試。'}</div>`;
+      return;
+    }
     const cur = current();
     if (!cur) { body.innerHTML = '<div class="codex-empty codex-empty--bare">這個職業暫無任務資料，請選其他職業。</div>'; return; }
     state.job = cur.job;
@@ -226,7 +244,14 @@
         const card = c.closest('.crafter-qt-quest');
         if (card) {
           card.classList.toggle('is-done', c.checked);
-          if (state.hideDone && c.checked) card.remove();   // 「只顯示未完成」模式：勾完就收走那一列
+          if (state.hideDone && c.checked) {
+            const checks = [...$('quest-body').querySelectorAll('.crafter-qt-done')];
+            const index = checks.indexOf(c);
+            const next = checks[index + 1] || checks[index - 1] || $('quest-hide-done');
+            const hadFocus = document.activeElement === c;
+            card.remove();
+            if (hadFocus) next.focus();
+          }
         }
         // 收走最後一列之後要補空狀態：局部移除不會產生「🎉 都標記完成了」那段文字，
         // 玩家看到的是一片空白（以為壞了）。清單已空時捲動位置本來就沒東西要保，重繪是安全的。
@@ -253,11 +278,19 @@
       hide.checked = state.hideDone;
       hide.addEventListener('change', () => { state.hideDone = hide.checked; save(); render(); });
     }
+    render();
   }
-  // 只寫入不重繪：呼叫端（app.js loadData）保證緊接著 setData，由它一次繪到位。
-  // 這裡自己 render 的話 app.js 那句「先給商人資料，setData 一次繪到位（省一次重繪）」就是假的
-  // ——契約留在註解裡而程式碼另一套（CF-07）。
-  function setVendors(map) { VENDORS = (map && typeof map === 'object') ? map : {}; }
+  // 晚到的商人資料只替換徽章槽位，保留任務 checkbox、焦點及捲動位置。
+  function setVendors(map) {
+    VENDORS = (map && typeof map === 'object') ? map : {};
+    if (!deps) return;
+    for (const id of ['quest-body', 'quest-mats']) {
+      deps.$(id)?.querySelectorAll('[data-vendor]').forEach((el) => {
+        const hq = el.dataset.hq === 'true' ? true : el.dataset.hq === 'false' ? false : null;
+        el.innerHTML = vendorHtml(el.dataset.vendor, hq);
+      });
+    }
+  }
 
   // 複製品名鈕：**用 portal 的共用元件**（`FFXIVIcons.btnHTML('copy', …)` → `.codex-icon-btn` ＋內嵌 SVG，
   // B-027 已從 marketboard 升格到 header.js）。不自刻 📋 emoji —— 那正是 B-027 要收掉的東西
@@ -299,6 +332,7 @@
   }
 
   function setData(rows) {
+    dataStatus = rows == null ? 'failed' : 'ready';
     DATA = Array.isArray(rows) ? rows : [];
     NAME_BY_ID.clear();
     for (const j of DATA) for (const q of j.quests) for (const it of q.items) NAME_BY_ID.set(it.id, it);

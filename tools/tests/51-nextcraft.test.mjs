@@ -173,9 +173,9 @@ import { fs, vm, path, ROOT, T, check, eq, eqObj } from './_harness.mjs';
     recipeMaxes: () => ({ max_progress: 1, max_quality: 1, max_durability: 1 }), switchTab() {}, isCrystal: () => false,
     renderTable() {}, getRecipes: () => ALL, getRlvTable: () => ({ 1: { class_job_level: 1 } }), getItems: () => ({}),
     getIngredients: () => ({}), getSelected: () => sel2, setSelected: (v) => { sel2 = v; },
-    getComputedInitial: () => 0, setComputedInitial() {}, getOpenedFromList: () => false, setOpenedFromList() {},
+    setComputedInitial() {}, getOpenedFromList: () => false, setOpenedFromList() {},
     invalidateResults() {}, updateEff() {}, gearFor: () => null, refreshSpecialistGate() {},
-    getRecipesById: () => ({ 1: RA, 2: RB, 3: RC }), getRecipeByItem: () => ({}), getRecipesByItem: () => ({}), gearOkFor: () => true, statGate: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
+    getRecipesById: () => ({ 1: RA, 2: RB, 3: RC }), getRecipesByItem: () => ({}), gearOkFor: () => true, statGate: () => ({ need: { cms: 0, ctrl: 0 }, cms: 0, ctrl: 0, ok: true }),
   });
   R2.selectRecipe(1);                       // 站在 A
   R2.craftIngredient(2);                    // 「先做這個」→ 鑽到 B，堆疊 [A]
@@ -192,7 +192,7 @@ import { fs, vm, path, ROOT, T, check, eq, eqObj } from './_harness.mjs';
   // 鈕住頂部「目前配方」那一列（Owner 2026-08-17：降低整體高度），故驗的是它自己的 hidden／文字。
   eq('T57 countFor=0 → 「繼續做」鈕收起來', $r2('next-craft').hidden, true);
   rctx.CraftNext.countFor = () => 7;
-  R2.refreshSelectedGear();
+  R2.selectRecipe(1);
   eq('T57 有下一階 → 鈕出現', $r2('next-craft').hidden, false);
   eq('T57 鈕上標出件數', $r2('next-craft').textContent, '⚒ 繼續做（7）');
   R2.showPicker();

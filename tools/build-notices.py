@@ -17,8 +17,9 @@ for _s in (sys.stdout, sys.stderr):
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
-REG = glob.glob(os.path.expanduser("~/.cargo/registry/src/*"))
-GIT = glob.glob(os.path.expanduser("~/.cargo/git/checkouts/raphael-rs-*/*"))   # 每個 raphael 版本一個子目錄（名稱＝commit 前 7 碼）
+CARGO_HOME = os.path.expanduser(os.environ.get("CARGO_HOME") or "~/.cargo")
+REG = glob.glob(os.path.join(CARGO_HOME, "registry", "src", "*"))
+GIT = glob.glob(os.path.join(CARGO_HOME, "git", "checkouts", "raphael-rs-*", "*"))
 SELF = "crafter-wasm"          # 本 repo 自己的 crate，不列第三方
 
 

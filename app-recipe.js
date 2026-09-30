@@ -369,9 +369,9 @@
 
   const REQUIRED = ['$', 'esc', 'iconUrl', 'toast', 'PH_HTML', 'JOB_ICON', 'mbItem', 'mbCraft', 'recipeMaxes', 'switchTab',
     'renderTable', 'getRecipes', 'getRlvTable', 'getItems', 'getIngredients', 'getSelected', 'setSelected',
-    'getComputedInitial', 'setComputedInitial', 'getOpenedFromList', 'setOpenedFromList', 'invalidateResults',
+    'setComputedInitial', 'getOpenedFromList', 'setOpenedFromList', 'invalidateResults',
     'updateEff', 'gearFor', 'refreshSpecialistGate', 'isCrystal',
-    'getRecipesById', 'getRecipeByItem', 'getRecipesByItem', 'gearOkFor', 'statGate'];
+    'getRecipesById', 'getRecipesByItem', 'gearOkFor', 'statGate'];
   globalThis.CraftRecipe = {
     craftIngredient, backInChain, chainDepth, continueWith, recipesForItem, pickRecipeForItem,
     init(d) {
@@ -382,8 +382,6 @@
     selectRecipe,
     showPicker,
     refreshGearNote,
-    refreshSelectedGear,
-    renderIngredients,
     updateInitial,
   };
 })();

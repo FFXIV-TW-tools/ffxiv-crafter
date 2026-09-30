@@ -19,6 +19,6 @@ paths:
   cargo run --release --bin js-golden > golden.json && node compare-js.mjs ../.. golden.json
   ```
   已知差異寫在 `src/main.rs` 的 `ALLOWED` 且每條附理由；**清單外一律失敗，加條目前先查遊戲客戶端判誰對**；清單裡某輪沒出現＝上游可能已修，移除我方 workaround。
-- 改 `wasm/src/lib.rs` 或 `Cargo.lock` → `cargo test`（host target 可跑）＋ `powershell tools\build-wasm.ps1` 重建 `pkg/`＋`BUILD-STAMP.json`（否則 `check-actions.py` 紅），`pkg/` 一起 commit；**別跑裸 `wasm-pack`**（產物會帶建置者帳號名，也不會開 WebAssembly SIMD——`+simd128` 只在該腳本的 RUSTFLAGS，腳本建完會驗產物真的宣告了 simd128）。
+- 改 `wasm/src/lib.rs` 或 `wasm/Cargo.lock` → `cargo test`（host target 可跑）；改前述檔案、`wasm/Cargo.toml` 或 `tools/build-wasm.ps1` → `powershell tools\build-wasm.ps1` 重建 `pkg/`＋`BUILD-STAMP.json`（否則 `check-actions.py` 紅），`pkg/` 一起 commit；**別跑裸 `wasm-pack`**（產物會帶建置者帳號名，也不會開 WebAssembly SIMD——`+simd128` 只在該腳本的 CARGO_ENCODED_RUSTFLAGS，腳本以 0x1f 分隔 flags 保住含空白路徑，建完會驗產物真的宣告了 simd128）。
 - 工具鏈**釘日期**（`wasm/rust-toolchain` 的 `nightly-YYYY-MM-DD`，B-038）：裸 `nightly` 即紅；升級＝改 channel → 重建 → `pkg/`＋戳記一起 commit（`check-actions.py` 對帳 channel）。
 - 改 `wasm/Cargo.toml` 依賴 → `py -3.11 tools/build-notices.py` 重產 `LICENSE-THIRD-PARTY.txt` 一起 commit（授權義務跟著依賴變）。

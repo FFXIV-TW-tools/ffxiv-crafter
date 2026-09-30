@@ -2,13 +2,13 @@
 // classic script（無 module 語法，同 crafting-list.js 手法）：發佈 globalThis.CraftRender，app.js init 注入依賴。
 // 注入 getter（getSelected/getItems/getActions）而非值 —— loadData 會「重新賦值」ITEMS/ACTIONS 綁定，持舊參照看不到新資料，故取 live 值。
 (function () {
-  let deps = null; // { $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE, PH_HTML, getSelected, getItems, getActions }
+  let deps = null; // { $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE, PH_HTML, getSelected, getItems, getActions, getTargetQuality }
   const ECHO_KEY = 'ffxiv-crafter-macro-echo-v1';
   let lastSteps = null;   // 提示音開關切換時要能重組巨集，不必重新求解（它不是求解輸入）
 
   /**
    * 目標品質未達成的警語（純函式，golden 測試面）。
-   * target=0 ＝沒設目標（欄位留空＝滿品質，或 NQ 模式）⇒ 不警告，那不是「沒達成」。
+   * target=0 ＝ NQ 模式；留白的滿品質目標由 computeSettings 提供，不在渲染層重算。
    */
   function shortfallHtml(target, finalQuality) {
     if (!(target > 0) || finalQuality >= target) return '';
@@ -128,11 +128,8 @@
     // 而 `complete` 只看進展有沒有做完 ⇒ 會出現「✓ 可完成」配上達不到門檻的品質。
     // 玩家選「三階」就是衝著門檻來的，少了這行就是拿到一份達不到門檻的巨集而不自知
     // （2026-08-01 實測：三階 12665、實際 8488，畫面全綠）。
-    // 目標品質欄被**停用**＝這個模式不吃目標品質（NQ 只求完成），此時欄位裡殘留的數字不是玩家的目標。
-    // 直接讀 .value 會產生假的「未達目標品質 900」警告（shortfallHtml 的註解本來就寫著 NQ 不警告，
-    // 壞的是這條接線）。停用與否的唯一決定者＝CraftFlow.setTargetMode，故以它為準、不再判一次模式。
-    const targetEl = $('opt-target');
-    const shortLine = shortfallHtml(targetEl.disabled ? 0 : Number(targetEl.value) || 0, r.final_quality);
+    // 使用求解公式的有效目標：留白＝滿品質、明填收斂到上限、NQ＝0。
+    const shortLine = shortfallHtml(deps.getTargetQuality(), r.final_quality);
     const qualityPct = pct(r.final_quality, r.max_quality);
     const kpi = globalThis.CrafterVisual?.kpi || ((_, label, value) =>
       `<div class="codex-kpi"><span class="codex-kpi__label">${label}</span><span class="codex-kpi__value">${value}</span></div>`);
