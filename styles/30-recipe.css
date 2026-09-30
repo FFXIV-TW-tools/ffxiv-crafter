@@ -129,11 +129,9 @@
 
 /* 消耗品（食物 / 藥水；專家之證已移到角色數值分頁）*/
 .consumable-block { border-top: 1px solid var(--color-border); margin: var(--space-2, 8px) 0; }
-.consumable-block > summary { cursor: pointer; list-style: none; padding: var(--space-2, 8px) 0;
-  display: flex; align-items: baseline; gap: var(--space-2, 8px); }
-.consumable-block > summary::-webkit-details-marker { display: none; }
-.consumable-block > summary::before { content: '▸'; color: var(--accent); margin-right: var(--space-1, 4px); display: inline-block; transition: transform var(--transition-fast, .15s); }
-.consumable-block[open] > summary::before { transform: rotate(90deg); }
+/* baseline 與繼承字級保留原幾何；padding／gap／marker／旋轉由共用 compact 提供。 */
+.consumable-block > summary { align-items: baseline; font-size: inherit; }
+.consumable-block > summary::before { margin-right: var(--space-1, 4px); }
 /* 展開後是一組有功能的表單 → 給它自己的卡片底（原本裸貼在卡片背景上，欄位像散落的） */
 /* 幾何走共用 .codex-tint-panel--neutral（同 .cfg-card／.filter-group／.cl-card／.result-summary，B-027）：
    本地只留 flex 版面、padding 與外距。底色用共用預設（--color-surface）故不傳 --panel-bg。

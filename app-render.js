@@ -5,6 +5,7 @@
   let deps = null; // { $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE, PH_HTML, getSelected, getItems, getActions, getTargetQuality }
   const ECHO_KEY = 'ffxiv-crafter-macro-echo-v1';
   let lastSteps = null;   // 提示音開關切換時要能重組巨集，不必重新求解（它不是求解輸入）
+  let echoSaveWarned = false, echoUnsubscribe = null;
 
   /**
    * 目標品質未達成的警語（純函式，golden 測試面）。
@@ -209,13 +210,30 @@
   function bindMacroEcho() {
     const el = deps.$('macro-echo');
     if (!el) return;
-    try {
-      const raw = localStorage.getItem(ECHO_KEY);
-      if (raw === '0' || raw === '1') el.checked = raw === '1';   // 其他值（含 null）＝沒設過 → 留 HTML 的預設（開）
-    } catch (e) { console.warn('[crafter] 巨集提示音設定讀取失敗，用預設值:', e); }
+    const defaultValue = el.checked;
+    const parse = (raw) => raw === '0' ? false : raw === '1' ? true : defaultValue;
+    const replace = (value) => { el.checked = value; if (lastSteps) renderMacro(lastSteps); };
+    replace(CraftStorage.open(ECHO_KEY, { parse, serialize: (value) => value ? '1' : '0' }));
+    if (echoUnsubscribe) echoUnsubscribe();
+    echoUnsubscribe = CraftStorage.subscribe(ECHO_KEY, replace);
     el.addEventListener('change', () => {
-      try { localStorage.setItem(ECHO_KEY, el.checked ? '1' : '0'); }
-      catch (e) { console.warn('[crafter] 巨集提示音設定儲存失敗（可能是無痕模式）:', e); }
+      const value = el.checked;
+      CraftStorage.update(ECHO_KEY, {
+        kind: 'set', field: 'echo', read: (model) => model, apply: () => value,
+        onResult(result) {
+          replace(CraftStorage.view(ECHO_KEY));
+          if (!result.ok) {
+            console.warn('[crafter] 巨集提示音設定儲存失敗（可能是無痕模式）:', result.error);
+            if (!echoSaveWarned) {
+              echoSaveWarned = true;
+              const message = '無法保存巨集提示音設定（可能是無痕/私密模式），重整後會回到預設';
+              if (deps.toast) deps.toast(message, 'warn');
+              else if (globalThis.FFXIVToast?.show) globalThis.FFXIVToast.show(message, 'warn');
+              else if (globalThis.alert) globalThis.alert(message);
+            }
+          }
+        },
+      });
       if (lastSteps) renderMacro(lastSteps);
     });
   }

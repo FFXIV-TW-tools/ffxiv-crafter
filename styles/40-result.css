@@ -13,10 +13,8 @@
 .bar-num { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
 
 .res-block { border-top: 1px solid var(--color-border); padding: var(--space-1, 4px) 0; }
-.res-block > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: var(--space-2, 8px); padding: var(--space-2, 8px) 0; }
-.res-block > summary::-webkit-details-marker { display: none; }
-.res-block > summary::before { content: '▸'; color: var(--accent); transition: transform var(--transition-fast, .15s); display: inline-block; }
-.res-block[open] > summary::before { transform: rotate(90deg); }
+/* 標題與 caret 對齊原 baseline；其餘折疊外觀由共用 compact 提供。 */
+.res-block > summary { align-items: baseline; font-size: inherit; }
 .res-block > summary .codex-h3 { margin: 0; }
 
 /* CSS counter 給每張手法卡編號 → 與下方「逐步走查」的 # 欄一一對應（純 CSS，不動 render） */

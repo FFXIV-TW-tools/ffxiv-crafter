@@ -1,6 +1,6 @@
 // tools/tests/31-render.test.mjs — 資料載入降級（T41／T42）／結果渲染接線（T39）／最低能力門檻（T60／T61）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SRC, LAYER_STUBS, sandbox, T, check, eq, gear } from './_harness.mjs';
+import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SRC, LAYER_STUBS, sandbox, T, check, eq, gear, loadStorage } from './_harness.mjs';
 
 // ===== T41：資料載入的降級分級（哪些載不到可以摸摸鼻子、哪些必須講出來）=====
 // 由來（健檢 2026-08-15 resilience A1）：level-sync.json 原本與食藥／品質階段一樣被歸為「選配」，
@@ -43,6 +43,7 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    loadStorage(ctx);
     vm.runInContext(GEAR_SRC2, ctx, { filename: 'app-gear-t41.js' });
     vm.runInContext(RECIPE_SRC2, ctx, { filename: 'app-recipe-t41.js' });
     vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t41.js' });

@@ -1,6 +1,6 @@
 // tools/tests/20-list.test.mjs — 製造清單與素材彙總：aggregateMats／add-has-count／三分組／採購 CSV（T7〜T12、T58）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
+import { fs, vm, path, ROOT, T, check, eq, loadStorage } from './_harness.mjs';
 
 // ===== T7：crafting-list aggregateMats（清單素材彙總純函式；獨立 vm 載 crafting-list.js）=====
 {
@@ -8,6 +8,7 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
   const clSandbox = { console };
   clSandbox.globalThis = clSandbox;
   vm.createContext(clSandbox);
+  loadStorage(clSandbox);
   vm.runInContext(CL_SRC, clSandbox, { filename: 'crafting-list.js' });
   const agg = clSandbox.CraftList.aggregateMats;
   const ING = { '100': [[5, 2], [8, 1], [16, 3]], '200': [[5, 1], [9, 4]] };
@@ -53,6 +54,7 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
   };
   cl.globalThis = cl;
   vm.createContext(cl);
+  loadStorage(cl);
   vm.runInContext(CL_SRC, cl, { filename: 'crafting-list.js' });
   const CL = cl.CraftList;
   const RECIPES = [{ id: 100, item_name: '鐵錠' }, { id: 200, item_name: '鋼錠' }];
@@ -117,6 +119,7 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
     document: { getElementById() { return stubEl(); }, querySelector() { return null; }, querySelectorAll() { return []; }, createElement() { return stubEl(); }, body: stubEl() } };
   cl.globalThis = cl;
   vm.createContext(cl);
+  loadStorage(cl);
   vm.runInContext(CL_SRC, cl, { filename: 'crafting-list.js' });
   const CL = cl.CraftList;
   const MID = { id: 50, item_name: '中間材', item_amount: 3, job: '鍛造', rlv: 1, item_id: 5 };
@@ -180,6 +183,7 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
   const cl = { console };
   cl.globalThis = cl;
   vm.createContext(cl);
+  loadStorage(cl);
   vm.runInContext(CL_SRC, cl, { filename: 'crafting-list.js' });
   const build = cl.CraftList.buildShoplistCsv;
   const recipes = new Map([

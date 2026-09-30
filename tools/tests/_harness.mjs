@@ -15,6 +15,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.join(HERE, '..', '..');   // tools/tests/ → repo 根
 export const APP_SRC = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
 export const GEAR_SRC = fs.readFileSync(path.join(ROOT, 'app-gear.js'), 'utf8');
+export const STORAGE_SRC = fs.readFileSync(path.join(ROOT, 'app-storage.js'), 'utf8');
+export function loadStorage(ctx) { vm.runInContext(STORAGE_SRC, ctx, { filename: 'app-storage.js' }); }
 // 公式面（recipeMaxes／statShortfall／effectiveStats／computeSettings）與資料載入面住這兩支；
 // app.js 只剩同名 proxy ⇒ **每個載 APP_SRC 的 sandbox 都要先載這兩份真原始碼**（不是 stub：純函式要真的算）。
 export const FORMULA_SRC = fs.readFileSync(path.join(ROOT, 'app-formula.js'), 'utf8');
@@ -86,6 +88,7 @@ export const sandbox = {
 };
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
+loadStorage(sandbox);
 vm.runInContext(GEAR_SRC, sandbox, { filename: 'app-gear.js' });
 vm.runInContext(RECIPE_SRC, sandbox, { filename: 'app-recipe.js' });
 vm.runInContext(RENDER_SRC, sandbox, { filename: 'app-render.js' }); // 先定義 globalThis.CraftRender（hqPercent 純函式、不需 init）

@@ -13,27 +13,60 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
   let deps = null;
   let gearLoadWarned = false;
   let gearSaveWarned = false;
+  const editBaselines = new WeakMap();
 
-  function loadGear() {
+  function parseGear(raw) {
     try {
-      const raw = localStorage.getItem(GEAR_KEY);
-      if (raw == null) { gearsets = {}; return; } // 首次使用：沒有保存值不是錯誤
+      if (raw == null) return {};
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new TypeError('角色數值資料不是物件');
-      gearsets = parsed;
+      return parsed;
     } catch (e) {
-      gearsets = {};
       console.warn('[crafter] 角色數值讀取失敗，已重置:', e);
       if (!gearLoadWarned) { gearLoadWarned = true; deps.toast('角色數值讀取失敗，已重置', 'warn'); }
+      return {};
     }
   }
-
-  function saveGear() {
-    try { localStorage.setItem(GEAR_KEY, JSON.stringify(gearsets)); }
-    catch (e) {                                   // 無痕/私密模式或配額滿：至少 warn（禁靜默吞），並一次性提醒玩家設定不會保存
-      console.warn('[crafter] 角色數值儲存失敗（可能是無痕模式）:', e);
-      if (!gearSaveWarned) { gearSaveWarned = true; deps.toast('無法保存角色數值（可能是無痕/私密模式），本次設定重整後會遺失', 'warn'); }
-    }
+  let unsubscribe = null;
+  function loadGear() {
+    gearsets = CraftStorage.open(GEAR_KEY, { parse: parseGear });
+    if (unsubscribe) unsubscribe();
+    unsubscribe = CraftStorage.subscribe(GEAR_KEY, (value) => { gearsets = value; refreshGearInputs(); deps.afterInput(); });
+  }
+  function refreshGearInputs() {
+    const box = deps.$('gearsets');
+    box?.querySelectorAll('.gear-in').forEach((inp) => {
+      const baseline = editBaselines.get(inp);
+      if (document.activeElement === inp && inp.value !== String(Number(baseline) || '')) return;
+      const value = gearsets[inp.dataset.job]?.[inp.dataset.f];
+      inp.value = Number(value) || '';
+      editBaselines.set(inp, value);
+      inp.setAttribute?.('aria-invalid', String(!validGearValue(inp.dataset.f, Number(inp.value) || 0)));
+    });
+    box?.querySelectorAll('.gear-spec').forEach((inp) => { inp.checked = specialistFor(inp.dataset.job); });
+    updateSpecCount(); updateGearSummary();
+  }
+  function saveGear(job, field, value, target) {
+    return CraftStorage.update(GEAR_KEY, {
+      kind: 'set', field: `${job}.${field}`, read: (model) => model[job]?.[field],
+      ...(target && editBaselines.has(target) ? { baseline: editBaselines.get(target) } : {}),
+      apply(model) {
+        if (field === 'specialist' && value && !model[job]?.specialist &&
+            deps.DOH.filter((j) => model[j]?.specialist).length >= SPEC_MAX) return CraftStorage.reject('specialist-limit');
+        (model[job] = model[job] || {})[field] = value;
+        return model;
+      },
+      onResult(result) {
+        gearsets = CraftStorage.view(GEAR_KEY);
+        if (target && field === 'specialist') target.checked = specialistFor(job);
+        refreshGearInputs(); deps.afterInput();
+        if (result.rejected) deps.toast(`專家之證同時最多 ${SPEC_MAX} 個 — 請先取消其他職業`, 'warn');
+        else if (!result.ok) {
+          console.warn('[crafter] 角色數值儲存失敗（可能是無痕模式）:', result.error);
+          if (!gearSaveWarned) { gearSaveWarned = true; deps.toast('無法保存角色數值（可能是無痕/私密模式），本次設定重整後會遺失', 'warn'); }
+        }
+      },
+    });
   }
 
   function validGearValue(field, value) {
@@ -89,7 +122,10 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
         <tbody>${rows.map(job =>
           `<tr><th class="gj${job === '預設' ? ' gj-default' : ''}">${jico(job)}${esc(job)}</th>${cell(job, 'level', '100')}${cell(job, 'cms', '工藝')}${cell(job, 'ctrl', '加工')}${cell(job, 'cp', 'CP')}${specCell(job)}</tr>`).join('')}</tbody>
       </table>`;
-    $('gearsets').querySelectorAll('.gear-in').forEach(inp => inp.addEventListener('input', onGearInput));
+    $('gearsets').querySelectorAll('.gear-in').forEach(inp => {
+      inp.addEventListener('focus', () => { editBaselines.set(inp, gearsets[inp.dataset.job]?.[inp.dataset.f]); });
+      inp.addEventListener('input', onGearInput);
+    });
     $('gearsets').querySelectorAll('.gear-spec').forEach(inp => inp.addEventListener('change', onSpecialistToggle));
     updateSpecCount();
     updateGearSummary();
@@ -108,16 +144,10 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
   // 照樣可按，超過就退回並說明為什麼——玩家看得到「哪一格不能再勾」的理由。
   function onSpecialistToggle(e) {
     const job = e.target.dataset.job;
-    if (e.target.checked && specialistCount() >= SPEC_MAX) {
-      e.target.checked = false;
-      deps.toast(`專家之證同時最多 ${SPEC_MAX} 個 — 請先取消其他職業`, 'warn');
-      return;
-    }
-    (gearsets[job] = gearsets[job] || {}).specialist = e.target.checked;
-    saveGear();
-    updateSpecCount();
-    updateGearSummary();
-    deps.afterInput();
+    const checked = e.target.checked;
+    saveGear(job, 'specialist', checked, e.target);
+    gearsets = CraftStorage.view(GEAR_KEY);
+    refreshGearInputs();
   }
 
   function onGearInput(e) {
@@ -134,8 +164,9 @@ let gearsets = {};      // { 職業: {level,cms,ctrl,cp,specialist} }
     e.target.setAttribute?.('aria-invalid', String(!valid));
     e.target.setCustomValidity?.(valid ? '' : `請輸入 0–${f === 'level' ? 100 : 65535} 的整數`);
     if (!valid) e.target.reportValidity?.();
+    saveGear(job, f, value, e.target);
+    editBaselines.set(e.target, value);
     (gearsets[job] = gearsets[job] || {})[f] = value;
-    saveGear();
     updateGearSummary();
     deps.afterInput();
   }

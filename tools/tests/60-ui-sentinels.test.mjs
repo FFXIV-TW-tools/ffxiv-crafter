@@ -1,6 +1,6 @@
 // tools/tests/60-ui-sentinels.test.mjs — UI runtime sentinel（T34）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, check, eq } from './_harness.mjs';
+import { fs, vm, path, ROOT, check, eq, loadStorage } from './_harness.mjs';
 
 
 // ===== T34：複製品名鈕必須走 portal 共用元件（不自刻 emoji 鈕）=====
@@ -17,6 +17,7 @@ import { fs, vm, path, ROOT, check, eq } from './_harness.mjs';
     }
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    loadStorage(ctx);
     vm.runInContext(QSRC, ctx, { filename: 'app-quests-t34.js' });
     ctx.CraftQuests.init({ $: () => null, esc: (s) => String(s), iconUrl: () => '', toast() {}, mbItem: () => '#',
       selectRecipe: () => true, switchTab() {}, copyText() {}, getItems: () => ({}), getIngredients: () => ({}),

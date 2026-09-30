@@ -63,20 +63,41 @@
   }
 
   // ---------- 保存（同求解選項：這一區的選擇會跟著人走）----------
-  function load() {
+  function parseState(raw) {
     try {
-      const s = JSON.parse(localStorage.getItem(KEY)) || {};
-      // 只認 1..100 的整數；被亂改就退回「跟隨角色等級」而不是產生怪等級
-      override = (Number.isInteger(s.level) && s.level >= 1 && s.level <= 100) ? s.level : null;
-    } catch (e) { console.warn('[crafter] 等級同步設定讀取失敗，改為跟隨角色等級:', e); override = null; }
+      const s = JSON.parse(raw) || {};
+      return (Number.isInteger(s.level) && s.level >= 1 && s.level <= 100) ? { level: s.level } : {};
+    } catch (e) { console.warn('[crafter] 等級同步設定讀取失敗，改為跟隨角色等級:', e); return {}; }
   }
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(override === null ? {} : { level: override })); }
-    catch (e) {
-      console.warn('[crafter] 等級同步設定儲存失敗（可能是無痕模式）:', e);
-      // 同其他保存點：一次性告知，別讓玩家以為指定的等級跟著他走（同 crafting-list 的 T40 教訓）
-      if (!saveWarned) { saveWarned = true; deps?.toast?.('無法保存手動指定的等級（可能是無痕/私密模式），重整後會回到跟隨角色等級', 'warn'); }
+  let unsubscribe = null;
+  let editBaseline, editing = false;
+  function replace(value) {
+    override = value.level ?? null;
+    const inp = $('ls-level');
+    if (inp && (document.activeElement !== inp || inp.value === String(editBaseline ?? ''))) {
+      inp.value = override === null ? '' : String(override);
+      editBaseline = override === null ? undefined : override;
     }
+    deps?.onChange?.();
+  }
+  function load() {
+    override = CraftStorage.open(KEY, { parse: parseState }).level ?? null;
+    if (unsubscribe) unsubscribe();
+    unsubscribe = CraftStorage.subscribe(KEY, replace);
+  }
+  function save(level) {
+    return CraftStorage.update(KEY, {
+      kind: 'set', field: 'level', read: (model) => model.level,
+      ...(editing ? { baseline: editBaseline } : {}),
+      apply(model) { if (level === null) delete model.level; else model.level = level; return model; },
+      onResult(result) {
+        replace(CraftStorage.view(KEY));
+        if (!result.ok) {
+          console.warn('[crafter] 等級同步設定儲存失敗（可能是無痕模式）:', result.error);
+          if (!saveWarned) { saveWarned = true; deps?.toast?.('無法保存手動指定的等級（可能是無痕/私密模式），重整後會回到跟隨角色等級', 'warn'); }
+        }
+      },
+    });
   }
 
   /** 重繪說明。呼叫端（app.js refreshSelectedGear）先 resolve 取生效 rlv 算出 maxes，再把兩者一起交回來
@@ -113,8 +134,9 @@
   }
 
   function setOverride(v) {
+    save(v);
     override = v;
-    save();
+    editBaseline = v === null ? undefined : v;
     deps?.onChange?.();
   }
 
@@ -123,6 +145,10 @@
       deps = d;
       load();
       const inp = $('ls-level');
+      if (inp) {
+        inp.addEventListener('focus', () => { editing = true; editBaseline = override === null ? undefined : override; });
+        inp.addEventListener('blur', () => { editing = false; });
+      }
       if (inp) inp.addEventListener('input', () => {
         const n = parseInt(inp.value, 10);
         // 清空＝回到「跟隨角色等級」（不用另設一顆按鈕當唯一出口）

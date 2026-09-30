@@ -209,25 +209,36 @@ const SPEC_GATED_IDS = ['opt-heart', 'opt-qi'];
 // 「玩家想不想用」對**每個**會被程式強制取消的選項都要記——不只專家之證兩個：opt-adversarial 在 expert 配方
 // 也會被強制取消，原本沒記 ⇒ 存檔時被寫成 false、離開 expert 也不還原（健檢 R5 M7）。不逐 id 列舉，第四個出現時不再漏。
 const optWanted = Object.fromEntries(SOLVE_OPT_IDS.map(id => [id, false]));
-function loadSolveOpts() {
+function parseSolveOpts(raw) {
+  const value = Object.fromEntries(SOLVE_OPT_IDS.map(id => [id, false]));
   try {
-    const s = JSON.parse(localStorage.getItem(SOLVE_OPTS_KEY)) || {};
-    // 只認布林：localStorage 被竄改成別的型別時退回 HTML 的預設值，不硬套
-    SOLVE_OPT_IDS.forEach(id => { if (typeof s[id] === 'boolean') $(id).checked = s[id]; });
+    const saved = JSON.parse(raw) || {};
+    SOLVE_OPT_IDS.forEach(id => { if (typeof saved[id] === 'boolean') value[id] = saved[id]; });
   } catch (e) { console.warn('[crafter] 求解選項讀取失敗，使用預設值:', e); }
-  SOLVE_OPT_IDS.forEach(id => { optWanted[id] = $(id).checked; });   // 記住偏好本身，閘關了也不會遺失
+  return value;
 }
-let solveOptsSaveWarned = false;
-function saveSolveOpts() {
-  try {
-    const s = {};
-    // 閘關著時 DOM 是被強制取消的，寫它等於把玩家的偏好洗掉（他只是暫時拔了專家之證）→ 寫回偏好本身
-    SOLVE_OPT_IDS.forEach(id => { s[id] = $(id).disabled ? optWanted[id] : $(id).checked; });
-    localStorage.setItem(SOLVE_OPTS_KEY, JSON.stringify(s));
-  } catch (e) {                                 // 無痕/配額滿：至少 warn（禁靜默吞）＋一次性提醒
-    console.warn('[crafter] 求解選項儲存失敗（可能是無痕模式）:', e);
-    if (!solveOptsSaveWarned) { solveOptsSaveWarned = true; toast('無法保存求解選項（可能是無痕/私密模式），重整後會回到預設', 'warn'); }
-  }
+function applySolveOpts(value) {
+  SOLVE_OPT_IDS.forEach(id => { optWanted[id] = value[id]; if (!$(id).disabled) $(id).checked = value[id]; });
+}
+let solveOptsUnsubscribe = null, solveOptsSaveWarned = false;
+function loadSolveOpts() {
+  const value = CraftStorage.open(SOLVE_OPTS_KEY, { parse: parseSolveOpts });
+  SOLVE_OPT_IDS.forEach(id => { optWanted[id] = value[id]; $(id).checked = value[id]; });
+  if (solveOptsUnsubscribe) solveOptsUnsubscribe();
+  solveOptsUnsubscribe = CraftStorage.subscribe(SOLVE_OPTS_KEY, (value) => { applySolveOpts(value); invalidateResults(); });
+}
+function saveSolveOpts(id) {
+  const value = $(id).disabled ? optWanted[id] : $(id).checked;
+  return CraftStorage.update(SOLVE_OPTS_KEY, {
+    kind: 'set', field: id, read: (model) => model[id], apply(model) { model[id] = value; return model; },
+    onResult(result) {
+      applySolveOpts(CraftStorage.view(SOLVE_OPTS_KEY)); invalidateResults();
+      if (!result.ok) {
+        console.warn('[crafter] 求解選項儲存失敗（可能是無痕模式）:', result.error);
+        if (!solveOptsSaveWarned) { solveOptsSaveWarned = true; toast('無法保存求解選項（可能是無痕/私密模式），重整後會回到預設', 'warn'); }
+      }
+    },
+  });
 }
 
 // 晶體判定（水晶/碎晶/晶簇）——**單一出口**：配方原料排序（app-recipe）與製造清單彙總（crafting-list）
@@ -274,6 +285,8 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 早報會落到下面的 catch 顯示錯誤橫幅；用 `?.` 軟略過的話玩家看到的是一個少了功能、
   // 按下去才無聲 TypeError 的頁面。各層**內部**的 `globalThis.CraftXxx?.` 選擇性呼叫不在此列
   // （那是給測試 sandbox 只載部分層用的）。新增分層檔時這裡要一起加；原 source-only 哨兵已移除。
+  if (!globalThis.CraftStorage) throw new Error('app-storage.js 未載入（部署不完整）');
+  globalThis.CraftStorage.init({ toast });
   // 公式層（app-formula.js classic script）：**必須最早**——下面每一層注入的 computeSettings／recipeMaxes／
   // statShortfall 都是本檔轉往 CraftFormula 的 proxy，deps 沒就位的話那些呼叫會在求解當下才炸
   if (!globalThis.CraftFormula) throw new Error('app-formula.js 未載入（部署不完整）');
@@ -404,7 +417,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   // 任一求解輸入變更 → 舊結果過期（gate：集中失效，涵蓋程式化改值與 gear 傳播）＋保存選擇
   SOLVE_OPT_IDS.forEach(id => $(id).addEventListener('change', () => {
     optWanted[id] = $(id).checked;   // 玩家自己動的才算偏好（程式化的強制取消不觸發 change）
-    saveSolveOpts(); invalidateResults();
+    saveSolveOpts(id); invalidateResults();
   }));
   $('opt-target').addEventListener('input', () => {
     const el = $('opt-target'), max = +el.max || 0;
@@ -428,7 +441,7 @@ function fallbackCopy(text, okMsg = '✓ 已複製') {
   $('change-recipe').addEventListener('click', showPicker);
   // 結果渲染（app-render.js classic script）：注入 getter 取 live 狀態（loadData 會重賦值 ITEMS/ACTIONS 綁定）
   if (!globalThis.CraftRender) throw new Error('app-render.js 未載入（部署不完整）');
-  globalThis.CraftRender.init({ $, esc, iconUrl, b64urlEncode, copyText, MACRO_BUILDER_BASE,
+  globalThis.CraftRender.init({ $, esc, iconUrl, b64urlEncode, copyText, toast, MACRO_BUILDER_BASE,
     getSelected: () => selected, getItems: () => ITEMS, getActions: () => ACTIONS,
     getTargetQuality: () => computeSettings(selected.recipe, selected.rlv, gearFor(selected.recipe.job)).target_quality });
   // 製造清單（crafting-list.js classic script，先於本 module 執行）：注入依賴後接手 #craft-list 分頁

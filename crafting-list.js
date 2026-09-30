@@ -10,6 +10,7 @@
   let byId = new Map(); // recipe id → recipe
   let list = [];        // [{ id, qty }]（qty＝製作次數）
   let saveWarned = false; // 保存失敗只提醒一次（每次加減都跳 toast 會變成噪音）
+  const editBaselines = new WeakMap();
 
   // 移除鈕＝功能性小圖示 → 走 portal 共用元件（`FFXIVIcons.btnHTML('close', …)` → `.codex-icon-btn` ＋內嵌 SVG）。
   // 自刻 ✕ 字元的問題與 emoji 同型：字型相依、視覺重量跟旁邊的 SVG 圖示不一致。
@@ -65,66 +66,76 @@
     return { csv, error: null, count, invalidCount };
   }
 
-  function load() {
+  function parseList(raw) {
     try {
-      list = (JSON.parse(localStorage.getItem(KEY)) || [])
-        .filter((e) => e && byId.has(+e.id))       // 資料改版後消失的配方直接剔除
+      return (JSON.parse(raw) || []).filter((e) => e && byId.has(+e.id))
         .map((e) => ({ id: +e.id, qty: clampQty(e.qty) }));
-    } catch (e) { console.warn('[crafter] 製造清單讀取失敗，重置:', e); list = []; }
+    } catch (e) { console.warn('[crafter] 製造清單讀取失敗，重置:', e); return []; }
   }
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(list)); }
-    catch (e) {
-      console.warn('[crafter] 製造清單儲存失敗（可能是無痕模式）:', e);
-      // 只 console.warn 等於沒說：玩家會一路加十幾個配方、關掉分頁才發現整份清單不見了。
-      // 一次性 toast（同 app-gear / app-consumable / app-quests 的既有慣例，別每次操作都轟炸）。
-      if (!saveWarned) { saveWarned = true; deps?.toast?.('無法保存製造清單（可能是無痕/私密模式），重整後會遺失', 'warn'); }
-    }
+  let unsubscribe = null;
+  function load() {
+    list = CraftStorage.open(KEY, { parse: parseList });
+    if (unsubscribe) unsubscribe();
+    unsubscribe = CraftStorage.subscribe(KEY, (value) => { list = value; render(); notify(); });
   }
-
+  function save(id, kind, amount, onCommit, baseline) {
+    return CraftStorage.update(KEY, {
+      kind, field: String(id), read: (model) => model.find((e) => e.id === id)?.qty,
+      ...(baseline ? { baseline: baseline.value } : {}),
+      apply(model) {
+        const found = model.find((e) => e.id === id);
+        if (kind === 'delta' && ((amount < 0 && !found) || (amount > 0 && found?.qty >= QTY_MAX))) {
+          return CraftStorage.reject('unchanged');
+        }
+        if (kind === 'delete') return model.filter((e) => e.id !== id);
+        const qty = kind === 'set' ? clampQty(amount) : (found?.qty || 0) + amount;
+        if (qty <= 0) return model.filter((e) => e.id !== id);
+        if (found) found.qty = clampQty(qty); else model.push({ id, qty: clampQty(qty) });
+        return model;
+      },
+      onResult(result) {
+        if (result.ok) {
+          list = CraftStorage.view(KEY); render(); notify();
+          if (onCommit) onCommit(result);
+        } else if (result.rejected) {
+          const next = CraftStorage.view(KEY);
+          const changed = list.length !== next.length || list.some((e, i) => e.id !== next[i].id || e.qty !== next[i].qty);
+          list = next;
+          if (changed) { render(); notify(); }
+          if (onCommit) onCommit(result);
+        } else {
+          list = CraftStorage.view(KEY); render(); notify();
+          console.warn('[crafter] 製造清單儲存失敗（可能是無痕模式）:', result.error);
+          if (!saveWarned) { saveWarned = true; deps?.toast?.('無法保存製造清單（可能是無痕/私密模式），重整後會遺失', 'warn'); }
+        }
+      },
+    });
+  }
   function add(recipeId) {
     if (!deps || !byId.has(+recipeId)) return;
-    const nm = byId.get(+recipeId).item_name || ('#' + recipeId);   // toast 帶配方名 → 使用者知道「加了哪個」（原通用文案無反饋感）
-    const found = list.find((e) => e.id === +recipeId);
-    if (found && found.qty >= QTY_MAX) {   // 已達單筆上限：不謊報 +1、不觸發無效 render/notify（誠實鐵則；對抗審 codex/grok）
-      deps.toast(`「${nm}」已達單筆製作上限（${QTY_MAX} 次）`, 'warn');
-      return;
-    }
-    if (found) found.qty = clampQty(found.qty + 1);
-    else list.push({ id: +recipeId, qty: 1 });
-    save(); render(); notify();
-    deps.toast(found ? `✓「${nm}」已在清單 · 數量 +1（共 ${found.qty} 次）` : `✓ 已加入「${nm}」到製造清單`, 'ok');
+    const nm = byId.get(+recipeId).item_name || ('#' + recipeId);
+    return save(+recipeId, 'delta', 1, ({ before, after }) => {
+      if (before >= QTY_MAX) deps.toast(`「${nm}」已達單筆製作上限（${QTY_MAX} 次）`, 'warn');
+      else deps.toast(before ? `✓「${nm}」已在清單 · 數量 +1（共 ${after} 次）` : `✓ 已加入「${nm}」到製造清單`, 'ok');
+    });
   }
-
-  // 一次加 n 次製作（素材卡的「⚒ 加進清單」用）。不是 add() 呼叫 n 次——那會噴 n 個 toast。
-  // 撞到單筆上限時**只加到上限並誠實說**（同 add() 的既有取捨：不謊報加了 n 次）。
+  // 加減只帶 delta，數量提示以鎖內實際提交結果為準。
   function addRuns(recipeId, runs) {
     if (!deps || !byId.has(+recipeId)) return;
-    const n = clampQty(runs);
-    const nm = byId.get(+recipeId).item_name || ('#' + recipeId);
-    const found = list.find((e) => e.id === +recipeId);
-    const before = found ? found.qty : 0;
-    if (found) found.qty = clampQty(found.qty + n);
-    else list.push({ id: +recipeId, qty: n });
-    const after = before + n > QTY_MAX ? QTY_MAX : before + n;
-    save(); render(); notify();
-    const short = after - before < n;
-    deps.toast(short
-      ? `「${nm}」已達單筆製作上限（${QTY_MAX} 次），只加到 ${after} 次`
-      : `✓ 已把「${nm}」加進清單 · 製作 ${after} 次`, short ? 'warn' : 'ok');
+    const n = clampQty(runs), nm = byId.get(+recipeId).item_name || ('#' + recipeId);
+    return save(+recipeId, 'delta', n, ({ before, after }) => {
+      const short = after - (before || 0) < n;
+      deps.toast(short ? `「${nm}」已達單筆製作上限（${QTY_MAX} 次），只加到 ${after} 次`
+        : `✓ 已把「${nm}」加進清單 · 製作 ${after} 次`, short ? 'warn' : 'ok');
+    });
   }
-
-  // 取消一次（配方表每列 ＋ 旁邊那顆 −）。Owner 2026-08-19：加錯了不該逼人切到製造清單才收得回來。
-  // 語意與 add() 對稱＝**一次 −1**（不是整筆清掉）：加了 3 次的人按一下只想退一次；歸零才整筆移除。
   function removeOne(recipeId) {
     if (!deps) return;
-    const e = list.find((x) => x.id === +recipeId);
-    if (!e) return;                     // 不在清單：無聲早退（＋/− 是同一列的孿生鈕，沒東西可退時 − 本來就收起來）
     const nm = (byId.get(+recipeId) || {}).item_name || ('#' + recipeId);
-    e.qty -= 1;
-    if (e.qty <= 0) list = list.filter((x) => x.id !== +recipeId);
-    save(); render(); notify();
-    deps.toast(e.qty > 0 ? `「${nm}」數量 −1（剩 ${e.qty} 次）` : `已從製造清單移除「${nm}」`, 'ok');
+    return save(+recipeId, 'delta', -1, ({ before, after }) => {
+      if (before == null) return;
+      deps.toast(after > 0 ? `「${nm}」數量 −1（剩 ${after} 次）` : `已從製造清單移除「${nm}」`, 'ok');
+    });
   }
 
   const isCrystal = (iid, name) => deps.isCrystal(iid, name);   // 規則單一出口在 app.js（Q-02）
@@ -141,6 +152,36 @@
   }
 
   function render() {
+    const box = deps.$('craft-list'), active = document.activeElement;
+    const row = active?.closest?.('.cl-row');
+    const focusId = row?.dataset.id;
+    const focusClass = active?.classList?.contains('cl-qty-in') ? 'cl-qty-in'
+      : active?.classList?.contains('cl-del') ? 'cl-del' : 'cl-go';
+    const baseline = active && editBaselines.has(active) ? editBaselines.get(active) : undefined;
+    const draft = focusClass === 'cl-qty-in' && active.value !== String(baseline) ? active.value : null;
+    // 別分頁刪掉正在編輯的列：失焦前保留輸入節點，未提交文字仍可用 set 重新保存。
+    if (focusId != null && draft !== null && !list.some((e) => e.id === Number(focusId))) {
+      renderTabCount();
+      return;
+    }
+    const action = box.contains?.(active) && focusClass !== 'cl-qty-in';
+    const actionData = active ? JSON.stringify(active.dataset) : '';
+    const actionClass = active?.className, actionHref = active?.getAttribute?.('href');
+    renderContent();
+    if (focusId != null && focusClass === 'cl-qty-in') {
+      const next = box.querySelector(`.cl-row[data-id="${Number(focusId)}"] .cl-qty-in`);
+      if (next) {
+        if (draft !== null) { next.value = draft; editBaselines.set(next, baseline); }
+        else editBaselines.set(next, list.find((e) => e.id === Number(focusId))?.qty);
+        next.focus();
+      }
+    } else if (action) {
+      const next = [...box.querySelectorAll('button, a')].find((el) => el.className === actionClass &&
+        JSON.stringify(el.dataset) === actionData && el.getAttribute('href') === actionHref);
+      (next || box.querySelector('button, a'))?.focus();
+    }
+  }
+  function renderContent() {
     renderTabCount();
     const { $, esc, iconUrl, ITEMS } = deps;
     const box = $('craft-list');
@@ -273,10 +314,19 @@
     box.querySelectorAll('.cl-row').forEach((row) => {
       const id = +row.dataset.id;
       row.querySelector('.cl-go').onclick = () => deps.goSolve(id);   // 前往求解（選定配方 + 切求解分頁 + 帶 fromList 旗標）
-      row.querySelector('.cl-del').onclick = () => { list = list.filter((e) => e.id !== id); save(); render(); notify(); };
+      row.querySelector('.cl-del').onclick = () => { save(id, 'delete'); };
+      row.querySelector('.cl-qty-in').addEventListener('focus', (ev) => {
+        if (!editBaselines.has(ev.target)) editBaselines.set(ev.target, list.find((e) => e.id === id)?.qty);
+      });
+      row.querySelector('.cl-qty-in').addEventListener('blur', () => {
+        if (!list.some((e) => e.id === id)) { list = CraftStorage.view(KEY); render(); }
+      });
       row.querySelector('.cl-qty-in').addEventListener('change', (ev) => {   // change（非 input）：邊打字不重繪、失焦才彙總
-        const e = list.find((x) => x.id === id);
-        if (e) { e.qty = clampQty(ev.target.value); ev.target.value = e.qty; save(); render(); notify(); }
+        const qty = clampQty(ev.target.value);
+        ev.target.value = qty;
+        const baseline = editBaselines.has(ev.target) ? { value: editBaselines.get(ev.target) } : null;
+        editBaselines.set(ev.target, qty);
+        save(id, 'set', qty, null, baseline);
       });
     });
   }

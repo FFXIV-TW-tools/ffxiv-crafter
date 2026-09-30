@@ -9,26 +9,62 @@
                   potion: { hqId: 'potion-hq', btnId: 'potion-btn', menuId: 'potion-menu', label: '藥水' } };
   let deps = null;
   const MAP = { food: {}, potion: {} };          // 繁中名 → { nq, hq }
-  const state = { food: '', potion: '', foodHq: true, potionHq: true, open: true };
+  let state = { food: '', potion: '', foodHq: true, potionHq: true, open: true };
   let openKind = null;                            // 目前展開的選單（同時只一個）
   let saveWarned = false;
 
   // ---------- 保存 ----------
-  function load() {
+  function parseState(text) {
+    const value = { food: '', potion: '', foodHq: true, potionHq: true, open: true };
     try {
-      const raw = JSON.parse(localStorage.getItem(KEY));
+      const raw = JSON.parse(text);
       if (raw && typeof raw === 'object') {
-        for (const k of ['food', 'potion']) if (typeof raw[k] === 'string') state[k] = raw[k];
-        for (const k of ['foodHq', 'potionHq', 'open']) if (typeof raw[k] === 'boolean') state[k] = raw[k];
+        for (const k of ['food', 'potion']) if (typeof raw[k] === 'string') value[k] = raw[k];
+        for (const k of ['foodHq', 'potionHq', 'open']) if (typeof raw[k] === 'boolean') value[k] = raw[k];
       }
     } catch (e) { console.warn('[crafter] 食藥設定讀取失敗，用預設值:', e); }
+    return value;
   }
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); }
-    catch (e) {
-      console.warn('[crafter] 食藥設定儲存失敗（可能是無痕模式）:', e);
-      if (!saveWarned) { saveWarned = true; deps.toast('無法保存食物/藥水設定（可能是無痕/私密模式），重整後會遺失', 'warn'); }
+  let unsubscribe = null;
+  function load() {
+    state = CraftStorage.open(KEY, { parse: parseState });
+    if (unsubscribe) unsubscribe();
+    unsubscribe = CraftStorage.subscribe(KEY, replace);
+  }
+  function replace(value) {
+    const changed = ['food', 'potion', 'foodHq', 'potionHq'].some((k) => state[k] !== value[k]);
+    state = value;
+    deps.$('food-hq').checked = state.foodHq;
+    deps.$('potion-hq').checked = state.potionHq;
+    const block = deps.$('consumable-block');
+    if (block && block.open !== state.open) block.open = state.open;
+    for (const kind of Object.keys(KINDS)) {
+      renderButton(kind);
+      // 原選單節點留著，避免遠端刷新吃掉鍵盤焦點。
+      deps.$(KINDS[kind].menuId).querySelectorAll('.crafter-cons__opt').forEach((opt) => {
+        const selected = opt.dataset.name === state[kind];
+        opt.classList.toggle('is-sel', selected);
+        opt.setAttribute('aria-selected', String(selected));
+        const eff = opt.querySelector?.('.crafter-cons__eff');
+        if (eff) eff.textContent = effText(entryOf(kind, opt.dataset.name, isHq(kind)) || {});
+      });
     }
+    if (changed) deps.onChange();
+  }
+  function save(field, value) {
+    const promise = CraftStorage.update(KEY, {
+      kind: 'set', field, read: (model) => model[field],
+      apply(model) { model[field] = value; return model; },
+      onResult(result) {
+        replace(CraftStorage.view(KEY));
+        if (!result.ok) {
+          console.warn('[crafter] 食藥設定儲存失敗（可能是無痕模式）:', result.error);
+          if (!saveWarned) { saveWarned = true; deps.toast('無法保存食物/藥水設定（可能是無痕/私密模式），重整後會遺失', 'warn'); }
+        }
+      },
+    });
+    replace(CraftStorage.view(KEY));
+    return promise;
   }
 
   // ---------- 資料 ----------
@@ -111,11 +147,8 @@
     if (sel) { sel.scrollIntoView({ block: 'nearest' }); sel.focus(); }
   }
   function pick(kind, name) {
-    state[kind] = name;
-    save();
-    renderButton(kind);
+    save(kind, name);
     closeMenu(true);
-    deps.onChange();
   }
   function onMenuKey(kind, e) {
     const menu = deps.$(KINDS[kind].menuId);
@@ -147,7 +180,7 @@
     const block = $('consumable-block');
     if (block) {
       block.open = state.open;
-      block.addEventListener('toggle', () => { state.open = block.open; save(); });
+      block.addEventListener('toggle', () => { if (block.open !== state.open) save('open', block.open); });
     }
     for (const kind of Object.keys(KINDS)) {
       const btn = $(KINDS[kind].btnId), menu = $(KINDS[kind].menuId);
@@ -163,10 +196,7 @@
       });
       menu.addEventListener('keydown', (e) => onMenuKey(kind, e));
       $(KINDS[kind].hqId).addEventListener('change', () => {
-        state[kind === 'food' ? 'foodHq' : 'potionHq'] = isHq(kind);
-        save();
-        renderButton(kind);
-        if (openKind === kind) renderMenu(kind);   // 開著時同步選項顯示的 HQ 數值
+        save(kind === 'food' ? 'foodHq' : 'potionHq', isHq(kind));
       });
     }
     document.addEventListener('click', (e) => {           // 點外部收合（點在自己的按鈕/選單上不收）

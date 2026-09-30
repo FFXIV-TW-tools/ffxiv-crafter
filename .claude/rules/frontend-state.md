@@ -26,3 +26,8 @@ paths:
 - 三處本地保存欄位要在 `init` 套回 DOM：食藥（`ffxiv-crafter-consumables-v1`）／等級同步（`ffxiv-crafter-level-sync-v1`，留空＝跟隨角色）／角色數值；等級輸入框在使用者聚焦時不得被 `refreshSelectedGear` 覆寫。
 - 轉義紀律：動態字串（配方名／技能名／引擎 error）進 innerHTML 一律 `esc()`；icon 路徑無注入面故不 esc，**勿當 drift 誤補**。
 - 素材總需求三組（可自製／採集購買／晶體）：配方走 `CraftRecipe.pickRecipeForItem`、商人徽章走 `CraftQuests.vendorHtml`，**勿在製造清單層另刻**；「加進清單」傳的次數＝做幾次不是要幾個，`removeOne`＝−1。T58。
+- 七個 `ffxiv-crafter-*-v1` 保存點一律走 `CraftStorage`（`app-storage.js`）：`open` 復用各層解析／正規化；`update(key, operation)` 只提交一個欄位／集合成員／數量 delta，鎖內 fresh read → apply → write，commit 結果取代 model，數量 toast 用實際 commit 值。不得整包保存記憶體快照；specialist 上限在鎖內重檢。
+- `subscribe` 只同步 model／局部畫面並走原求解失效鏈，不回寫；fresh 值重套本 tab pending 操作，保留焦點與未提交輸入。同欄 set／delete 最後提交勝，warn「其他分頁也修改了這個欄位，已採用最後儲存的值」。
+- 保存 read／write 或鎖請求失敗仍保留本次瀏覽的有效設定，各層僅一次提示重整後會遺失；未落盤操作在 fresh 值上重套，下次成功提交一併保存，同欄 set／delete／membership 合併為最後一筆，delta 保留累加。未落盤 set／delete 保留原始基線，恢復保存時同樣檢查 fresh 值並每次 commit 最多提示一次衝突；遠端刷新不得丟失未落盤操作。
+- Web Locks 是跨分頁互斥；無 Web Locks／離頁 flush 僅保證同 task 同步 read→apply→write，**跨 process read/write 交錯仍有殘餘視窗，不宣稱 mutex**；不用 BroadcastChannel／localStorage lease 偽裝鎖。`pagehide`／hidden flush 尚未取得鎖的操作。升版後須重載舊分頁，舊程式不受新鎖保護。
+- portal cloud 的 pull/reset/import 不讀寫這七個 key；日後遠端 adapter 必須走同一 coordinator，保留 pending 本地操作及衝突提示，不得直接 `setItem` 整包替換。`first-run-hint.js` 保持解析期同步唯讀，key／shape 不變。

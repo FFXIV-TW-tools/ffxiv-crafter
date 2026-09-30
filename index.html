@@ -170,7 +170,7 @@
 
           <div class="codex-tint-panel codex-tint-panel--neutral cfg-card">
           <h3 class="codex-h3 codex-h3--section">素材與加成<span class="codex-h3__sub">HQ 素材與食藥會提升起始品質與數值</span></h3>
-          <details class="consumable-block" id="consumable-block" open>
+          <details class="codex-accordion codex-accordion--compact consumable-block" id="consumable-block" open>
             <summary>
               <span class="codex-small">🍖 食物 / 藥水</span>
               <span id="consumable-sum" class="crafter-sum codex-small">未使用</span>
@@ -265,18 +265,18 @@
           <div id="results-placeholder" class="codex-empty codex-empty--bare results-ph"></div>
           <div id="results" tabindex="-1" hidden>
             <div id="result-summary" class="codex-tint-panel codex-tint-panel--neutral result-summary"></div>
-            <details class="res-block" id="macro-block" open>
+            <details class="codex-accordion codex-accordion--compact res-block" id="macro-block" open>
               <summary><span class="codex-h3">🎮 遊戲巨集</span><span class="codex-small">複製貼進遊戲巨集欄</span></summary>
               <div class="macro-opts">
                 <label class="opt" data-help="每段結尾加一行帶音效的 /echo，跑完會出聲提示。遊戲巨集一格上限 15 行，這行會佔掉一行；剛好塞滿 15 步的最後一段不加（免得為一聲提示多切一段）。"><input type="checkbox" id="macro-echo" checked> 每段結尾加提示音</label>
               </div>
               <div id="macro" class="macro"></div>
             </details>
-            <details class="res-block" id="rot-block" open>
+            <details class="codex-accordion codex-accordion--compact res-block" id="rot-block" open>
               <summary><span class="codex-h3">手法序列</span></summary>
               <div id="rotation" class="rotation"></div>
             </details>
-            <details class="res-block" id="wt-block">
+            <details class="codex-accordion codex-accordion--compact res-block" id="wt-block">
               <summary><span class="codex-h3">逐步走查</span><span class="codex-small">點開看每步狀態</span></summary>
               <div id="walkthrough" class="walkthrough"></div>
             </details>
@@ -372,6 +372,7 @@
 
   <script src="crafter-icons.js"></script>
   <script src="crafter-visual.js"></script>
+  <script src="app-storage.js"></script>
   <script src="crafting-list.js"></script>
   <script src="app-formula.js"></script>
   <script src="app-data.js"></script>

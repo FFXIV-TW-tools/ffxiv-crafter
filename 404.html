@@ -8,9 +8,11 @@
 <!-- 這頁刻意**不載入任何外部資產**（不接 portal CDN、無 JS、無圖）。
      它存在的理由就是「未知路徑不要再回 200 + index.html」——若它自己又拉一串資源，
      等於把省下來的請求原地花掉，而爬蟲踩到的每一條假路徑都會再乘一次。
-     色值一律 var(--color-*, 同值 fallback)：tokens.css 沒載入時走 fallback（就是現在的常態），
-     哪天這頁被納入設計系統也不必回頭改。fallback 值＝tokens.css 當時的實值。 -->
+     樣式由 portal tools/gen-offline-css.mjs 在生成期解出 token 值，inline 寫入下方 markers；
+     runtime 只用同值 fallback，仍維持零 JS、零外部請求。 -->
 <style>
+/* @@GEN:OFFLINE-CSS@@ */
+  /* 本段由 portal tools/gen-offline-css.mjs 生成；正典＝offline-page.template.css＋tokens.css，不得手改。 */
   :root { color-scheme: dark; }
   body { margin:0; min-height:100vh; display:grid; place-items:center;
          background:var(--color-bg, #080c13); color:var(--color-text, #f5f5f5);
@@ -31,6 +33,7 @@
       border:1px solid var(--color-border, #2b3f56); text-decoration:none; }
   a:hover { background:var(--color-surface-hover, #18222f); }
   a:focus-visible { outline:2px solid var(--accent, #4ec9d0); outline-offset:4px; }
+/* @@/GEN:OFFLINE-CSS@@ */
 </style>
 </head>
 <body>

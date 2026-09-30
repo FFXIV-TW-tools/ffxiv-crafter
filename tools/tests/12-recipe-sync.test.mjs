@@ -1,6 +1,6 @@
 // tools/tests/12-recipe-sync.test.mjs — 配方詳情狀態機：數值更新不遺失成果／等級同步重算三上限（T25，內含 T37／T45／T52 接線）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SRC, LAYER_STUBS, makeEl, check, eq, eqObj, gear } from './_harness.mjs';
+import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SRC, LAYER_STUBS, makeEl, check, eq, eqObj, gear, loadStorage } from './_harness.mjs';
 
 // ===== T25：角色數值更新不得遺失成果；等級同步改變 rlv 時同步重算三上限 =====
 {
@@ -54,6 +54,7 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    loadStorage(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t25.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t25.js' });
     // classic script **必須早於 app.js module**（與 index.html 的實際載入順序一致）：
@@ -262,7 +263,7 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     eq('T43 沒有專家之證 → 強制取消勾選（不產出玩家按不出來的巨集）',
       noSpec.ctx.document.getElementById('opt-heart').checked, false);
     // 關鍵：此時若因為別的選項變動而存檔，不得把玩家的偏好一起洗掉
-    noSpec.ctx.saveSolveOpts();
+    noSpec.ctx.saveSolveOpts('opt-manip');
     eq('T43 閘關著時存檔 → localStorage 仍記得玩家的偏好（他只是暫時拔了證）',
       JSON.parse(noSpec.store['ffxiv-crafter-solve-opts-v1'])['opt-heart'], true);
   }
@@ -301,7 +302,7 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     ex.ctx.selectRecipe(1);
     const adv = ex.ctx.document.getElementById('opt-adversarial');
     eq('T43 expert 配方 → 防球被強制取消且 disabled', JSON.stringify([adv.checked, adv.disabled]), JSON.stringify([false, true]));
-    ex.ctx.saveSolveOpts();
+    ex.ctx.saveSolveOpts('opt-manip');
     eq('T43 expert 下存檔 → localStorage 仍記得玩家原本勾了防球', JSON.parse(ex.store['ffxiv-crafter-solve-opts-v1'])['opt-adversarial'], true);
     vm.runInContext('RECIPES[0].is_expert = false;', ex.ctx);
     ex.ctx.selectRecipe(1);

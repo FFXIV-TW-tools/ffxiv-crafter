@@ -1,6 +1,6 @@
 // tools/tests/40-flow-consumable.test.mjs — 流程引導 app-flow.js（T14）與食藥自繪 listbox app-consumable.js（T15）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
+import { fs, vm, path, ROOT, T, check, eq, loadStorage } from './_harness.mjs';
 
 // ===== T14：app-flow.js 流程引導狀態機（設計系統 §功能頁引導標準的可測落點）=====
 // 「現在該做什麼」是純函式決定的 → 這裡鎖住四條驗收線裡機械可驗的兩條：
@@ -82,6 +82,7 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
     localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } } };
   cs.globalThis = cs;
   vm.createContext(cs);
+  loadStorage(cs);
   vm.runInContext(CS_SRC, cs, { filename: 'app-consumable.js' });
   const CS = cs.CraftConsumable;
   const DEP = { $, esc: (s) => String(s), iconUrl: () => '', toast: () => {}, onChange: () => {} };
@@ -119,6 +120,7 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
     localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } } };
   cs2.globalThis = cs2;
   vm.createContext(cs2);
+  loadStorage(cs2);
   vm.runInContext(CS_SRC, cs2, { filename: 'app-consumable.js' });
   const CS2 = cs2.CraftConsumable;
   CS2.init(DEP);
@@ -142,6 +144,7 @@ import { fs, vm, path, ROOT, T, check, eq } from './_harness.mjs';
     localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } } };
   cs3.globalThis = cs3;
   vm.createContext(cs3);
+  loadStorage(cs3);
   vm.runInContext(CS_SRC, cs3, { filename: 'app-consumable.js' });
   const CS3 = cs3.CraftConsumable;
   CS3.init(DEP);

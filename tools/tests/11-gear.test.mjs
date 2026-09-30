@@ -1,6 +1,6 @@
 // tools/tests/11-gear.test.mjs — 角色數值與專家之證（T23／T24／T30）＋安全哨兵（T6）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SRC, HANDWRITTEN_JS, LAYER_STUBS, T, check, eq, rlv640, recipe100, gear, gearSpec, setInputs } from './_harness.mjs';
+import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SRC, HANDWRITTEN_JS, LAYER_STUBS, T, check, eq, rlv640, recipe100, gear, gearSpec, setInputs, loadStorage } from './_harness.mjs';
 
 // ===== T23：專心致志／快速改革必須隨專家之證 gate =====
 // 沒有 Soul of the Crafter 就沒有這兩個技能；公式層必須是最後一道防線，不能只靠 UI disabled。
@@ -35,6 +35,7 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    loadStorage(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t23.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t23.js' });
     vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t23.js' });
@@ -82,6 +83,7 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    loadStorage(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t24.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t24.js' });
     vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t24.js' });
@@ -162,6 +164,7 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    loadStorage(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-gear-load.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-gear-load.js' });
     vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-gear-load.js' });
@@ -212,6 +215,7 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    loadStorage(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t30.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t30.js' });
     vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t30.js' });

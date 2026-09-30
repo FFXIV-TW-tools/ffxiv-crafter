@@ -1,6 +1,6 @@
 // tools/tests/50-quests.test.mjs — 職業任務分頁 app-quests.js：素材展開／商人徽章／HQ 判定（T31〜T33）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, LAYER_STUBS, check, eq } from './_harness.mjs';
+import { fs, vm, path, ROOT, LAYER_STUBS, check, eq, loadStorage } from './_harness.mjs';
 
 // ===== T31：app-quests.js 職業任務層（素材展開 / 完成過濾）=====
 // 為什麼要守：這一頁的輸出是「玩家照著去買素材」的清單。算錯不會有任何錯誤訊號——
@@ -13,6 +13,7 @@ import { fs, vm, path, ROOT, LAYER_STUBS, check, eq } from './_harness.mjs';
   const qctx = { console, document: { getElementById: () => null }, localStorage: { getItem: () => null, setItem() {} } };
   qctx.globalThis = qctx;
   vm.createContext(qctx);
+  loadStorage(qctx);
   vm.runInContext(QUESTS_SRC, qctx, { filename: 'app-quests.js' });
   const Q = qctx.CraftQuests;
 
@@ -121,6 +122,7 @@ import { fs, vm, path, ROOT, LAYER_STUBS, check, eq } from './_harness.mjs';
   const c2 = { console, document: { getElementById: () => null }, localStorage: { getItem: () => null, setItem() {} } };
   c2.globalThis = c2;
   vm.createContext(c2);
+  loadStorage(c2);
   vm.runInContext(QSRC, c2, { filename: 'app-quests-t32.js' });
   const Q = c2.CraftQuests;
   Q.init({ $: () => null, esc: (s) => String(s), iconUrl: () => '', toast() {}, mbItem: () => '#',
@@ -170,6 +172,7 @@ import { fs, vm, path, ROOT, LAYER_STUBS, check, eq } from './_harness.mjs';
   const c3 = { console, document: { getElementById: () => null }, localStorage: { getItem: () => null, setItem() {} } };
   c3.globalThis = c3;
   vm.createContext(c3);
+  loadStorage(c3);
   vm.runInContext(QSRC, c3, { filename: 'app-quests-t33.js' });
   const Q = c3.CraftQuests;
   Q.init({ $: () => null, esc: (s) => String(s), iconUrl: () => '', toast() {}, mbItem: () => '#',

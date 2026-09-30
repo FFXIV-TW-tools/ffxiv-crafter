@@ -19,30 +19,57 @@
   // item id → { shop:1, loc?, npc?, price? }：`shop` 來自解包 is_gil_shop（權威、全覆蓋），
   // loc/npc/price 來自社群試算表（部分覆蓋）→ 說明文字要標明哪一半是社群資料。
   let VENDORS = {};
-  const state = { job: '', done: [], hideDone: false };
+  let state = { job: '', done: [], hideDone: false };
   let doneSet = new Set();
   let saveWarned = false;
 
   // ---------- 保存 ----------
-  function load() {
+  function parseState(text) {
+    const value = { job: '', done: [], hideDone: false };
     try {
-      const raw = JSON.parse(localStorage.getItem(KEY));
+      const raw = JSON.parse(text);
       if (raw && typeof raw === 'object') {
-        if (typeof raw.job === 'string') state.job = raw.job;
-        if (typeof raw.hideDone === 'boolean') state.hideDone = raw.hideDone;
-        // 只收數字 id：保存值被竄改成別的型別時退回空清單，不硬套（同求解選項的作法）
-        if (Array.isArray(raw.done)) state.done = raw.done.filter((n) => Number.isSafeInteger(n));
+        if (typeof raw.job === 'string') value.job = raw.job;
+        if (typeof raw.hideDone === 'boolean') value.hideDone = raw.hideDone;
+        if (Array.isArray(raw.done)) value.done = raw.done.filter((n) => Number.isSafeInteger(n));
       }
     } catch (e) { console.warn('[crafter] 職業任務設定讀取失敗，用預設值:', e); }
-    doneSet = new Set(state.done);
+    return value;
   }
-  function save() {
-    state.done = [...doneSet];
-    try { localStorage.setItem(KEY, JSON.stringify(state)); }
-    catch (e) {
-      console.warn('[crafter] 職業任務設定儲存失敗（可能是無痕模式）:', e);
-      if (!saveWarned) { saveWarned = true; deps.toast('無法保存職業任務進度（可能是無痕/私密模式），重整後會遺失', 'warn'); }
-    }
+  function replace(value) {
+    state = value; doneSet = new Set(value.done);
+    const hide = deps.$('quest-hide-done');
+    if (hide) hide.checked = state.hideDone;
+    render();
+  }
+  let unsubscribe = null;
+  function load() {
+    state = CraftStorage.open(KEY, { parse: parseState });
+    doneSet = new Set(state.done);
+    if (unsubscribe) unsubscribe();
+    unsubscribe = CraftStorage.subscribe(KEY, replace);
+  }
+  function save(field, value, id) {
+    const promise = CraftStorage.update(KEY, {
+      kind: field === 'done' ? 'member' : 'set', field: field === 'done' ? `done.${id}` : field, read: (model) => model[field],
+      apply(model) {
+        if (field === 'done') {
+          const ids = new Set(model.done);
+          if (value) ids.add(id); else ids.delete(id);
+          model.done = [...ids];
+        } else model[field] = value;
+        return model;
+      },
+      onResult(result) {
+        replace(CraftStorage.view(KEY));
+        if (!result.ok) {
+          console.warn('[crafter] 職業任務設定儲存失敗（可能是無痕模式）:', result.error);
+          if (!saveWarned) { saveWarned = true; deps.toast('無法保存職業任務進度（可能是無痕/私密模式），重整後會遺失', 'warn'); }
+        }
+      },
+    });
+    replace(CraftStorage.view(KEY));
+    return promise;
   }
 
   // ---------- 純函式：素材展開（golden 測試面）----------
@@ -114,7 +141,7 @@
         `${ico}${esc(j.job)} <span class="codex-xs">${left ? left + ' 待辦' : '✓ 完成'}</span></button>`;
     }).join('');
     $('quest-jobs').querySelectorAll('.job-btn').forEach((b) => {
-      b.onclick = () => { state.job = b.dataset.job; save(); render(); };
+      b.onclick = () => { save('job', b.dataset.job); };
     });
   }
 
@@ -223,6 +250,26 @@
   }
 
   function render() {
+    const active = document.activeElement;
+    const quest = active?.dataset?.quest;
+    const checks = [...(deps.$('quest-body')?.querySelectorAll('.crafter-qt-done') || [])];
+    const index = checks.indexOf(active);
+    const actionRoot = ['quest-body', 'quest-mats'].find((id) => deps.$(id)?.contains?.(active));
+    const actionData = active ? JSON.stringify(active.dataset) : '';
+    const actionClass = active?.className, actionHref = active?.getAttribute?.('href');
+    renderContent();
+    if (quest != null) {
+      const nextChecks = [...deps.$('quest-body').querySelectorAll('.crafter-qt-done')];
+      const next = nextChecks.find((el) => el.dataset.quest === quest) ||
+        nextChecks[Math.min(index, nextChecks.length - 1)] || deps.$('quest-hide-done');
+      next?.focus();
+    } else if (actionRoot) {
+      const next = [...deps.$(actionRoot).querySelectorAll('button, a')].find((el) =>
+        el.className === actionClass && JSON.stringify(el.dataset) === actionData && el.getAttribute('href') === actionHref);
+      (next || deps.$('quest-hide-done'))?.focus();
+    }
+  }
+  function renderContent() {
     const { $ } = deps;
     const body = $('quest-body');
     if (!body) return;                 // 分頁骨架不在（測試 sandbox / 部署不完整）→ 靜靜不畫，不炸掉整個 init
@@ -237,27 +284,7 @@
     $('quest-body').innerHTML = questsHtml(view(cur, doneSet, state.hideDone));
     refreshSummary();
     $('quest-body').querySelectorAll('.crafter-qt-done').forEach((c) => {
-      c.onchange = () => {
-        const id = Number(c.dataset.quest);
-        if (c.checked) doneSet.add(id); else doneSet.delete(id);
-        save();
-        const card = c.closest('.crafter-qt-quest');
-        if (card) {
-          card.classList.toggle('is-done', c.checked);
-          if (state.hideDone && c.checked) {
-            const checks = [...$('quest-body').querySelectorAll('.crafter-qt-done')];
-            const index = checks.indexOf(c);
-            const next = checks[index + 1] || checks[index - 1] || $('quest-hide-done');
-            const hadFocus = document.activeElement === c;
-            card.remove();
-            if (hadFocus) next.focus();
-          }
-        }
-        // 收走最後一列之後要補空狀態：局部移除不會產生「🎉 都標記完成了」那段文字，
-        // 玩家看到的是一片空白（以為壞了）。清單已空時捲動位置本來就沒東西要保，重繪是安全的。
-        if (!$('quest-body').querySelector('.crafter-qt-quest')) { render(); return; }
-        refreshSummary();
-      };
+      c.onchange = () => { save('done', c.checked, Number(c.dataset.quest)); };
     });
     $('quest-body').querySelectorAll('.crafter-qt-go').forEach((b) => {
       b.onclick = () => { if (deps.selectRecipe(Number(b.dataset.recipe))) deps.switchTab('solve', true); };
@@ -276,7 +303,7 @@
     const hide = deps.$('quest-hide-done');
     if (hide) {
       hide.checked = state.hideDone;
-      hide.addEventListener('change', () => { state.hideDone = hide.checked; save(); render(); });
+      hide.addEventListener('change', () => { save('hideDone', hide.checked); });
     }
     render();
   }

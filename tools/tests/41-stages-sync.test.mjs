@@ -1,6 +1,6 @@
 // tools/tests/41-stages-sync.test.mjs — 品質階段（T18）／求解選項預設與保存（T19）／等級同步（T20）
 // 由 tools/test-formulas.mjs 依檔名序 import 跑；斷言計數器與共用 fixture 都在 ./_harness.mjs。
-import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SRC, LAYER_STUBS, sandbox, check, eq, gear } from './_harness.mjs';
+import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SRC, LAYER_STUBS, sandbox, check, eq, gear, loadStorage } from './_harness.mjs';
 
 // ===== T18：app-quality-stages.js 品質階段層 =====
 // 換算錯的後果與「算錯巨集」同級：玩家照著求解、貼進遊戲卻差一格達不到門檻，且過程零錯誤訊號。
@@ -136,6 +136,7 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    loadStorage(ctx);
     vm.runInContext(GEAR_SRC, ctx, { filename: 'app-gear-t19.js' });
     vm.runInContext(RECIPE_SRC, ctx, { filename: 'app-recipe-t19.js' });
     vm.runInContext(FORMULA_SRC, ctx, { filename: 'app-formula-t19.js' });
@@ -147,8 +148,9 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   const store = {};
   const a = mkCtx(store);
   a.document.getElementById('opt-manip').checked = true;
+  a.saveSolveOpts('opt-manip');
   a.document.getElementById('opt-backload').checked = true;
-  a.saveSolveOpts();
+  a.saveSolveOpts('opt-backload');
   const b = mkCtx(store);                       // 新開一次頁
   b.loadSolveOpts();
   eq('T19 保存往返：勾選的選項重載後仍勾', b.document.getElementById('opt-manip').checked, true);
@@ -168,7 +170,8 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
 // 或給一份貼進遊戲完全對不上的手法。identity（滿等不得改變任何東西）是這層最重要的護欄。
 {
   const LS_SRC = fs.readFileSync(path.join(ROOT, 'app-level-sync.js'), 'utf8');
-  const mkEl = () => ({ value: '', textContent: '', placeholder: '', hidden: false, addEventListener() {} });
+  const mkEl = () => ({ value: '', textContent: '', placeholder: '', hidden: false, handlers: {},
+    addEventListener(name, fn) { this.handlers[name] = fn; } });
   const mkCtx = (store) => {
     const els = {};
     const ctx = {
@@ -182,6 +185,7 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
     };
     ctx.globalThis = ctx;
     vm.createContext(ctx);
+    loadStorage(ctx);
     vm.runInContext(LS_SRC, ctx, { filename: 'app-level-sync.js' });
     ctx._els = els;
     return ctx;
@@ -234,11 +238,8 @@ import { fs, vm, path, ROOT, APP_SRC, GEAR_SRC, FORMULA_SRC, DATA_SRC, RECIPE_SR
   const w = mkCtx(store);
   w.CraftSync.init({ $: null, onChange() {} });
   w._els['ls-level'].value = '70';
-  w._els['ls-level'].addEventListener = () => {};
-  w.CraftSync._setOverride(70);
+  w._els['ls-level'].handlers.input();
   w.CraftSync.setData(SYNCMAP);
-  // 直接走公開路徑保存：init 綁的是 DOM 事件，這裡用內部 setter + 再開一次頁驗證
-  vm.runInContext('localStorage.setItem("ffxiv-crafter-level-sync-v1", JSON.stringify({level:70}))', w);
   const w2 = mkCtx(store);
   w2.CraftSync.init({ $: null, onChange() {} });
   w2.CraftSync.setData(SYNCMAP);
